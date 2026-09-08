@@ -67,7 +67,7 @@ function SetNewPassword() {
         <div className="flex min-h-svh items-center justify-center px-4">
             <div className="w-full max-w-sm space-y-6">
                 <div className="flex flex-col items-center gap-3 text-center">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+                    <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10">
                         <KeyRound className="size-6 text-primary" />
                     </div>
                     <div>

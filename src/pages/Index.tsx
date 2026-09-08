@@ -17,10 +17,10 @@ export default function Index() {
 
     if (!user) {
         return (
-            <div className="p-6 space-y-4">
-                <Skeleton className="h-8 w-56" />
+            <div className="p-6 space-y-6 max-w-7xl mx-auto">
+                <Skeleton className="h-8 w-56 rounded-md" />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
                 </div>
             </div>
         );

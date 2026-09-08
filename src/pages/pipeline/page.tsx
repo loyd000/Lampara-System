@@ -55,10 +55,10 @@ export default function PipelinePage() {
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0">
                 <div>
-                    <h1 className="text-xl font-bold">Pipeline</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Pipeline</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
                         {leads === undefined
                             ? "Loading…"
                             : page?.truncated
@@ -75,7 +75,7 @@ export default function PipelinePage() {
             {leads === undefined ? (
                 <div className="flex gap-3 overflow-x-auto p-6">
                     {STAGES.map((s) => (
-                        <Skeleton key={s} className="h-96 w-52 flex-shrink-0 rounded-xl" />
+                        <Skeleton key={s} className="h-96 w-52 flex-shrink-0 rounded-lg" />
                     ))}
                 </div>
             ) : (
@@ -93,23 +93,23 @@ export default function PipelinePage() {
                             >
                                 {/* Column header */}
                                 <div className={cn(
-                                    "flex items-center justify-between mb-2.5 px-1 py-1 rounded-lg transition-colors",
-                                    isOver && "bg-primary/8",
+                                    "flex items-center justify-between mb-2.5 px-1.5 py-1 rounded-md transition-colors",
+                                    isOver && "bg-secondary",
                                 )}>
                                     <div className="flex items-center gap-2">
-                                        <Badge className={`${STAGE_COLORS[stage]} text-[11px] font-semibold px-2 py-0.5`}>
+                                        <Badge className={`${STAGE_COLORS[stage]} text-[11px] font-semibold px-2 py-0.5 rounded-md`}>
                                             {STAGE_LABELS[stage]}
                                         </Badge>
                                     </div>
-                                    <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                                    <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-1.5 py-0.5">
                                         {cards.length}
                                     </span>
                                 </div>
 
                                 {/* Drop zone */}
                                 <div className={cn(
-                                    "space-y-2 min-h-[6rem] rounded-xl transition-all p-1",
-                                    isOver && "bg-primary/5 ring-2 ring-primary/20 ring-dashed",
+                                    "space-y-2 min-h-[6rem] rounded-lg transition-all p-1",
+                                    isOver && "bg-secondary/50 ring-2 ring-foreground/20 ring-dashed",
                                 )}>
                                     {cards.map((lead) => (
                                         <PipelineCard
@@ -122,7 +122,7 @@ export default function PipelinePage() {
                                         />
                                     ))}
                                     {cards.length === 0 && !isOver && (
-                                        <div className="border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center justify-center gap-1">
+                                        <div className="border border-dashed border-border rounded-lg py-8 flex flex-col items-center justify-center gap-1">
                                             <Users className="w-4 h-4 text-muted-foreground/30" />
                                             <span className="text-[11px] text-muted-foreground/40">Drop here</span>
                                         </div>
@@ -165,8 +165,8 @@ function PipelineCard({
             onDragEnd={onDragEnd}
             onClick={onClick}
             className={cn(
-                "bg-card border border-border rounded-xl p-3 cursor-grab active:cursor-grabbing",
-                "hover:shadow-md hover:border-primary/30 transition-all select-none",
+                "bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing",
+                "hover:shadow-xs hover:border-foreground/30 transition-all select-none",
                 isDragging && "opacity-40 scale-95",
                 isStale && "border-amber-300/60 dark:border-amber-700/40",
             )}

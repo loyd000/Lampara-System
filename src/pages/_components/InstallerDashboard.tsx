@@ -45,20 +45,20 @@ export default function InstallerDashboard({ user }: Props) {
     );
 
     return (
-        <div className="p-6 space-y-6 max-w-4xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                     Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
                 </h1>
-                <p className="text-muted-foreground text-sm mt-1">Your installation jobs at Lampara</p>
+                <p className="text-sm text-muted-foreground mt-1">Your installation jobs at Lampara</p>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <StatCard icon={<CalendarDays />} label="Upcoming" value={upcoming.length} />
-                <StatCard icon={<Wrench />} label="In Progress" value={installations?.filter((i) => i.status === "in_progress").length ?? 0} color="amber" />
-                <StatCard icon={<CheckCircle2 />} label="Completed" value={completed.length} color="emerald" />
+                <StatCard icon={<CalendarDays className="size-4" />} label="Upcoming" value={upcoming.length} />
+                <StatCard icon={<Wrench className="size-4" />} label="In Progress" value={installations?.filter((i) => i.status === "in_progress").length ?? 0} />
+                <StatCard icon={<CheckCircle2 className="size-4" />} label="Completed" value={completed.length} />
             </div>
 
             {/* Today's jobs */}
@@ -102,7 +102,7 @@ export default function InstallerDashboard({ user }: Props) {
             {/* No jobs */}
             {installations !== undefined && installations.filter((i) => i.status !== "completed").length === 0 && (
                 <Card>
-                    <CardContent className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
+                    <CardContent className="py-10 px-6 flex flex-col items-center gap-2 text-muted-foreground">
                         <Wrench className="w-8 h-8 opacity-30" />
                         <p className="text-sm">No jobs assigned to you yet</p>
                     </CardContent>
@@ -132,26 +132,21 @@ export default function InstallerDashboard({ user }: Props) {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function StatCard({ icon, label, value, color }: {
+function StatCard({ icon, label, value }: {
     icon: React.ReactNode;
     label: string;
     value: number;
-    color?: "amber" | "emerald";
+    color?: string;
 }) {
-    const colorMap = {
-        amber: "text-amber-500",
-        emerald: "text-emerald-500",
-    };
     return (
         <Card>
-            <CardContent className="pt-5 pb-4">
+            <CardContent>
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-2xl font-bold">{value}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                        <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
+                        <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
                     </div>
-                    <div className={cn("w-8 h-8 flex items-center justify-center rounded-lg bg-muted",
-                        color && colorMap[color])}>
+                    <div className="size-8 flex items-center justify-center rounded-md bg-secondary text-foreground border border-border">
                         {icon}
                     </div>
                 </div>
@@ -186,7 +181,7 @@ function JobCard({ job, onClick, highlight }: JobCardProps) {
             )}
             onClick={onClick}
         >
-            <CardContent className="py-4">
+            <CardContent className="py-4 px-6">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm truncate">{job.customerName}</p>

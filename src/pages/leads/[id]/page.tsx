@@ -57,13 +57,13 @@ export default function LeadDetailPage() {
 
     if (lead === undefined || properties === undefined) {
         return (
-            <div className="p-6 space-y-4 max-w-5xl mx-auto">
+            <div className="p-6 space-y-6 max-w-7xl mx-auto">
                 <div className="flex items-center gap-3">
-                    <Skeleton className="h-8 w-8 rounded" />
-                    <Skeleton className="h-8 w-56" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                    <Skeleton className="h-8 w-56 rounded-md" />
                 </div>
                 <div className="grid md:grid-cols-3 gap-4">
-                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
                 </div>
             </div>
         );
@@ -120,7 +120,7 @@ export default function LeadDetailPage() {
     }
 
     return (
-        <div className="p-6 space-y-5 max-w-5xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* ── Header ─────────────────────────────────── */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                 <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="self-start">
@@ -128,7 +128,7 @@ export default function LeadDetailPage() {
                 </Button>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                        <h1 className="text-2xl font-bold">{lead.firstName} {lead.lastName}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">{lead.firstName} {lead.lastName}</h1>
                         <Badge className={cn(STAGE_COLORS[lead.stage], "text-xs font-semibold")}>
                             {STAGE_LABELS[lead.stage]}
                         </Badge>
@@ -202,7 +202,7 @@ export default function LeadDetailPage() {
                     {/* Contact */}
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2">
                                 <UserCircle className="w-4 h-4 text-muted-foreground" />Contact Info
                             </CardTitle>
                         </CardHeader>
@@ -230,7 +230,7 @@ export default function LeadDetailPage() {
                     {prop && (
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-sm flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2">
                                     <Building2 className="w-4 h-4 text-muted-foreground" />Property
                                 </CardTitle>
                             </CardHeader>
@@ -252,7 +252,7 @@ export default function LeadDetailPage() {
                     {lead.notes && (
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-sm flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2">
                                     <FileText className="w-4 h-4 text-muted-foreground" />Notes
                                 </CardTitle>
                             </CardHeader>
@@ -308,13 +308,13 @@ export default function LeadDetailPage() {
                 <div>
                     <Card className="flex flex-col">
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-muted-foreground" />Activity Log
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 flex flex-col">
                             {/* Note input */}
-                            <div className="px-4 pb-3 border-b space-y-2">
+                            <div className="px-6 pb-4 border-b space-y-2">
                                 <Textarea
                                     placeholder="Add a note or update…"
                                     value={note}
@@ -337,14 +337,14 @@ export default function LeadDetailPage() {
                             {/* Log */}
                             <div className="max-h-[420px] overflow-y-auto divide-y">
                                 {activity === undefined ? (
-                                    <div className="p-4 space-y-2">
+                                    <div className="px-6 py-4 space-y-2">
                                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
                                     </div>
                                 ) : activity.length === 0 ? (
-                                    <p className="p-4 text-xs text-muted-foreground">No activity yet.</p>
+                                    <p className="px-6 py-4 text-xs text-muted-foreground">No activity yet.</p>
                                 ) : (
                                     activity.map((log) => (
-                                        <div key={log._id} className="px-4 py-3">
+                                        <div key={log._id} className="px-6 py-3.5">
                                             <p className="text-xs font-semibold text-foreground">{log.action}</p>
                                             {log.details && (
                                                 <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{log.details}</p>

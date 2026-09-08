@@ -28,45 +28,45 @@ export default function SurveyorDashboard({ user }: Props) {
     }) ?? [];
 
     return (
-        <div className="p-6 space-y-6 max-w-4xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold">My Surveys</h1>
-                <p className="text-muted-foreground mt-0.5">Welcome back, {user.name?.split(" ")[0]}</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">My Surveys</h1>
+                <p className="text-sm text-muted-foreground mt-1">Welcome back, {user.name?.split(" ")[0]}</p>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <Card>
-                    <CardContent className="pt-5 flex items-center gap-3">
-                        <div className="p-2.5 bg-blue-50 dark:bg-blue-950/20 rounded-xl">
-                            <CalendarDays className="w-5 h-5 text-blue-600" />
+                    <CardContent className="flex items-center gap-3">
+                        <div className="p-2 bg-secondary text-foreground border border-border rounded-md">
+                            <CalendarDays className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-xs text-muted-foreground">Upcoming</p>
-                            <p className="text-2xl font-bold">{upcoming?.length ?? "—"}</p>
+                            <p className="text-xs font-medium text-muted-foreground">Upcoming</p>
+                            <p className="text-2xl font-bold tracking-tight text-foreground">{upcoming?.length ?? "—"}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="pt-5 flex items-center gap-3">
-                        <div className="p-2.5 bg-amber-50 dark:bg-amber-950/20 rounded-xl">
-                            <Clock className="w-5 h-5 text-amber-600" />
+                    <CardContent className="flex items-center gap-3">
+                        <div className="p-2 bg-secondary text-foreground border border-border rounded-md">
+                            <Clock className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-xs text-muted-foreground">Today</p>
-                            <p className="text-2xl font-bold">{todaySurveys.length}</p>
+                            <p className="text-xs font-medium text-muted-foreground">Today</p>
+                            <p className="text-2xl font-bold tracking-tight text-foreground">{todaySurveys.length}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="col-span-2 md:col-span-1">
-                    <CardContent className="pt-5 flex items-center gap-3">
-                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <CardContent className="flex items-center gap-3">
+                        <div className="p-2 bg-secondary text-foreground border border-border rounded-md">
+                            <CheckCircle2 className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-xs text-muted-foreground">Completed</p>
-                            <p className="text-2xl font-bold">{completed?.length ?? "—"}</p>
+                            <p className="text-xs font-medium text-muted-foreground">Completed</p>
+                            <p className="text-2xl font-bold tracking-tight text-foreground">{completed?.length ?? "—"}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -99,7 +99,7 @@ export default function SurveyorDashboard({ user }: Props) {
                     return d.toDateString() !== now.toDateString();
                 }).length === 0 ? (
                     <Card>
-                        <CardContent className="py-8 flex flex-col items-center gap-2 text-muted-foreground">
+                        <CardContent className="py-8 px-6 flex flex-col items-center gap-2 text-muted-foreground">
                             <CalendarDays className="w-8 h-8 opacity-30" />
                             <p className="text-sm">No upcoming surveys scheduled</p>
                         </CardContent>
@@ -151,7 +151,7 @@ function SurveyCard({
         <div
             onClick={onClick}
             className={cn(
-                "flex items-start gap-4 p-4 rounded-xl border bg-card cursor-pointer",
+                "flex items-start gap-4 px-6 py-4 rounded-lg border bg-card cursor-pointer",
                 "hover:shadow-md hover:border-primary/30 transition-all",
                 urgent && "border-amber-300/60 dark:border-amber-700/40",
             )}

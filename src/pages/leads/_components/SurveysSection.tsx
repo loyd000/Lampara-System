@@ -46,7 +46,7 @@ export default function SurveysSection({ leadId, propertyId, stage, canSchedule 
             <Card>
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2">
                             <SunMedium className="w-4 h-4 text-muted-foreground" />
                             Site Surveys
                         </CardTitle>

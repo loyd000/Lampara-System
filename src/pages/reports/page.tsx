@@ -37,10 +37,10 @@ export default function ReportsPage() {
     const isLoading = pipeline === undefined || permits === undefined || revenue === undefined || installations === undefined;
 
     return (
-        <div className="p-6 space-y-7 max-w-6xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold">Reports</h1>
-                <p className="text-muted-foreground text-sm mt-0.5">Business overview and operational metrics</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
+                <p className="text-sm text-muted-foreground mt-1">Business overview and operational metrics</p>
             </div>
 
             {/* ── Top KPIs ──────────────────────────────────────────── */}
@@ -49,28 +49,28 @@ export default function ReportsPage() {
                     label="Total Leads"
                     value={pipeline?.totalLeads}
                     icon={<TrendingUp className="w-5 h-5" />}
-                    color="bg-primary/8 text-primary"
+                    color="bg-secondary text-foreground"
                     loading={isLoading}
                 />
                 <KpiCard
                     label="Conversion Rate"
                     value={pipeline ? `${pipeline.conversionRate}%` : undefined}
                     icon={<FileCheck className="w-5 h-5" />}
-                    color="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600"
+                    color="bg-secondary text-foreground"
                     loading={isLoading}
                 />
                 <KpiCard
                     label="Pipeline Value"
                     value={revenue ? `$${(revenue.pipelineValue / 1000).toFixed(0)}k` : undefined}
                     icon={<DollarSign className="w-5 h-5" />}
-                    color="bg-amber-50 dark:bg-amber-950/20 text-amber-600"
+                    color="bg-secondary text-foreground"
                     loading={isLoading}
                 />
                 <KpiCard
                     label="Active Customers"
                     value={pipeline?.activeCustomers}
                     icon={<SunMedium className="w-5 h-5" />}
-                    color="bg-orange-50 dark:bg-orange-950/20 text-orange-500"
+                    color="bg-secondary text-foreground"
                     loading={isLoading}
                 />
             </div>
@@ -258,9 +258,9 @@ export default function ReportsPage() {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                                    <th className="px-4 py-2.5 text-left">Customer</th>
-                                    <th className="px-4 py-2.5 text-left">Stage</th>
-                                    <th className="px-4 py-2.5 text-left">Inactive</th>
+                                    <th className="px-6 py-3 text-left">Customer</th>
+                                    <th className="px-6 py-3 text-left">Stage</th>
+                                    <th className="px-6 py-3 text-left">Inactive</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -270,13 +270,13 @@ export default function ReportsPage() {
                                         className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                                         onClick={() => navigate(`/leads/${lead._id}`)}
                                     >
-                                        <td className="px-4 py-3 font-medium">{lead.name}</td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-6 py-3.5 font-medium">{lead.name}</td>
+                                        <td className="px-6 py-3.5">
                                             <Badge className={cn(STAGE_COLORS[lead.stage as keyof typeof STAGE_COLORS], "text-xs")}>
                                                 {STAGE_LABELS[lead.stage as keyof typeof STAGE_LABELS]}
                                             </Badge>
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-6 py-3.5">
                                             <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-xs">
                                                 {lead.daysStale}d inactive
                                             </Badge>
@@ -295,27 +295,31 @@ export default function ReportsPage() {
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function KpiCard({
-    label, value, icon, color, loading,
+    label,
+    value,
+    icon,
+    color,
+    loading,
 }: {
     label: string;
-    value: number | string | undefined;
+    value?: number | string;
     icon: React.ReactNode;
-    color: string;
-    loading: boolean;
+    color?: string;
+    loading?: boolean;
 }) {
     return (
         <Card>
-            <CardContent className="pt-5 pb-4">
+            <CardContent>
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-xs text-muted-foreground">{label}</p>
+                        <p className="text-xs font-medium text-muted-foreground">{label}</p>
                         {loading ? (
-                            <Skeleton className="h-8 w-16 mt-1" />
+                            <Skeleton className="h-7 w-16 mt-1 rounded-md" />
                         ) : (
-                            <p className="text-3xl font-bold mt-1">{value ?? "—"}</p>
+                            <p className="text-2xl font-bold tracking-tight text-foreground mt-1">{value ?? "—"}</p>
                         )}
                     </div>
-                    <div className={cn("p-2.5 rounded-xl", color)}>{icon}</div>
+                    <div className={cn("p-2 rounded-md border border-border", color)}>{icon}</div>
                 </div>
             </CardContent>
         </Card>

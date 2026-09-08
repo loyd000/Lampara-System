@@ -46,19 +46,19 @@ export default function LeadsPage() {
     }).length;
 
     return (
-        <div className="p-6 space-y-5 max-w-7xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">Leads & Customers</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Leads & Customers</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
                         {isLoading
                             ? "Loading…"
                             : !isSearching && page?.truncated
                                 ? `Showing ${leads.length} of ${page.total.toLocaleString()} — narrow with search or filters`
                                 : `${leads.length} record${leads.length !== 1 ? "s" : ""}`}
                         {staleCount > 0 && (
-                            <span className="ml-2 inline-flex items-center gap-1 text-amber-600 font-medium">
+                            <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground font-medium">
                                 <AlertTriangle className="w-3 h-3" />{staleCount} stale
                             </span>
                         )}
@@ -116,7 +116,7 @@ export default function LeadsPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
+            <div className="rounded-lg border border-border overflow-hidden bg-card shadow-2xs">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b bg-muted/30">

@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils.ts";
 import {
     LayoutDashboard,
     Users,
-    SunMedium,
     KanbanSquare,
     UserCog,
     BarChart3,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle.tsx";
 
 type NavItem = {
     label: string;
@@ -35,12 +35,18 @@ export default function AppSidebar() {
 
     return (
         <aside className="hidden md:flex w-60 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex-shrink-0">
-            {/* Logo */}
-            <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-                <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-                    <SunMedium className="w-4 h-4 text-sidebar-primary-foreground" />
+            {/* Logo & Theme Toggle */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
+                <div className="flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-card border border-border flex items-center justify-center p-1 shadow-2xs">
+                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-bold text-base tracking-tight text-sidebar-foreground leading-tight">Lampara</span>
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Solar CRM</span>
+                    </div>
                 </div>
-                <span className="font-bold text-lg tracking-tight text-sidebar-foreground">Lampara</span>
+                <ThemeToggle />
             </div>
 
             {/* Navigation */}
@@ -52,7 +58,7 @@ export default function AppSidebar() {
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
                                     isActive
-                                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                                 )}
                             >
@@ -66,16 +72,16 @@ export default function AppSidebar() {
 
             {/* User info */}
             {currentUser && (
-                <div className="px-4 py-4 border-t border-sidebar-border">
+                <div className="px-4 py-3.5 border-t border-sidebar-border">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary font-semibold text-sm">
+                        <div className="w-8 h-8 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border">
                             {(currentUser.name ?? "U").charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-sidebar-foreground truncate">
                                 {currentUser.name ?? "User"}
                             </p>
-                            <p className="text-xs text-sidebar-foreground/50 capitalize">{currentUser.role}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{currentUser.role}</p>
                         </div>
                     </div>
                 </div>

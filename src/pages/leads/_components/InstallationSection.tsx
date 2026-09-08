@@ -111,7 +111,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
             <Card className={cn(!isUnlocked && "opacity-60")}>
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2">
                             <Wrench className="w-4 h-4 text-muted-foreground" />Installation
                         </CardTitle>
                         {isUnlocked && canEdit && !installation && (

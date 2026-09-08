@@ -1,4 +1,4 @@
-import { ShieldOff, Sun } from "lucide-react";
+import { ShieldOff } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-context.ts";
 import { Button } from "@/components/ui/button.tsx";
@@ -28,10 +28,10 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="flex size-14 animate-pulse items-center justify-center rounded-2xl bg-primary/10">
-                        <Sun className="size-7 text-primary" />
+                    <div className="flex size-12 animate-pulse items-center justify-center rounded-lg bg-card border border-border p-2.5 shadow-2xs">
+                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
                     </div>
-                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-32 rounded-md" />
                 </div>
             </div>
         );
@@ -93,8 +93,8 @@ function AccountMessage({
     return (
         <div className="flex min-h-svh items-center justify-center bg-background px-4">
             <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
-                    {icon ?? <Sun className="size-7 text-primary" />}
+                <div className="flex size-12 items-center justify-center rounded-lg bg-card border border-border p-2 shadow-2xs">
+                    {icon ?? <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />}
                 </div>
                 <div>
                     <h1 className="text-lg font-semibold text-foreground">{title}</h1>

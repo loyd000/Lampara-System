@@ -42,23 +42,23 @@ export default function SalesDashboard({ user }: Props) {
     const stale = pipeline?.staleLeads ?? [];
 
     return (
-        <div className="p-6 space-y-6 max-w-5xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold">My Pipeline</h1>
-                <p className="text-muted-foreground mt-0.5">Welcome back, {user.name?.split(" ")[0]}</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">My Pipeline</h1>
+                <p className="text-sm text-muted-foreground mt-1">Welcome back, {user.name?.split(" ")[0]}</p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: "My Leads", val: stats?.total, icon: <Users className="w-4 h-4 text-primary" /> },
-                    { label: "Active", val: stats?.active, icon: <TrendingUp className="w-4 h-4 text-amber-600" /> },
-                    { label: "Proposals Sent", val: stats?.proposals, icon: <FileText className="w-4 h-4 text-blue-500" /> },
-                    { label: "Converted", val: stats?.contracts, icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" /> },
+                    { label: "My Leads", val: stats?.total, icon: <Users className="w-4 h-4 text-foreground" /> },
+                    { label: "Active", val: stats?.active, icon: <TrendingUp className="w-4 h-4 text-foreground" /> },
+                    { label: "Proposals Sent", val: stats?.proposals, icon: <FileText className="w-4 h-4 text-foreground" /> },
+                    { label: "Converted", val: stats?.contracts, icon: <CheckCircle2 className="w-4 h-4 text-foreground" /> },
                 ].map(s => (
                     <Card key={s.label}>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 mb-1">{s.icon}<span className="text-xs text-muted-foreground">{s.label}</span></div>
-                            <p className="text-2xl font-bold">{s.val ?? "—"}</p>
+                        <CardContent>
+                            <div className="flex items-center gap-2 mb-1">{s.icon}<span className="text-xs font-medium text-muted-foreground">{s.label}</span></div>
+                            <p className="text-2xl font-bold tracking-tight text-foreground">{s.val ?? "—"}</p>
                         </CardContent>
                     </Card>
                 ))}
@@ -72,16 +72,16 @@ export default function SalesDashboard({ user }: Props) {
                     </CardHeader>
                     <CardContent className="p-0">
                         {myLeads === undefined ? (
-                            <div className="p-4 space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                            <div className="px-6 py-4 space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
                         ) : myLeads.length === 0 ? (
-                            <p className="p-4 text-sm text-muted-foreground">No leads assigned yet.</p>
+                            <p className="px-6 py-8 text-sm text-muted-foreground">No leads assigned yet.</p>
                         ) : (
                             <table className="w-full text-sm">
                                 <tbody>
                                     {myLeads.slice(0, 6).map(l => (
                                         <tr key={l._id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/leads/${l._id}`)}>
-                                            <td className="px-4 py-3 font-medium">{l.firstName} {l.lastName}</td>
-                                            <td className="px-4 py-3"><Badge className={STAGE_COLORS[l.stage]}>{STAGE_LABELS[l.stage]}</Badge></td>
+                                            <td className="px-6 py-3.5 font-medium">{l.firstName} {l.lastName}</td>
+                                            <td className="px-6 py-3.5 text-right"><Badge className={STAGE_COLORS[l.stage]}>{STAGE_LABELS[l.stage]}</Badge></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -98,11 +98,11 @@ export default function SalesDashboard({ user }: Props) {
                     </CardHeader>
                     <CardContent className="p-0">
                         {stale.length === 0 ? (
-                            <p className="px-4 pb-4 text-sm text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />All caught up!</p>
+                            <p className="px-6 pb-6 text-sm text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />All caught up!</p>
                         ) : stale.slice(0, 5).map(l => (
-                            <div key={l._id} className="px-4 py-3 border-b last:border-0 cursor-pointer hover:bg-muted/30" onClick={() => navigate(`/leads/${l._id}`)}>
+                            <div key={l._id} className="px-6 py-3.5 border-b last:border-0 cursor-pointer hover:bg-muted/30" onClick={() => navigate(`/leads/${l._id}`)}>
                                 <p className="text-sm font-medium">{l.name}</p>
-                                <p className="text-xs text-muted-foreground">{l.daysStale}d inactive · {STAGE_LABELS[l.stage]}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{l.daysStale}d inactive · {STAGE_LABELS[l.stage]}</p>
                             </div>
                         ))}
                     </CardContent>

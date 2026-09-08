@@ -1,9 +1,11 @@
 import { useLeads, usePermitsSummary, usePipelineSummary } from "@/lib/supabase/hooks.ts";
 import type { Doc } from "@/lib/supabase/types.ts";
 
+import { cn } from "@/lib/utils.ts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+
 /** The "Recent Leads" card shows a handful; no reason to fetch more. */
 const RECENT_LEAD_COUNT = 6;
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
@@ -50,10 +52,10 @@ export default function AdminDashboard({ user }: Props) {
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                     Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
                 </h1>
-                <p className="text-muted-foreground mt-0.5">Here's what's happening at Lampara today.</p>
+                <p className="text-sm text-muted-foreground mt-1">Here's what's happening at Lampara today.</p>
             </div>
 
             {/* Stat Cards */}
@@ -61,26 +63,26 @@ export default function AdminDashboard({ user }: Props) {
                 <StatCard
                     title="Total Leads"
                     value={stats?.total ?? "—"}
-                    icon={<Users className="w-5 h-5 text-primary" />}
-                    color="bg-primary/8"
+                    icon={<Users className="w-5 h-5 text-foreground" />}
+                    color="bg-secondary"
                 />
                 <StatCard
                     title="Active Pipeline"
                     value={stats?.active ?? "—"}
-                    icon={<TrendingUp className="w-5 h-5 text-amber-600" />}
-                    color="bg-amber-50 dark:bg-amber-950/20"
+                    icon={<TrendingUp className="w-5 h-5 text-foreground" />}
+                    color="bg-secondary"
                 />
                 <StatCard
                     title="Contracts Signed"
                     value={stats?.contracts ?? "—"}
-                    icon={<ClipboardList className="w-5 h-5 text-emerald-600" />}
-                    color="bg-emerald-50 dark:bg-emerald-950/20"
+                    icon={<ClipboardList className="w-5 h-5 text-foreground" />}
+                    color="bg-secondary"
                 />
                 <StatCard
                     title="Installations"
                     value={stats?.installs ?? "—"}
-                    icon={<SunMedium className="w-5 h-5 text-orange-500" />}
-                    color="bg-orange-50 dark:bg-orange-950/20"
+                    icon={<SunMedium className="w-5 h-5 text-foreground" />}
+                    color="bg-secondary"
                 />
             </div>
 
@@ -94,9 +96,9 @@ export default function AdminDashboard({ user }: Props) {
                         </CardHeader>
                         <CardContent className="p-0">
                             {recentLeads === undefined ? (
-                                <div className="p-4 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                                <div className="px-6 py-4 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
                             ) : recentLeads.length === 0 ? (
-                                <p className="p-6 text-muted-foreground text-sm">No leads yet.</p>
+                                <p className="px-6 py-8 text-muted-foreground text-sm">No leads yet.</p>
                             ) : (
                                 <table className="w-full text-sm">
                                     <tbody>
@@ -106,12 +108,12 @@ export default function AdminDashboard({ user }: Props) {
                                                 className="border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
                                                 onClick={() => navigate(`/leads/${lead._id}`)}
                                             >
-                                                <td className="px-4 py-3 font-medium">{lead.firstName} {lead.lastName}</td>
-                                                <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">{lead.phone}</td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-6 py-3.5 font-medium">{lead.firstName} {lead.lastName}</td>
+                                                <td className="px-6 py-3.5 text-muted-foreground hidden sm:table-cell">{lead.phone}</td>
+                                                <td className="px-6 py-3.5">
                                                     <Badge className={STAGE_COLORS[lead.stage]}>{STAGE_LABELS[lead.stage]}</Badge>
                                                 </td>
-                                                <td className="px-4 py-3 text-muted-foreground text-xs hidden md:table-cell">
+                                                <td className="px-6 py-3.5 text-muted-foreground text-xs hidden md:table-cell text-right">
                                                     {timeAgo(lead.lastActivityAt)}
                                                 </td>
                                             </tr>
@@ -134,7 +136,7 @@ export default function AdminDashboard({ user }: Props) {
                         </CardHeader>
                         <CardContent className="p-0">
                             {!hasAlerts ? (
-                                <div className="px-4 pb-4 flex items-center gap-2 text-sm text-emerald-600">
+                                <div className="px-6 pb-6 flex items-center gap-2 text-sm text-emerald-600">
                                     <CheckCircle2 className="w-4 h-4" />
                                     All leads are up to date
                                 </div>
@@ -143,7 +145,7 @@ export default function AdminDashboard({ user }: Props) {
                                     {staleLeads.slice(0, 3).map(lead => (
                                         <li
                                             key={lead._id}
-                                            className="px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                                            className="px-6 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors"
                                             onClick={() => navigate(`/leads/${lead._id}`)}
                                         >
                                             <p className="text-sm font-medium">{lead.name}</p>
@@ -155,7 +157,7 @@ export default function AdminDashboard({ user }: Props) {
                                     {overduePermits.slice(0, 3).map(p => (
                                         <li
                                             key={p._id}
-                                            className="px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                                            className="px-6 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors"
                                             onClick={() => navigate(`/leads/${p.leadId}`)}
                                         >
                                             <div className="flex items-center gap-1.5">
@@ -169,7 +171,7 @@ export default function AdminDashboard({ user }: Props) {
                                     ))}
                                 </ul>
                             )}
-                            <div className="px-4 pb-3 pt-2 border-t">
+                            <div className="px-6 pb-4 pt-3 border-t">
                                 <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => navigate("/reports")}>
                                     <BarChart3 className="w-3.5 h-3.5 mr-1.5" />View Full Report
                                 </Button>
@@ -185,13 +187,13 @@ export default function AdminDashboard({ user }: Props) {
 function StatCard({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: string }) {
     return (
         <Card>
-            <CardContent className="pt-5">
+            <CardContent>
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-sm text-muted-foreground">{title}</p>
-                        <p className="text-3xl font-bold mt-1">{value}</p>
+                        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+                        <p className="text-2xl font-bold tracking-tight text-foreground mt-1">{value}</p>
                     </div>
-                    <div className={`p-2.5 rounded-xl ${color}`}>{icon}</div>
+                    <div className={cn("p-2 rounded-md border border-border", color)}>{icon}</div>
                 </div>
             </CardContent>
         </Card>

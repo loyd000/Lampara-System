@@ -109,7 +109,7 @@ export default function PermitsSection({ leadId, stage, canEdit }: Props) {
             <Card className={cn(!isUnlocked && "opacity-60")}>
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2">
                             <Shield className="w-4 h-4 text-muted-foreground" />
                             Permits & Compliance
                             {overdueCount > 0 && (

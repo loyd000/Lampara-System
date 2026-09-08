@@ -44,20 +44,20 @@ export default function TeamPage() {
     const isAdmin = currentUser?.role === "admin";
 
     return (
-        <div className="p-6 space-y-5 max-w-4xl mx-auto">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold">Team</h1>
-                <p className="text-muted-foreground mt-0.5">Manage your team members and their roles</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Team</h1>
+                <p className="text-sm text-muted-foreground mt-1">Manage your team members and their roles</p>
             </div>
 
             {users === undefined ? (
-                <div className="space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+                <div className="space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
             ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
                     {users.map(user => (
                         <Card key={user._id}>
-                            <CardContent className="pt-4 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold flex-shrink-0">
+                            <CardContent className="flex items-center gap-3">
+                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
                                     {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
