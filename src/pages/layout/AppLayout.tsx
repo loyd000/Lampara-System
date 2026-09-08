@@ -6,13 +6,14 @@ import { useRealtimeSync } from "@/lib/supabase/realtime.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import AppSidebar from "./_components/AppSidebar.tsx";
 import MobileNav from "./_components/MobileNavbar.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
-import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles } from "lucide-react";
+import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles, LogOut } from "lucide-react";
 
 export default function AppLayout() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, signOut } = useAuth();
 
     // Convex refreshed every subscriber on write; with React Query this one
     // channel does the same job by invalidating caches on Postgres changes.
@@ -48,7 +49,19 @@ export default function AppLayout() {
                                     </div>
                                     <span className="font-bold text-sm tracking-tight text-foreground">{COMPANY_NAME}</span>
                                 </div>
-                                <ThemeToggle />
+                                <div className="flex items-center gap-1.5">
+                                    <ThemeToggle />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md cursor-pointer transition-colors"
+                                        onClick={() => void signOut()}
+                                        title="Sign out"
+                                        aria-label="Sign out"
+                                    >
+                                        <LogOut className="size-4" />
+                                    </Button>
+                                </div>
                             </div>
                             <main className="flex-1 overflow-auto pb-16 md:pb-0">
                                 <Outlet />

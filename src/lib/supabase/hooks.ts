@@ -98,7 +98,8 @@ export function useCurrentUser() {
     return useQuery({
         queryKey: queryKeys.currentUser,
         queryFn: usersApi.getCurrentUser,
-        staleTime: 30_000,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
     });
 }
 
@@ -106,7 +107,8 @@ export function useUsers() {
     return useQuery({
         queryKey: queryKeys.users,
         queryFn: usersApi.listUsers,
-        staleTime: 60_000,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
     });
 }
 

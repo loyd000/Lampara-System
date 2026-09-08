@@ -24,7 +24,7 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
     const { data: user, isPending, isError, refetch } = useCurrentUser();
     const { signOut } = useAuth();
 
-    if (isPending) {
+    if (isPending && !user) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">

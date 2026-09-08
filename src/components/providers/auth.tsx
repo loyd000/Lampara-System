@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase, toAppError } from "@/lib/supabase/client.ts";
+import { queryKeys } from "@/lib/supabase/hooks.ts";
 import { AuthContext, type AuthContextValue } from "./auth-context.ts";
 
 /**
  * Supabase session state for the app — the replacement for HerculesAuthProvider.
  *
- * Sits *inside* QueryClientProvider so a sign-in or sign-out can clear the React
+ * Sits *inside* QueryClientProvider so a sign-out or account switch can clear the React
  * Query cache; leaving another user's leads in memory across a session change
  * would leak data the new session may not be allowed to see.
  */
@@ -18,6 +19,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+    const currentUserIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -26,6 +28,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             .getSession()
             .then(({ data }) => {
                 if (!active) return;
+                currentUserIdRef.current = data.session?.user?.id ?? null;
                 setSession(data.session);
             })
             .finally(() => {
@@ -34,7 +37,23 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
         const { data: subscription } = supabase.auth.onAuthStateChange((event, next) => {
             if (!active) return;
-            setSession(next);
+
+            const previousUserId = currentUserIdRef.current;
+            const nextUserId = next?.user?.id ?? null;
+            currentUserIdRef.current = nextUserId;
+
+            // Only update session state if the session identity or token actually changed,
+            // preventing spurious re-renders on tab switch / visibility changes.
+            setSession((prev) => {
+                if (
+                    prev?.access_token === next?.access_token &&
+                    prev?.user?.id === next?.user?.id &&
+                    prev?.user?.updated_at === next?.user?.updated_at
+                ) {
+                    return prev;
+                }
+                return next;
+            });
             setIsLoading(false);
 
             // Fires when Supabase consumes a recovery link. The user is now
@@ -42,12 +61,18 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             // new password.
             if (event === "PASSWORD_RECOVERY") setIsPasswordRecovery(true);
 
-            if (event === "SIGNED_OUT") setIsPasswordRecovery(false);
-
-            // A token refresh keeps the same identity, so only wipe the cache
-            // when the signed-in user actually changes.
-            if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+            // Only wipe the query cache when a session actually ends (SIGNED_OUT)
+            // or when switching to a different user account. We MUST NEVER wipe
+            // the cache on tab focus, background token refresh, or when the
+            // same user remains signed in, as doing so wipes React Query and unmounts
+            // the whole app tree.
+            if (event === "SIGNED_OUT") {
+                setIsPasswordRecovery(false);
                 queryClient.clear();
+            } else if (previousUserId && nextUserId && previousUserId !== nextUserId) {
+                queryClient.clear();
+            } else if (event === "USER_UPDATED") {
+                queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
             }
         });
 

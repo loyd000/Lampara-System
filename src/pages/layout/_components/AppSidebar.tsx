@@ -7,8 +7,11 @@ import {
     KanbanSquare,
     UserCog,
     BarChart3,
+    LogOut,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
+import { useAuth } from "@/components/providers/auth-context.ts";
+import { Button } from "@/components/ui/button.tsx";
 
 type NavItem = {
     label: string;
@@ -27,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function AppSidebar() {
     const { data: currentUser } = useCurrentUser();
+    const { signOut } = useAuth();
     const role = currentUser?.role ?? "";
 
     const visibleNav = NAV_ITEMS.filter(
@@ -70,19 +74,33 @@ export default function AppSidebar() {
                 ))}
             </nav>
 
-            {/* User info */}
+            {/* User info & Logout */}
             {currentUser && (
-                <div className="px-4 py-3.5 border-t border-sidebar-border">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border">
-                            {(currentUser.name ?? "U").charAt(0).toUpperCase()}
+                <div className="px-3.5 py-3 border-t border-sidebar-border">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="size-8 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0">
+                                {(currentUser.name ?? currentUser.email ?? "U").charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-sidebar-foreground truncate leading-snug">
+                                    {currentUser.name ?? "User"}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground capitalize truncate leading-none mt-0.5">
+                                    {currentUser.role}
+                                </p>
+                            </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-sidebar-foreground truncate">
-                                {currentUser.name ?? "User"}
-                            </p>
-                            <p className="text-xs text-muted-foreground capitalize">{currentUser.role}</p>
-                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md shrink-0 cursor-pointer transition-colors"
+                            onClick={() => void signOut()}
+                            title="Sign out"
+                            aria-label="Sign out"
+                        >
+                            <LogOut className="size-4" />
+                        </Button>
                     </div>
                 </div>
             )}
