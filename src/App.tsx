@@ -4,6 +4,9 @@ import { DefaultProviders } from "./components/providers/default.tsx";
 import { PasswordRecoveryGate } from "./components/password-recovery-gate.tsx";
 import { useServiceWorker } from "@/hooks/use-service-worker.ts";
 import { Spinner } from "@/components/ui/spinner.tsx";
+import { ErrorBoundary } from "@/components/error-boundary.tsx";
+import { MissingConfigScreen } from "@/components/missing-config.tsx";
+import { isSupabaseConfigured } from "@/lib/supabase/client.ts";
 import AppLayout from "./pages/layout/AppLayout.tsx";
 import Index from "./pages/Index.tsx";
 
@@ -28,26 +31,33 @@ function RouteFallback() {
 
 export default function App() {
     useServiceWorker();
+
+    if (!isSupabaseConfigured) {
+        return <MissingConfigScreen />;
+    }
+
     return (
-        <DefaultProviders>
-            <BrowserRouter>
-                <PasswordRecoveryGate>
-                    <Suspense fallback={<RouteFallback />}>
-                        <Routes>
-                            <Route path="/auth/callback" element={<AuthCallback />} />
-                            <Route element={<AppLayout />}>
-                                <Route path="/" element={<Index />} />
-                                <Route path="/pipeline" element={<PipelinePage />} />
-                                <Route path="/leads" element={<LeadsPage />} />
-                                <Route path="/leads/:id" element={<LeadDetailPage />} />
-                                <Route path="/reports" element={<ReportsPage />} />
-                                <Route path="/team" element={<TeamPage />} />
-                            </Route>
-                            <Route path="*" element={<NotFound />} />
-                        </Routes>
-                    </Suspense>
-                </PasswordRecoveryGate>
-            </BrowserRouter>
-        </DefaultProviders>
+        <ErrorBoundary>
+            <DefaultProviders>
+                <BrowserRouter>
+                    <PasswordRecoveryGate>
+                        <Suspense fallback={<RouteFallback />}>
+                            <Routes>
+                                <Route path="/auth/callback" element={<AuthCallback />} />
+                                <Route element={<AppLayout />}>
+                                    <Route path="/" element={<Index />} />
+                                    <Route path="/pipeline" element={<PipelinePage />} />
+                                    <Route path="/leads" element={<LeadsPage />} />
+                                    <Route path="/leads/:id" element={<LeadDetailPage />} />
+                                    <Route path="/reports" element={<ReportsPage />} />
+                                    <Route path="/team" element={<TeamPage />} />
+                                </Route>
+                                <Route path="*" element={<NotFound />} />
+                            </Routes>
+                        </Suspense>
+                    </PasswordRecoveryGate>
+                </BrowserRouter>
+            </DefaultProviders>
+        </ErrorBoundary>
     );
 }

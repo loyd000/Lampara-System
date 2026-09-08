@@ -4,10 +4,8 @@ const OFFLINE_URL = "/offline.html";
 // that change on every publish, so a cached shell points at dead chunks.
 const urlsToCache = [
     OFFLINE_URL,
-    "/icon/icon-192.png",
-    "/icon/icon-512.png",
-    "/icon/icon-maskable-192.png",
-    "/icon/icon-maskable-512.png",
+    "/lampara-icon.png",
+    "/site.webmanifest",
 ];
 
 // Install event - cache the offline page and icons (never the app shell).
