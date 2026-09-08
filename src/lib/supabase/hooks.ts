@@ -1,0 +1,680 @@
+/**
+ * React Query bindings for the Supabase data layer — the replacement for
+ * Convex's `useQuery(api.x.y)` / `useMutation(api.x.y)`.
+ *
+ * Two properties of the Convex hooks are preserved deliberately, because the
+ * components rely on them:
+ *   · `data` is `undefined` while loading (the `x === undefined` skeleton checks)
+ *   · mutations are called as `await mutateAsync(args)` with one args object
+ *
+ * Live updates are not automatic the way Convex's were; `useRealtimeSync()` in
+ * ./realtime.ts invalidates these keys from Postgres change events.
+ */
+
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+
+import type {
+    ChecklistItem,
+    FinancingOption,
+    InstallationStatus,
+    LeadSource,
+    LeadStage,
+    PermitStatus,
+    PermitType,
+    PropertyType,
+    QuoteStatus,
+    RoofType,
+    SurveyStatus,
+    TicketPriority,
+    TicketStatus,
+    UserRole,
+} from "./database.types.ts";
+import type { Id } from "./types.ts";
+
+import * as contractsApi from "./queries/contracts.ts";
+import * as installationsApi from "./queries/installations.ts";
+import * as leadsApi from "./queries/leads.ts";
+import * as permitsApi from "./queries/permits.ts";
+import * as quotesApi from "./queries/quotes.ts";
+import * as reportsApi from "./queries/reports.ts";
+import * as ticketsApi from "./queries/service-tickets.ts";
+import * as surveysApi from "./queries/surveys.ts";
+import * as usersApi from "./queries/users.ts";
+
+// ─── Query keys ───────────────────────────────────────────────────────────
+// Hierarchical, so a mutation can invalidate a whole domain with one call.
+
+export const queryKeys = {
+    currentUser: ["currentUser"] as const,
+    users: ["users"] as const,
+
+    leads: ["leads"] as const,
+    leadList: (filters: unknown) => ["leads", "list", filters] as const,
+    leadsEnriched: (filters: unknown) => ["leads", "enriched", filters] as const,
+    lead: (id: string) => ["leads", "detail", id] as const,
+    leadProperties: (id: string) => ["leads", "properties", id] as const,
+    leadActivity: (id: string) => ["leads", "activity", id] as const,
+    leadSearch: (q: string) => ["leads", "search", q] as const,
+
+    surveys: ["surveys"] as const,
+    surveysForLead: (leadId: string) => ["surveys", "lead", leadId] as const,
+    surveysForSurveyor: (status?: SurveyStatus) =>
+        ["surveys", "surveyor", status ?? "all"] as const,
+
+    quotes: ["quotes"] as const,
+    quotesForLead: (leadId: string) => ["quotes", "lead", leadId] as const,
+
+    contracts: ["contracts"] as const,
+    contractForLead: (leadId: string) => ["contracts", "lead", leadId] as const,
+
+    permits: ["permits"] as const,
+    permitsForLead: (leadId: string) => ["permits", "lead", leadId] as const,
+
+    installations: ["installations"] as const,
+    installationForLead: (leadId: string) => ["installations", "lead", leadId] as const,
+    installationsForInstaller: ["installations", "installer"] as const,
+
+    serviceTickets: ["serviceTickets"] as const,
+    ticketsForLead: (leadId: string) => ["serviceTickets", "lead", leadId] as const,
+    allTickets: ["serviceTickets", "all"] as const,
+
+    reports: ["reports"] as const,
+} as const;
+
+/**
+ * Anything that writes to the pipeline touches lead rows (stage, activity
+ * timestamp) and therefore the dashboards and reports too.
+ */
+function invalidatePipeline(client: QueryClient) {
+    return Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.leads }),
+        client.invalidateQueries({ queryKey: queryKeys.reports }),
+    ]);
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────
+
+export function useCurrentUser() {
+    return useQuery({
+        queryKey: queryKeys.currentUser,
+        queryFn: usersApi.getCurrentUser,
+        staleTime: 30_000,
+    });
+}
+
+export function useUsers() {
+    return useQuery({
+        queryKey: queryKeys.users,
+        queryFn: usersApi.listUsers,
+        staleTime: 60_000,
+    });
+}
+
+export function useUpdateUserRole() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: usersApi.updateUserRole,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.users }),
+                client.invalidateQueries({ queryKey: queryKeys.currentUser }),
+            ]),
+    });
+}
+
+export function useUpdateUserStatus() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: usersApi.updateUserStatus,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.users }),
+    });
+}
+
+export function useDeleteUser() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: usersApi.deleteUser,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.users }),
+    });
+}
+
+export function useUpdateOwnProfile() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: usersApi.updateOwnProfile,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.currentUser }),
+                client.invalidateQueries({ queryKey: queryKeys.users }),
+            ]),
+    });
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────
+
+export function useLeads(
+    filters: {
+        stage?: LeadStage;
+        assignedSalesRepId?: Id<"users">;
+        limit?: number;
+    } = {},
+) {
+    return useQuery({
+        queryKey: queryKeys.leadList(filters),
+        queryFn: () => leadsApi.listLeads(filters),
+    });
+}
+
+/**
+ * Resolves to `{ leads, total, truncated }` — `total` is the exact count of
+ * matching rows, so a view can tell the user when the fetch was capped rather
+ * than showing a short list as if it were complete.
+ */
+export function useEnrichedLeads(
+    filters: {
+        stage?: LeadStage;
+        assignedSalesRepId?: Id<"users">;
+        source?: LeadSource;
+        limit?: number;
+    } = {},
+) {
+    return useQuery({
+        queryKey: queryKeys.leadsEnriched(filters),
+        queryFn: () => leadsApi.listEnrichedLeads(filters),
+    });
+}
+
+export function useLead(id: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.lead(id ?? ""),
+        queryFn: () => leadsApi.getLeadById(id!),
+        enabled: !!id,
+    });
+}
+
+export function useLeadProperties(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.leadProperties(leadId ?? ""),
+        queryFn: () => leadsApi.getProperties(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useLeadActivity(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.leadActivity(leadId ?? ""),
+        queryFn: () => leadsApi.getActivity(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+/** `enabled` stands in for Convex's `"skip"` argument. */
+export function useLeadSearch(q: string) {
+    const term = q.trim();
+    return useQuery({
+        queryKey: queryKeys.leadSearch(term),
+        queryFn: () => leadsApi.searchLeads(term),
+        enabled: term.length > 1,
+    });
+}
+
+export function useCreateLead() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadsApi.createLead,
+        onSuccess: () => invalidatePipeline(client),
+    });
+}
+
+export function useUpdateLead() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadsApi.updateLead,
+        onSuccess: () => invalidatePipeline(client),
+    });
+}
+
+export function useUpdateStage() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadsApi.updateStage,
+        onSuccess: () => invalidatePipeline(client),
+    });
+}
+
+export function useUpdateProperty() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadsApi.updateProperty,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.leads }),
+    });
+}
+
+export function useAddNote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadsApi.addNote,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.leads }),
+    });
+}
+
+export function useDeleteLead() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadsApi.deleteLead,
+        onSuccess: () => invalidatePipeline(client),
+    });
+}
+
+// ─── Surveys ──────────────────────────────────────────────────────────────
+
+export function useSurveysForLead(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.surveysForLead(leadId ?? ""),
+        queryFn: () => surveysApi.listSurveysForLead(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useSurveysForSurveyor(args: { status?: SurveyStatus } = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveysForSurveyor(args.status),
+        queryFn: () => surveysApi.listSurveysForSurveyor(args),
+    });
+}
+
+export function useScheduleSurvey() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.scheduleSurvey,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useCompleteSurvey() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.completeSurvey,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useCancelSurvey() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.cancelSurvey,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+// ─── Quotes ───────────────────────────────────────────────────────────────
+
+export function useQuotesForLead(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.quotesForLead(leadId ?? ""),
+        queryFn: () => quotesApi.listQuotesForLead(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useCreateQuote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.createQuote,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useUpdateQuoteStatus() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.updateQuoteStatus,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useReviseQuote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.reviseQuote,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useDeleteQuote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.deleteQuote,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+// ─── Contracts ────────────────────────────────────────────────────────────
+
+export function useContractForLead(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.contractForLead(leadId ?? ""),
+        queryFn: () => contractsApi.getContractForLead(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useCreateContract() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.createContract,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useMarkContractSigned() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.markContractSigned,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useMarkContractCancelled() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.markContractCancelled,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useAttachContractDocument() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.attachContractDocument,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useUpdateContractNotes() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.updateContractNotes,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.contracts }),
+    });
+}
+
+// ─── Permits ──────────────────────────────────────────────────────────────
+
+export function usePermitsForLead(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.permitsForLead(leadId ?? ""),
+        queryFn: () => permitsApi.listPermitsForLead(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useCreatePermit() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: permitsApi.createPermit,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.permits }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useUpdatePermitStatus() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: permitsApi.updatePermitStatus,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.permits }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useAttachPermitDocument() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: permitsApi.attachPermitDocument,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.permits }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useDeletePermit() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: permitsApi.deletePermit,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.permits }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+// ─── Installations ────────────────────────────────────────────────────────
+
+export function useInstallationForLead(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.installationForLead(leadId ?? ""),
+        queryFn: () => installationsApi.getInstallationForLead(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useInstallationsForInstaller() {
+    return useQuery({
+        queryKey: queryKeys.installationsForInstaller,
+        queryFn: installationsApi.listInstallationsForInstaller,
+    });
+}
+
+export function useCreateInstallation() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.createInstallation,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.installations }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useUpdateInstallationStatus() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.updateInstallationStatus,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.installations }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useToggleChecklistItem() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.toggleChecklistItem,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.installations }),
+    });
+}
+
+export function useAddChecklistItem() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.addChecklistItem,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.installations }),
+    });
+}
+
+export function useAddCompletionPhotos() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.addCompletionPhotos,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.installations }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useActivateCustomer() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.activateCustomer,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.installations }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+// ─── Service tickets ──────────────────────────────────────────────────────
+
+export function useTicketsForLead(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.ticketsForLead(leadId ?? ""),
+        queryFn: () => ticketsApi.listTicketsForLead(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useAllTickets() {
+    return useQuery({
+        queryKey: queryKeys.allTickets,
+        queryFn: ticketsApi.listAllTickets,
+    });
+}
+
+export function useCreateTicket() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: ticketsApi.createTicket,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.serviceTickets }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useUpdateTicketStatus() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: ticketsApi.updateTicketStatus,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.serviceTickets }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useDeleteTicket() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: ticketsApi.deleteTicket,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.serviceTickets }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────
+
+export function usePipelineSummary() {
+    return useQuery({ queryKey: ["reports", "pipeline"], queryFn: reportsApi.pipelineSummary });
+}
+
+export function usePermitsSummary() {
+    return useQuery({ queryKey: ["reports", "permits"], queryFn: reportsApi.permitsSummary });
+}
+
+export function useQuotesRevenueSummary() {
+    return useQuery({
+        queryKey: ["reports", "revenue"],
+        queryFn: reportsApi.quotesRevenueSummary,
+    });
+}
+
+export function useInstallationsSummary() {
+    return useQuery({
+        queryKey: ["reports", "installations"],
+        queryFn: reportsApi.installationsSummary,
+    });
+}
+
+// Re-exported so callers can type their handlers without reaching into
+// ./database.types.ts directly.
+export type {
+    ChecklistItem,
+    FinancingOption,
+    InstallationStatus,
+    LeadSource,
+    LeadStage,
+    PermitStatus,
+    PermitType,
+    PropertyType,
+    QuoteStatus,
+    RoofType,
+    SurveyStatus,
+    TicketPriority,
+    TicketStatus,
+    UserRole,
+};
