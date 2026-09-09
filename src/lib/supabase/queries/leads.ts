@@ -78,8 +78,8 @@ export async function logActivity(args: {
  *
  * Every stage change in the app goes through this. The `advance_lead_stage`
  * function writes only `stage`, `last_activity_at` and `converted_at`, and
- * re-checks the caller's role server-side — which is what stops a surveyor or
- * installer from editing the rest of the lead as a side effect of finishing
+ * re-checks the caller's role server-side — which is what stops a field
+ * technician from editing the rest of the lead as a side effect of finishing
  * their own work.
  *
  * `onlyFrom` makes the move conditional on the lead's current stage, so a

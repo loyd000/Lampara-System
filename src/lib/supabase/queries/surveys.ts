@@ -1,12 +1,21 @@
 /** Replaces convex/surveys.ts. */
 
 import { supabase, toAppError, unwrap } from "../client.ts";
-import type { LeadRow, PropertyRow, RoofType, SurveyRow, SurveyStatus } from "../database.types.ts";
-import { removeFiles, signedUrlMap, uploadFiles } from "../storage.ts";
+import type {
+    LeadRow,
+    PropertyRow,
+    SurveyPhotoCategory,
+    SurveyPhotoRow,
+    SurveyRow,
+    SurveyStatus,
+} from "../database.types.ts";
+import { buildPath, removeFiles, signedUrlMap, uploadFile } from "../storage.ts";
 import {
     displayName,
     toSurvey,
+    toSurveyPhoto,
     type Id,
+    type Survey,
     type SurveyForLead,
     type SurveyForSurveyor,
 } from "../types.ts";
@@ -20,36 +29,68 @@ export async function listSurveysForLead(
     const rows = unwrap(
         await supabase
             .from("surveys")
-            .select("*, surveyor:users!surveys_assigned_surveyor_id_fkey(name, email)")
+            .select(
+                "*, surveyor:users!surveys_assigned_surveyor_id_fkey(name, email), " +
+                    "preparer:users!surveys_prepared_by_id_fkey(name, email), " +
+                    "approver:users!surveys_approved_by_id_fkey(name, email), " +
+                    "survey_photos(*)",
+            )
             .eq("lead_id", leadId)
             .order("created_at", { ascending: false })
-            .returns<(SurveyRow & { surveyor: NameOnly })[]>(),
-        "Failed to load surveys",
+            .returns<
+                (SurveyRow & {
+                    surveyor: NameOnly;
+                    preparer: NameOnly;
+                    approver: NameOnly;
+                    survey_photos: SurveyPhotoRow[] | null;
+                })[]
+            >(),
+        "Failed to load inspections",
     );
 
-    // One signing request for every photo across every survey, rather than one
-    // per survey.
-    const urls = await signedUrlMap(
-        "photos",
-        rows.flatMap((row) => row.photo_paths ?? []),
-    );
+    // One signing request for every photo across every inspection, rather than
+    // one per inspection. Legacy `photo_paths` entries are signed in the same
+    // batch so old and new photos cost the same single round trip.
+    const urls = await signedUrlMap("photos", [
+        ...rows.flatMap((row) => (row.survey_photos ?? []).map((p) => p.path)),
+        ...rows.flatMap((row) => row.photo_paths ?? []),
+    ]);
 
-    return rows.map((row) => ({
-        ...toSurvey(row),
-        surveyorName: displayName(row.surveyor),
-        photoUrls: (row.photo_paths ?? []).flatMap((path) => {
-            const url = urls.get(path);
-            return url ? [url] : [];
-        }),
-    }));
+    return rows.map((row) => {
+        const photos = (row.survey_photos ?? [])
+            .slice()
+            .sort((a, b) =>
+                a.category === b.category
+                    ? a.sort_order - b.sort_order
+                    : a.category.localeCompare(b.category),
+            )
+            .map((p) => toSurveyPhoto(p, urls.get(p.path) ?? null));
+
+        // Anything backfilled into `other` is already in `photos`; the flat
+        // gallery only needs to cover rows the backfill has not reached.
+        const slotted = new Set(photos.map((p) => p.path));
+
+        return {
+            ...toSurvey(row),
+            surveyorName: displayName(row.surveyor),
+            preparedByName: row.preparer ? displayName(row.preparer) : null,
+            approvedByName: row.approver ? displayName(row.approver) : null,
+            photos,
+            photoUrls: (row.photo_paths ?? []).flatMap((path) => {
+                if (slotted.has(path)) return [];
+                const url = urls.get(path);
+                return url ? [url] : [];
+            }),
+        };
+    });
 }
 
 /**
- * Surveyors see only their own jobs; everyone else sees the whole board.
- * (The Convex handler branched on role here — RLS lets every member read
- * surveys, so the surveyor narrowing stays an explicit filter.)
+ * Field technicians see only their own inspections; everyone else sees the
+ * whole board. (RLS lets every member read surveys, so the narrowing stays an
+ * explicit filter rather than a policy.)
  */
-export async function listSurveysForSurveyor(args: {
+export async function listMyInspections(args: {
     status?: SurveyStatus;
 } = {}): Promise<SurveyForSurveyor[]> {
     const { data: auth } = await supabase.auth.getUser();
@@ -68,7 +109,7 @@ export async function listSurveysForSurveyor(args: {
                 "leads(first_name, last_name, properties(address, city))",
         );
 
-    if (profile?.role === "surveyor") {
+    if (profile?.role === "field") {
         query = query.eq("assigned_surveyor_id", auth.user.id);
     }
     if (args.status) query = query.eq("status", args.status);
@@ -123,7 +164,7 @@ export async function scheduleSurvey(args: {
 
     await logActivity({
         leadId: args.leadId,
-        action: "Site survey scheduled",
+        action: "Site ocular inspection scheduled",
         details: `Scheduled for ${new Date(args.scheduledAt).toLocaleString()}`,
         entityType: "survey",
         entityId: survey.id,
@@ -133,62 +174,289 @@ export async function scheduleSurvey(args: {
     return survey.id;
 }
 
-export async function completeSurvey(args: {
-    surveyId: Id<"surveys">;
-    roofType: RoofType;
-    estimatedSystemSizeKw: number;
-    roofAgeYears?: number;
-    shadingNotes?: string;
-    additionalNotes?: string;
-    /** Raw files; uploaded to the private `photos` bucket before the row update. */
-    photos?: File[];
-}): Promise<void> {
-    const survey = unwrap(
-        await supabase
-            .from("surveys")
-            .select("lead_id, photo_paths")
-            .eq("id", args.surveyId)
-            .single(),
-        "Survey not found",
-    ) as { lead_id: string; photo_paths: string[] };
+/**
+ * Saves a partial Site Ocular Report.
+ *
+ * The form is long and filled over a whole visit, often on a phone with poor
+ * signal, so every section saves on its own and nothing is required. The patch
+ * is camelCase in and snake_case out, and only keys actually present are
+ * written — so two people editing different sections cannot overwrite each
+ * other's work.
+ */
+export type SurveyReportPatch = Partial<
+    Pick<
+        Survey,
+        | "inspectionDate"
+        | "latitude"
+        | "longitude"
+        | "usageHabit"
+        | "monthlyConsumptionKwh"
+        | "monthlyBillPhp"
+        | "applianceAircon"
+        | "applianceAirconNote"
+        | "applianceTv"
+        | "applianceTvNote"
+        | "applianceRef"
+        | "applianceRefNote"
+        | "applianceWasher"
+        | "applianceWasherNote"
+        | "applianceOthers"
+        | "roofType"
+        | "roofTypeNote"
+        | "supportPurlins"
+        | "roofAreaSqm"
+        | "roofWidthM"
+        | "roofLengthM"
+        | "roofAccess"
+        | "mounting"
+        | "roofOrientation"
+        | "estDcRunM"
+        | "estAcRunM"
+        | "meterPhase"
+        | "transformerCount"
+        | "meterKind"
+        | "meterForm"
+        | "serviceDisconnect"
+        | "serviceDisconnectRating"
+        | "grounding"
+        | "mainDistributionPanel"
+        | "cbSizeRating"
+        | "wireSize"
+        | "connectionType"
+        | "floorCount"
+        | "systemCapacity"
+        | "packageType"
+        | "batteryOption"
+        | "panelOption"
+        | "reportNotes"
+        | "estimatedSystemSizeKw"
+        | "shadingNotes"
+        | "roofAgeYears"
+        | "additionalNotes"
+    >
+>;
 
-    const uploaded = args.photos?.length
-        ? await uploadFiles("photos", "surveys", args.surveyId, args.photos)
-        : [];
+const REPORT_COLUMNS: Record<keyof SurveyReportPatch, string> = {
+    inspectionDate: "inspection_date",
+    latitude: "latitude",
+    longitude: "longitude",
+    usageHabit: "usage_habit",
+    monthlyConsumptionKwh: "monthly_consumption_kwh",
+    monthlyBillPhp: "monthly_bill_php",
+    applianceAircon: "appliance_aircon",
+    applianceAirconNote: "appliance_aircon_note",
+    applianceTv: "appliance_tv",
+    applianceTvNote: "appliance_tv_note",
+    applianceRef: "appliance_ref",
+    applianceRefNote: "appliance_ref_note",
+    applianceWasher: "appliance_washer",
+    applianceWasherNote: "appliance_washer_note",
+    applianceOthers: "appliance_others",
+    roofType: "roof_type",
+    roofTypeNote: "roof_type_note",
+    supportPurlins: "support_purlins",
+    roofAreaSqm: "roof_area_sqm",
+    roofWidthM: "roof_width_m",
+    roofLengthM: "roof_length_m",
+    roofAccess: "roof_access",
+    mounting: "mounting",
+    roofOrientation: "roof_orientation",
+    estDcRunM: "est_dc_run_m",
+    estAcRunM: "est_ac_run_m",
+    meterPhase: "meter_phase",
+    transformerCount: "transformer_count",
+    meterKind: "meter_kind",
+    meterForm: "meter_form",
+    serviceDisconnect: "service_disconnect",
+    serviceDisconnectRating: "service_disconnect_rating",
+    grounding: "grounding",
+    mainDistributionPanel: "main_distribution_panel",
+    cbSizeRating: "cb_size_rating",
+    wireSize: "wire_size",
+    connectionType: "connection_type",
+    floorCount: "floor_count",
+    systemCapacity: "system_capacity",
+    packageType: "package_type",
+    batteryOption: "battery_option",
+    panelOption: "panel_option",
+    reportNotes: "report_notes",
+    estimatedSystemSizeKw: "estimated_system_size_kw",
+    shadingNotes: "shading_notes",
+    roofAgeYears: "roof_age_years",
+    additionalNotes: "additional_notes",
+};
+
+export async function saveSurveyReport(args: {
+    surveyId: Id<"surveys">;
+    patch: SurveyReportPatch;
+}): Promise<void> {
+    const update: Record<string, unknown> = {};
+    for (const [key, column] of Object.entries(REPORT_COLUMNS)) {
+        if (!(key in args.patch)) continue;
+        const value = args.patch[key as keyof SurveyReportPatch];
+        // A blank field on the form means "not recorded", not an empty string —
+        // every enumerated column has a CHECK that rejects ''.
+        update[column] = value === undefined || value === "" ? null : value;
+    }
+    if (!Object.keys(update).length) return;
 
     const { error } = await supabase
         .from("surveys")
-        .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-            roof_type: args.roofType,
-            shading_notes: args.shadingNotes || null,
-            estimated_system_size_kw: args.estimatedSystemSizeKw,
-            roof_age_years: args.roofAgeYears ?? null,
-            additional_notes: args.additionalNotes || null,
-            photo_paths: [...(survey.photo_paths ?? []), ...uploaded],
-        })
+        // Keys come from REPORT_COLUMNS, so every one is a real column; the
+        // cast is only to satisfy the generated Update shape.
+        .update(update as Partial<SurveyRow>)
         .eq("id", args.surveyId);
+    if (error) throw toAppError(error, "Failed to save the report");
+}
 
-    if (error) {
-        // The photos are already in the bucket; drop them rather than leave
-        // objects nothing references.
-        await removeFiles("photos", uploaded);
-        throw toAppError(error, "Failed to complete survey");
-    }
+/** Marks the report ready for review and stamps the "Prepared by" block. */
+export async function submitSurveyReport(args: {
+    surveyId: Id<"surveys">;
+}): Promise<void> {
+    const survey = unwrap(
+        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
+        "Inspection not found",
+    ) as { lead_id: string };
 
-    await advanceLeadStage(survey.lead_id, "survey_completed");
+    const { error } = await supabase.rpc("submit_survey_report", {
+        p_survey_id: args.surveyId,
+    });
+    if (error) throw toAppError(error, "Failed to submit the report");
 
     await logActivity({
         leadId: survey.lead_id,
-        action: "Site survey completed",
-        details:
-            `System size: ${args.estimatedSystemSizeKw} kW · ` +
-            `Roof: ${args.roofType.replace(/_/g, " ")}`,
+        action: "Site ocular report submitted",
+        details: "Awaiting office approval",
+        entityType: "survey",
+        entityId: args.surveyId,
+    });
+}
+
+/**
+ * Office sign-off. The RPC stamps "Approved by", sets completed_at and advances
+ * the lead to `survey_completed` — which is what unlocks quoting.
+ */
+export async function approveSurveyReport(args: {
+    surveyId: Id<"surveys">;
+}): Promise<void> {
+    const survey = unwrap(
+        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
+        "Inspection not found",
+    ) as { lead_id: string };
+
+    const { error } = await supabase.rpc("approve_survey_report", {
+        p_survey_id: args.surveyId,
+    });
+    if (error) throw toAppError(error, "Failed to approve the report");
+
+    await logActivity({
+        leadId: survey.lead_id,
+        action: "Site ocular report approved",
         entityType: "survey",
         entityId: args.surveyId,
         touchLead: false,
     });
+}
+
+/** Sends a submitted report back to the technician for changes. */
+export async function reopenSurveyReport(args: {
+    surveyId: Id<"surveys">;
+    reason?: string;
+}): Promise<void> {
+    const survey = unwrap(
+        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
+        "Inspection not found",
+    ) as { lead_id: string };
+
+    const { error } = await supabase.rpc("reopen_survey_report", {
+        p_survey_id: args.surveyId,
+    });
+    if (error) throw toAppError(error, "Failed to reopen the report");
+
+    await logActivity({
+        leadId: survey.lead_id,
+        action: "Site ocular report reopened",
+        details: args.reason,
+        entityType: "survey",
+        entityId: args.surveyId,
+    });
+}
+
+// ─── Report photos ────────────────────────────────────────────────────────
+
+/**
+ * Uploads photos into one slot of the report.
+ *
+ * Each file is uploaded and recorded one at a time: a partial failure leaves
+ * the successful ones both stored and visible, rather than rolling a whole
+ * batch back on someone standing on a roof with one bar of signal.
+ */
+export async function addSurveyPhotos(args: {
+    surveyId: Id<"surveys">;
+    category: SurveyPhotoCategory;
+    files: File[];
+}): Promise<number> {
+    if (!args.files.length) return 0;
+
+    const { data: auth } = await supabase.auth.getUser();
+
+    const existing = unwrap(
+        await supabase
+            .from("survey_photos")
+            .select("sort_order")
+            .eq("survey_id", args.surveyId)
+            .eq("category", args.category)
+            .order("sort_order", { ascending: false })
+            .limit(1),
+        "Failed to read existing photos",
+    ) as { sort_order: number }[];
+
+    let next = (existing[0]?.sort_order ?? -1) + 1;
+    let saved = 0;
+
+    for (const file of args.files) {
+        const path = buildPath("surveys", args.surveyId, file);
+        await uploadFile("photos", path, file);
+
+        const { error } = await supabase.from("survey_photos").insert({
+            survey_id: args.surveyId,
+            category: args.category,
+            path,
+            sort_order: next,
+            created_by: auth.user?.id ?? null,
+        });
+        if (error) {
+            // The object is in the bucket but nothing references it.
+            await removeFiles("photos", [path]);
+            if (saved === 0) throw toAppError(error, "Failed to save photo");
+            break;
+        }
+        next += 1;
+        saved += 1;
+    }
+
+    return saved;
+}
+
+export async function deleteSurveyPhoto(args: {
+    photoId: string;
+    path: string;
+}): Promise<void> {
+    const { error } = await supabase.from("survey_photos").delete().eq("id", args.photoId);
+    if (error) throw toAppError(error, "Failed to remove photo");
+    // Best effort; an orphaned object is harmless next to a broken thumbnail.
+    await removeFiles("photos", [args.path]);
+}
+
+export async function updateSurveyPhotoCaption(args: {
+    photoId: string;
+    caption: string;
+}): Promise<void> {
+    const { error } = await supabase
+        .from("survey_photos")
+        .update({ caption: args.caption.trim() || null })
+        .eq("id", args.photoId);
+    if (error) throw toAppError(error, "Failed to save caption");
 }
 
 export async function cancelSurvey(args: {
@@ -208,7 +476,7 @@ export async function cancelSurvey(args: {
 
     await logActivity({
         leadId: survey.lead_id,
-        action: "Survey cancelled",
+        action: "Ocular inspection cancelled",
         details: args.reason,
         entityType: "survey",
         entityId: args.surveyId,

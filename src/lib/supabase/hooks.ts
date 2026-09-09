@@ -58,8 +58,8 @@ export const queryKeys = {
 
     surveys: ["surveys"] as const,
     surveysForLead: (leadId: string) => ["surveys", "lead", leadId] as const,
-    surveysForSurveyor: (status?: SurveyStatus) =>
-        ["surveys", "surveyor", status ?? "all"] as const,
+    myInspections: (status?: SurveyStatus) =>
+        ["surveys", "mine", status ?? "all"] as const,
 
     quotes: ["quotes"] as const,
     quotesForLead: (leadId: string) => ["quotes", "lead", leadId] as const,
@@ -72,7 +72,7 @@ export const queryKeys = {
 
     installations: ["installations"] as const,
     installationForLead: (leadId: string) => ["installations", "lead", leadId] as const,
-    installationsForInstaller: ["installations", "installer"] as const,
+    myInstallations: ["installations", "mine"] as const,
 
     serviceTickets: ["serviceTickets"] as const,
     ticketsForLead: (leadId: string) => ["serviceTickets", "lead", leadId] as const,
@@ -278,10 +278,10 @@ export function useSurveysForLead(leadId: Id<"leads"> | undefined) {
     });
 }
 
-export function useSurveysForSurveyor(args: { status?: SurveyStatus } = {}) {
+export function useMyInspections(args: { status?: SurveyStatus } = {}) {
     return useQuery({
-        queryKey: queryKeys.surveysForSurveyor(args.status),
-        queryFn: () => surveysApi.listSurveysForSurveyor(args),
+        queryKey: queryKeys.myInspections(args.status),
+        queryFn: () => surveysApi.listMyInspections(args),
     });
 }
 
@@ -297,15 +297,78 @@ export function useScheduleSurvey() {
     });
 }
 
-export function useCompleteSurvey() {
+/**
+ * Saves one section of the Site Ocular Report.
+ *
+ * No pipeline invalidation: saving a field does not move the lead, and the
+ * report form is long enough that refetching the whole lead on every section
+ * save would fight the person typing.
+ */
+export function useSaveSurveyReport() {
     const client = useQueryClient();
     return useMutation({
-        mutationFn: surveysApi.completeSurvey,
+        mutationFn: surveysApi.saveSurveyReport,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.surveys }),
+    });
+}
+
+export function useSubmitSurveyReport() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.submitSurveyReport,
         onSuccess: () =>
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.surveys }),
                 invalidatePipeline(client),
             ]),
+    });
+}
+
+export function useApproveSurveyReport() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.approveSurveyReport,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useReopenSurveyReport() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.reopenSurveyReport,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useAddSurveyPhotos() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.addSurveyPhotos,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.surveys }),
+    });
+}
+
+export function useDeleteSurveyPhoto() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.deleteSurveyPhoto,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.surveys }),
+    });
+}
+
+export function useUpdateSurveyPhotoCaption() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.updateSurveyPhotoCaption,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.surveys }),
     });
 }
 
@@ -514,10 +577,10 @@ export function useInstallationForLead(leadId: Id<"leads"> | undefined) {
     });
 }
 
-export function useInstallationsForInstaller() {
+export function useMyInstallations() {
     return useQuery({
-        queryKey: queryKeys.installationsForInstaller,
-        queryFn: installationsApi.listInstallationsForInstaller,
+        queryKey: queryKeys.myInstallations,
+        queryFn: installationsApi.listMyInstallations,
     });
 }
 

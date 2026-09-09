@@ -3,6 +3,7 @@ import {
     useActivateCustomer,
     useAddChecklistItem,
     useAddCompletionPhotos,
+    useCurrentUser,
     useInstallationForLead,
     useToggleChecklistItem,
     useUpdateInstallationStatus,
@@ -42,6 +43,7 @@ const isUnlockedStage = (stage: string) =>
 
 export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const { data: installation } = useInstallationForLead(leadId);
+    const { data: currentUser } = useCurrentUser();
     const { mutateAsync: updateStatus } = useUpdateInstallationStatus();
     const { mutateAsync: toggleChecklistItem } = useToggleChecklistItem();
     const { mutateAsync: addChecklistItem } = useAddChecklistItem();
@@ -53,6 +55,17 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const [addingItem, setAddingItem] = useState(false);
     const [uploadingPhotos, setUploadingPhotos] = useState(false);
     const photoInputRef = useRef<HTMLInputElement>(null);
+
+    // `canEdit` is about *running the pipeline* — scheduling the job, converting
+    // the customer. Working the job is a different permission: the technicians
+    // crewed on it tick the checklist, move the status and upload photos, which
+    // is exactly what installations_update in RLS lets them do. Without this
+    // split a field technician can open their own job and change nothing.
+    const isCrew =
+        !!currentUser &&
+        !!installation &&
+        installation.assignedCrewIds.includes(currentUser._id);
+    const canWork = canEdit || isCrew;
 
     const isUnlocked = isUnlockedStage(stage);
 
@@ -169,7 +182,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                             )}
 
                             {/* Status actions */}
-                            {canEdit && (
+                            {canWork && (
                                 <div className="flex flex-wrap gap-1.5">
                                     {installation.status === "scheduled" && (
                                         <Button size="sm" variant="outline" className="h-7 text-xs"
@@ -195,7 +208,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                             <Zap className="w-3 h-3 mr-1" />Resume
                                         </Button>
                                     )}
-                                    {installation.status === "completed" && stage !== "active_customer" && (
+                                    {installation.status === "completed" && stage !== "active_customer" && canEdit && (
                                         <Button size="sm" className="h-7 text-xs"
                                             onClick={handleActivateCustomer}>
                                             <CheckCircle2 className="w-3 h-3 mr-1" />Activate as Customer
@@ -216,8 +229,8 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                                 key={idx}
                                                 type="button"
                                                 className="flex items-center gap-2 w-full text-left hover:bg-muted/30 rounded-md px-2 py-1 transition-colors group"
-                                                onClick={() => canEdit && handleToggleItem(idx)}
-                                                disabled={!canEdit}
+                                                onClick={() => canWork && handleToggleItem(idx)}
+                                                disabled={!canWork}
                                             >
                                                 {item.checked ? (
                                                     <CheckSquare className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -232,7 +245,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                     </div>
                                 )}
 
-                                {canEdit && installation.status !== "completed" && (
+                                {canWork && installation.status !== "completed" && (
                                     <div className="flex gap-2 mt-2">
                                         <input
                                             type="text"
@@ -254,7 +267,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-medium text-muted-foreground">Completion Photos</p>
-                                    {canEdit && (
+                                    {canWork && (
                                         <>
                                             <input
                                                 ref={photoInputRef}

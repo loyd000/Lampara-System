@@ -9,21 +9,19 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
 import { toast } from "sonner";
-import { UserCog, Shield, SunMedium, Hammer, ClipboardList, Users } from "lucide-react";
+import { UserCog, Shield, Hammer, ClipboardList, Users } from "lucide-react";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
     admin: <Shield className="w-3.5 h-3.5" />,
     sales: <Users className="w-3.5 h-3.5" />,
-    surveyor: <SunMedium className="w-3.5 h-3.5" />,
-    installer: <Hammer className="w-3.5 h-3.5" />,
+    field: <Hammer className="w-3.5 h-3.5" />,
     office: <ClipboardList className="w-3.5 h-3.5" />,
 };
 
 const ROLE_COLORS: Record<string, string> = {
     admin: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
     sales: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    surveyor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    installer: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+    field: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
     office: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
 };
 

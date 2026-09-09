@@ -103,7 +103,7 @@ export default function QuotesSection({ leadId, stage, canEdit }: Props) {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {!isUnlocked ? (
-                        <p className="text-xs text-muted-foreground">Quotes are created after a site survey is completed.</p>
+                        <p className="text-xs text-muted-foreground">Quotes are created after the site ocular inspection is completed.</p>
                     ) : quotes === undefined ? (
                         <div className="space-y-2">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
                     ) : activeQuotes.length === 0 ? (

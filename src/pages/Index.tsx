@@ -2,8 +2,7 @@ import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import AdminDashboard from "./_components/AdminDashboard.tsx";
 import SalesDashboard from "./_components/SalesDashboard.tsx";
-import SurveyorDashboard from "./_components/SurveyorDashboard.tsx";
-import InstallerDashboard from "./_components/InstallerDashboard.tsx";
+import FieldDashboard from "./_components/FieldDashboard.tsx";
 
 /**
  * Picks the dashboard for the signed-in user's role.
@@ -29,10 +28,8 @@ export default function Index() {
     switch (user.role) {
         case "sales":
             return <SalesDashboard user={user} />;
-        case "surveyor":
-            return <SurveyorDashboard user={user} />;
-        case "installer":
-            return <InstallerDashboard user={user} />;
+        case "field":
+            return <FieldDashboard user={user} />;
         case "admin":
         case "office":
         default:

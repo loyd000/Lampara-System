@@ -10,7 +10,7 @@
  * camelCase document types in ./types.ts — the query layer maps between them.
  */
 
-export type UserRole = "admin" | "sales" | "surveyor" | "installer" | "office";
+export type UserRole = "admin" | "sales" | "field" | "office";
 
 export type LeadStage =
     | "lead"
@@ -31,7 +31,37 @@ export type LeadSource =
     | "other";
 
 export type PropertyType = "residential" | "commercial" | "agricultural";
-export type SurveyStatus = "scheduled" | "completed" | "cancelled";
+export type SurveyStatus = "scheduled" | "submitted" | "approved" | "cancelled";
+
+// ─── Site Ocular Report enumerations ──────────────────────────────────────
+// Every one of these mirrors a tick-box group on the printed form
+// (public/Ocular report sample.pdf).
+export type UsageHabit = "morning" | "evening" | "both";
+export type SupportPurlin = "wood" | "steel" | "concrete";
+export type RoofAccess = "ladder" | "scaffolding" | "both";
+export type MountingType = "l_foot" | "u_type" | "tegula" | "hanger_bolt";
+export type RoofOrientation = "north" | "east" | "west" | "south";
+export type MeterPhase = "single" | "three";
+export type MeterKind = "main" | "sub";
+export type MeterForm = "round" | "st5_7" | "ct_rated";
+export type ConnectionType = "gprs" | "wifi";
+export type SystemCapacity = "3kwp" | "6kwp" | "8kwp" | "12kwp" | "16kwp";
+export type PackageType = "with_battery" | "no_battery";
+export type BatteryOption = "100ah_5kwh" | "314ah_16kwh";
+export type PanelOption = "610_630wp" | "710_730wp";
+
+/** The headed photo slots on the report, in the order they are printed. */
+export type SurveyPhotoCategory =
+    | "building_front"
+    | "roof_view"
+    | "meralco_meter"
+    | "main_circuit_breaker"
+    | "meralco_bill"
+    | "roof_panel_design"
+    | "inverter_battery"
+    | "dc_conduit"
+    | "ac_conduit"
+    | "other";
 export type RoofType = "asphalt_shingle" | "metal" | "tile" | "flat" | "other";
 export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "superseded";
 export type FinancingOption = "cash" | "loan" | "lease" | "ppa";
@@ -102,7 +132,74 @@ export type SurveyRow = Timestamps & {
     estimated_system_size_kw: number | null;
     roof_age_years: number | null;
     additional_notes: string | null;
+    /** Superseded by survey_photos (0009); still read for old rows. */
     photo_paths: string[];
+
+    // ─── Site Ocular Report (0009) ────────────────────────────────────────
+    inspection_date: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    usage_habit: UsageHabit | null;
+    // numeric() can arrive as a string depending on the PostgREST build.
+    monthly_consumption_kwh: number | string | null;
+    monthly_bill_php: number | string | null;
+
+    appliance_aircon: boolean;
+    appliance_aircon_note: string | null;
+    appliance_tv: boolean;
+    appliance_tv_note: string | null;
+    appliance_ref: boolean;
+    appliance_ref_note: string | null;
+    appliance_washer: boolean;
+    appliance_washer_note: string | null;
+    appliance_others: string | null;
+
+    roof_type_note: string | null;
+    support_purlins: SupportPurlin[];
+    roof_area_sqm: number | string | null;
+    roof_width_m: number | string | null;
+    roof_length_m: number | string | null;
+    roof_access: RoofAccess | null;
+    mounting: MountingType[];
+    roof_orientation: RoofOrientation[];
+    est_dc_run_m: number | string | null;
+    est_ac_run_m: number | string | null;
+
+    meter_phase: MeterPhase | null;
+    transformer_count: number | null;
+    meter_kind: MeterKind | null;
+    meter_form: MeterForm | null;
+    service_disconnect: boolean | null;
+    service_disconnect_rating: string | null;
+
+    grounding: boolean | null;
+    main_distribution_panel: string | null;
+    cb_size_rating: string | null;
+    wire_size: string | null;
+    connection_type: ConnectionType | null;
+    floor_count: number | null;
+
+    system_capacity: SystemCapacity | null;
+    package_type: PackageType | null;
+    battery_option: BatteryOption | null;
+    panel_option: PanelOption | null;
+    report_notes: string | null;
+
+    prepared_by_id: string | null;
+    prepared_at: string | null;
+    approved_by_id: string | null;
+    approved_at: string | null;
+};
+
+export type SurveyPhotoRow = {
+    id: string;
+    survey_id: string;
+    category: SurveyPhotoCategory;
+    path: string;
+    caption: string | null;
+    sort_order: number;
+    created_by: string | null;
+    created_at: string;
 };
 
 export type QuoteRow = Timestamps & {
@@ -199,6 +296,7 @@ export type Database = {
             leads: TableDef<LeadRow>;
             properties: TableDef<PropertyRow>;
             surveys: TableDef<SurveyRow>;
+            survey_photos: TableDef<SurveyPhotoRow>;
             quotes: TableDef<QuoteRow>;
             contracts: TableDef<ContractRow>;
             permits: TableDef<PermitRow>;
@@ -284,6 +382,26 @@ export type Database = {
             append_completion_photos: {
                 Args: { p_installation_id: string; p_paths: string[] };
                 Returns: string[] | null;
+            };
+            append_survey_photos: {
+                Args: { p_survey_id: string; p_paths: string[] };
+                Returns: string[] | null;
+            };
+            can_edit_survey: {
+                Args: { p_survey_id: string };
+                Returns: boolean;
+            };
+            submit_survey_report: {
+                Args: { p_survey_id: string };
+                Returns: undefined;
+            };
+            approve_survey_report: {
+                Args: { p_survey_id: string };
+                Returns: undefined;
+            };
+            reopen_survey_report: {
+                Args: { p_survey_id: string };
+                Returns: undefined;
             };
         };
         Enums: Record<never, never>;

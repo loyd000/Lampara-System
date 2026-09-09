@@ -35,6 +35,7 @@ const WATCHED_TABLES = [
     "properties",
     "activity_log",
     "surveys",
+    "survey_photos",
     "quotes",
     "contracts",
     "permits",
@@ -95,8 +96,12 @@ function keysFor(
         case "surveys":
             return [
                 ...(leadId ? [queryKeys.surveysForLead(leadId)] : [queryKeys.surveys]),
-                ["surveys", "surveyor"],
+                ["surveys", "mine"],
             ];
+        // survey_photos rows carry no lead_id, so there is nothing to narrow to;
+        // one photo upload refreshes the inspection queries wholesale.
+        case "survey_photos":
+            return [queryKeys.surveys];
         case "quotes":
             return [
                 ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),
@@ -114,7 +119,7 @@ function keysFor(
                 ...(leadId
                     ? [queryKeys.installationForLead(leadId)]
                     : [queryKeys.installations]),
-                queryKeys.installationsForInstaller,
+                queryKeys.myInstallations,
                 queryKeys.reports,
             ];
         case "service_tickets":

@@ -13,6 +13,8 @@
 
 import type {
     ActivityLogRow,
+    BatteryOption,
+    ConnectionType,
     ChecklistItem,
     ContractRow,
     ContractStatus,
@@ -24,34 +26,61 @@ import type {
     LeadStage,
     PermitRow,
     PermitStatus,
+    MeterForm,
+    MeterKind,
+    MeterPhase,
+    MountingType,
+    PackageType,
+    PanelOption,
     PermitType,
     PropertyRow,
     PropertyType,
     QuoteRow,
     QuoteStatus,
+    RoofAccess,
+    RoofOrientation,
     RoofType,
     ServiceTicketRow,
+    SupportPurlin,
+    SystemCapacity,
+    SurveyPhotoCategory,
+    SurveyPhotoRow,
     SurveyRow,
     SurveyStatus,
     TicketPriority,
     TicketStatus,
+    UsageHabit,
     UserRole,
     UserRow,
 } from "./database.types.ts";
 
 export type {
+    BatteryOption,
     ChecklistItem,
+    ConnectionType,
     ContractStatus,
     FinancingOption,
     InstallationStatus,
     LeadSource,
     LeadStage,
+    MeterForm,
+    MeterKind,
+    MeterPhase,
+    MountingType,
+    PackageType,
+    PanelOption,
     PermitStatus,
     PermitType,
     PropertyType,
     QuoteStatus,
+    RoofAccess,
+    RoofOrientation,
     RoofType,
+    SupportPurlin,
+    SurveyPhotoCategory,
     SurveyStatus,
+    SystemCapacity,
+    UsageHabit,
     TicketPriority,
     TicketStatus,
     UserRole,
@@ -116,6 +145,13 @@ export type Property = Base & {
     notes?: string;
 };
 
+/**
+ * A site ocular inspection: the appointment plus the report filled on site.
+ *
+ * The report fields mirror the printed form one for one
+ * (public/Ocular report sample.pdf) and are all optional — a technician fills
+ * it across a visit, not in one submit.
+ */
 export type Survey = Base & {
     leadId: string;
     propertyId: string;
@@ -128,7 +164,77 @@ export type Survey = Base & {
     estimatedSystemSizeKw?: number;
     roofAgeYears?: number;
     additionalNotes?: string;
+    /** Superseded by `photos`; still populated for pre-0009 rows. */
     photoPaths: string[];
+
+    // ── Client details ───────────────────────────────────────────────────
+    inspectionDate?: string;
+    latitude?: number;
+    longitude?: number;
+    usageHabit?: UsageHabit;
+    monthlyConsumptionKwh?: number;
+    monthlyBillPhp?: number;
+    applianceAircon: boolean;
+    applianceAirconNote?: string;
+    applianceTv: boolean;
+    applianceTvNote?: string;
+    applianceRef: boolean;
+    applianceRefNote?: string;
+    applianceWasher: boolean;
+    applianceWasherNote?: string;
+    applianceOthers?: string;
+
+    // ── Roof ─────────────────────────────────────────────────────────────
+    roofTypeNote?: string;
+    supportPurlins: SupportPurlin[];
+    roofAreaSqm?: number;
+    roofWidthM?: number;
+    roofLengthM?: number;
+    roofAccess?: RoofAccess;
+    mounting: MountingType[];
+    roofOrientation: RoofOrientation[];
+    estDcRunM?: number;
+    estAcRunM?: number;
+
+    // ── Electric meter ───────────────────────────────────────────────────
+    meterPhase?: MeterPhase;
+    transformerCount?: number;
+    meterKind?: MeterKind;
+    meterForm?: MeterForm;
+    serviceDisconnect?: boolean;
+    serviceDisconnectRating?: string;
+
+    // ── Panel / network ──────────────────────────────────────────────────
+    grounding?: boolean;
+    mainDistributionPanel?: string;
+    cbSizeRating?: string;
+    wireSize?: string;
+    connectionType?: ConnectionType;
+    floorCount?: number;
+
+    // ── System package ───────────────────────────────────────────────────
+    systemCapacity?: SystemCapacity;
+    packageType?: PackageType;
+    batteryOption?: BatteryOption;
+    panelOption?: PanelOption;
+    reportNotes?: string;
+
+    // ── Sign-off ─────────────────────────────────────────────────────────
+    preparedById?: string;
+    preparedAt?: string;
+    approvedById?: string;
+    approvedAt?: string;
+};
+
+/** One photo in one slot of the report. `url` is a short-lived signed URL. */
+export type SurveyPhoto = {
+    _id: string;
+    surveyId: string;
+    category: SurveyPhotoCategory;
+    path: string;
+    caption?: string;
+    sortOrder: number;
+    url: string | null;
 };
 
 export type Quote = Base & {
@@ -237,7 +343,14 @@ export type LeadDetail = Lead & { assignedRepName: string | null };
 
 export type ActivityEntry = ActivityLogEntry & { userName: string };
 
-export type SurveyForLead = Survey & { surveyorName: string; photoUrls: string[] };
+export type SurveyForLead = Survey & {
+    surveyorName: string;
+    preparedByName: string | null;
+    approvedByName: string | null;
+    photos: SurveyPhoto[];
+    /** Legacy flat gallery — pre-0009 photos that have no slot. */
+    photoUrls: string[];
+};
 
 export type SurveyForSurveyor = Survey & {
     leadName: string;
@@ -276,6 +389,13 @@ export type ServiceTicketWithCustomer = ServiceTicket & { customerName: string }
 /** `null` columns become `undefined`, matching Convex's optional fields. */
 function opt<T>(value: T | null | undefined): T | undefined {
     return value ?? undefined;
+}
+
+/** numeric() columns arrive as a string on some PostgREST builds. */
+function num(value: number | string | null | undefined): number | undefined {
+    if (value === null || value === undefined) return undefined;
+    const n = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(n) ? n : undefined;
 }
 
 function base(row: { id: string; created_at: string }): Base {
@@ -338,6 +458,70 @@ export function toSurvey(row: SurveyRow): Survey {
         roofAgeYears: opt(row.roof_age_years),
         additionalNotes: opt(row.additional_notes),
         photoPaths: row.photo_paths ?? [],
+
+        inspectionDate: opt(row.inspection_date),
+        latitude: opt(row.latitude),
+        longitude: opt(row.longitude),
+        usageHabit: opt(row.usage_habit),
+        monthlyConsumptionKwh: num(row.monthly_consumption_kwh),
+        monthlyBillPhp: num(row.monthly_bill_php),
+        applianceAircon: row.appliance_aircon ?? false,
+        applianceAirconNote: opt(row.appliance_aircon_note),
+        applianceTv: row.appliance_tv ?? false,
+        applianceTvNote: opt(row.appliance_tv_note),
+        applianceRef: row.appliance_ref ?? false,
+        applianceRefNote: opt(row.appliance_ref_note),
+        applianceWasher: row.appliance_washer ?? false,
+        applianceWasherNote: opt(row.appliance_washer_note),
+        applianceOthers: opt(row.appliance_others),
+
+        roofTypeNote: opt(row.roof_type_note),
+        supportPurlins: row.support_purlins ?? [],
+        roofAreaSqm: num(row.roof_area_sqm),
+        roofWidthM: num(row.roof_width_m),
+        roofLengthM: num(row.roof_length_m),
+        roofAccess: opt(row.roof_access),
+        mounting: row.mounting ?? [],
+        roofOrientation: row.roof_orientation ?? [],
+        estDcRunM: num(row.est_dc_run_m),
+        estAcRunM: num(row.est_ac_run_m),
+
+        meterPhase: opt(row.meter_phase),
+        transformerCount: opt(row.transformer_count),
+        meterKind: opt(row.meter_kind),
+        meterForm: opt(row.meter_form),
+        serviceDisconnect: opt(row.service_disconnect),
+        serviceDisconnectRating: opt(row.service_disconnect_rating),
+
+        grounding: opt(row.grounding),
+        mainDistributionPanel: opt(row.main_distribution_panel),
+        cbSizeRating: opt(row.cb_size_rating),
+        wireSize: opt(row.wire_size),
+        connectionType: opt(row.connection_type),
+        floorCount: opt(row.floor_count),
+
+        systemCapacity: opt(row.system_capacity),
+        packageType: opt(row.package_type),
+        batteryOption: opt(row.battery_option),
+        panelOption: opt(row.panel_option),
+        reportNotes: opt(row.report_notes),
+
+        preparedById: opt(row.prepared_by_id),
+        preparedAt: opt(row.prepared_at),
+        approvedById: opt(row.approved_by_id),
+        approvedAt: opt(row.approved_at),
+    };
+}
+
+export function toSurveyPhoto(row: SurveyPhotoRow, url: string | null): SurveyPhoto {
+    return {
+        _id: row.id,
+        surveyId: row.survey_id,
+        category: row.category,
+        path: row.path,
+        caption: opt(row.caption),
+        sortOrder: row.sort_order,
+        url,
     };
 }
 

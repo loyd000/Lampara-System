@@ -33,7 +33,7 @@ type Props = {
 export default function ScheduleInstallationDialog({ open, onClose, leadId }: Props) {
     const { mutateAsync: createInstallation } = useCreateInstallation();
     const { data: users } = useUsers();
-    const crew = users?.filter((u) => ["installer", "admin"].includes(u.role)) ?? [];
+    const crew = users?.filter((u) => ["field", "admin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -84,7 +84,7 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
                                 <FormLabel>Assign Crew</FormLabel>
                                 <div className="space-y-2 rounded-md border p-3 max-h-40 overflow-y-auto">
                                     {crew.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground">No installers found</p>
+                                        <p className="text-xs text-muted-foreground">No technicians found</p>
                                     ) : crew.map((u) => (
                                         <div key={u._id} className="flex items-center gap-2">
                                             <Checkbox

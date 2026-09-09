@@ -53,8 +53,8 @@ export async function getInstallationForLead(
     };
 }
 
-/** The jobs the signed-in installer is on the crew for. */
-export async function listInstallationsForInstaller(): Promise<InstallationForInstaller[]> {
+/** The jobs the signed-in technician is on the crew for. */
+export async function listMyInstallations(): Promise<InstallationForInstaller[]> {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return [];
 

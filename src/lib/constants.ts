@@ -2,6 +2,15 @@
 export const COMPANY_NAME = "Lampara";
 export const COMPANY_TAGLINE = "Solar Installation CRM";
 
+// ─── Site Ocular Inspection ───────────────────────────────────────────────
+// What the business calls a site survey. The database, queries and hooks still
+// say "survey" (table `surveys`, column `assigned_surveyor_id`) — this is the
+// customer-facing wording, and every visible string routes through here so a
+// future rename is one edit.
+export const INSPECTION_LABEL = "Site Ocular Inspection";
+export const INSPECTION_LABEL_SHORT = "Ocular Inspection";
+export const INSPECTION_LABEL_PLURAL = "Site Ocular Inspections";
+
 // ─── Pipeline Stages ──────────────────────────────────────────────────────
 export type Stage = 
   | "lead"
@@ -28,8 +37,9 @@ export const STAGES: Stage[] = [
 
 export const STAGE_LABELS: Record<Stage, string> = {
   lead: "New Lead",
-  survey_scheduled: "Survey Scheduled",
-  survey_completed: "Survey Done",
+  // The stage *values* keep the old names — only the labels are rebranded.
+  survey_scheduled: "Inspection Scheduled",
+  survey_completed: "Inspection Done",
   proposal_sent: "Proposal Sent",
   contract_signed: "Contract Signed",
   permitting: "Permitting",
@@ -60,11 +70,12 @@ export const SOURCE_LABELS: Record<string, string> = {
 };
 
 // ─── User Roles ───────────────────────────────────────────────────────────
+// `field` replaces the old surveyor/installer pair — one person does both the
+// site ocular inspection and the installation. See 0008_field_role.sql.
 export const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
   sales: "Sales Rep",
-  surveyor: "Site Surveyor",
-  installer: "Installer",
+  field: "Field Technician",
   office: "Office Staff",
 };
 
@@ -138,3 +149,163 @@ export const ROOF_TYPE_LABELS: Record<string, string> = {
   flat: "Flat",
   other: "Other",
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Site Ocular Report
+//
+// Every group below is a tick-box block on the printed form
+// (public/Ocular report sample.pdf). The keys are the stored values; the labels
+// are what the form prints, so the on-screen form and the PDF stay in step.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SURVEY_STATUS_LABELS: Record<string, string> = {
+  scheduled: "Scheduled",
+  submitted: "For Approval",
+  approved: "Approved",
+  cancelled: "Cancelled",
+};
+
+export const SURVEY_STATUS_COLORS: Record<string, string> = {
+  scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  submitted: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  cancelled: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+};
+
+// ─── Client details ───────────────────────────────────────────────────────
+export const USAGE_HABIT_LABELS: Record<string, string> = {
+  morning: "Morning",
+  evening: "Evening",
+  both: "Both",
+};
+
+// ─── Roof ─────────────────────────────────────────────────────────────────
+export const SUPPORT_PURLIN_LABELS: Record<string, string> = {
+  wood: "Wood",
+  steel: "Steel",
+  concrete: "Concrete",
+};
+
+export const ROOF_ACCESS_LABELS: Record<string, string> = {
+  ladder: "Ladder",
+  scaffolding: "Scaffolding",
+  both: "Both",
+};
+
+export const MOUNTING_LABELS: Record<string, string> = {
+  l_foot: "L-Foot",
+  u_type: "U-Type",
+  tegula: "Tegula",
+  hanger_bolt: "Hanger Bolt",
+};
+
+export const ORIENTATION_LABELS: Record<string, string> = {
+  north: "North",
+  east: "East",
+  west: "West",
+  south: "South",
+};
+
+// ─── Electric meter ───────────────────────────────────────────────────────
+export const METER_PHASE_LABELS: Record<string, string> = {
+  single: "Single Phase",
+  three: "Three Phase",
+};
+
+export const METER_KIND_LABELS: Record<string, string> = {
+  main: "Main Meter",
+  sub: "Sub-Meter",
+};
+
+export const METER_FORM_LABELS: Record<string, string> = {
+  round: "Round",
+  st5_7: "ST5/7",
+  ct_rated: "CT Rated",
+};
+
+// ─── Panel / network ──────────────────────────────────────────────────────
+export const CONNECTION_TYPE_LABELS: Record<string, string> = {
+  gprs: "GPRS (Cellular)",
+  wifi: "WiFi",
+};
+
+// ─── System package ───────────────────────────────────────────────────────
+export const SYSTEM_CAPACITY_LABELS: Record<string, string> = {
+  "3kwp": "3kWp",
+  "6kwp": "6kWp",
+  "8kwp": "8kWp",
+  "12kwp": "12kWp",
+  "16kwp": "16kWp",
+};
+
+/** kWp per capacity option, so the quote's system size can be pre-filled. */
+export const SYSTEM_CAPACITY_KW: Record<string, number> = {
+  "3kwp": 3,
+  "6kwp": 6,
+  "8kwp": 8,
+  "12kwp": 12,
+  "16kwp": 16,
+};
+
+export const PACKAGE_TYPE_LABELS: Record<string, string> = {
+  with_battery: "W/ Battery",
+  no_battery: "No Battery",
+};
+
+export const BATTERY_OPTION_LABELS: Record<string, string> = {
+  "100ah_5kwh": "100Ah 5kWh",
+  "314ah_16kwh": "16kWh 314Ah",
+};
+
+export const PANEL_OPTION_LABELS: Record<string, string> = {
+  "610_630wp": "610 – 630Wp",
+  "710_730wp": "710 – 730Wp",
+};
+
+// ─── Photo slots ──────────────────────────────────────────────────────────
+// Ordered as the report prints them. `max` is a soft cap the uploader enforces
+// so a three-panel row on the page does not arrive with nine photos in it.
+export type PhotoSlot = {
+  key: string;
+  label: string;
+  hint?: string;
+  max: number;
+};
+
+export const SURVEY_PHOTO_SLOTS: PhotoSlot[] = [
+  { key: "building_front", label: "Building Front View", max: 3 },
+  {
+    key: "roof_view",
+    label: "Roof View",
+    hint: "Drone shot or Google Earth",
+    max: 3,
+  },
+  { key: "meralco_meter", label: "Meralco Meter", hint: "Main panel board", max: 2 },
+  {
+    key: "main_circuit_breaker",
+    label: "Main Circuit Breaker",
+    hint: "Main panel board",
+    max: 2,
+  },
+  { key: "meralco_bill", label: "Meralco Bill", hint: "Main panel board", max: 2 },
+  { key: "roof_panel_design", label: "Roof With Panel Design", max: 2 },
+  {
+    key: "inverter_battery",
+    label: "Inverter & Battery Location",
+    hint: "With or without battery",
+    max: 3,
+  },
+  {
+    key: "dc_conduit",
+    label: "DC Conduit Lines",
+    hint: "From PV modules to inverter",
+    max: 3,
+  },
+  {
+    key: "ac_conduit",
+    label: "AC Conduit Lines",
+    hint: "Inverter to solar disconnect to service disconnect",
+    max: 3,
+  },
+  { key: "other", label: "Other Photos", max: 12 },
+];

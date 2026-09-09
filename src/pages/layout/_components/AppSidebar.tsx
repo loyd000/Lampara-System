@@ -7,11 +7,10 @@ import {
     KanbanSquare,
     UserCog,
     BarChart3,
-    LogOut,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
-import { useAuth } from "@/components/providers/auth-context.ts";
-import { Button } from "@/components/ui/button.tsx";
+import { SignOutButton } from "@/components/sign-out-button.tsx";
+import { ROLE_LABELS } from "@/lib/constants.ts";
 
 type NavItem = {
     label: string;
@@ -30,7 +29,6 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function AppSidebar() {
     const { data: currentUser } = useCurrentUser();
-    const { signOut } = useAuth();
     const role = currentUser?.role ?? "";
 
     const visibleNav = NAV_ITEMS.filter(
@@ -86,21 +84,12 @@ export default function AppSidebar() {
                                 <p className="text-sm font-medium text-sidebar-foreground truncate leading-snug">
                                     {currentUser.name ?? "User"}
                                 </p>
-                                <p className="text-[11px] text-muted-foreground capitalize truncate leading-none mt-0.5">
-                                    {currentUser.role}
+                                <p className="text-[11px] text-muted-foreground truncate leading-none mt-0.5">
+                                    {ROLE_LABELS[currentUser.role] ?? currentUser.role}
                                 </p>
                             </div>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md shrink-0 cursor-pointer transition-colors"
-                            onClick={() => void signOut()}
-                            title="Sign out"
-                            aria-label="Sign out"
-                        >
-                            <LogOut className="size-4" />
-                        </Button>
+                        <SignOutButton />
                     </div>
                 </div>
             )}

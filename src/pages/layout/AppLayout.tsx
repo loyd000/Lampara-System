@@ -6,14 +6,14 @@ import { useRealtimeSync } from "@/lib/supabase/realtime.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
-import { Button } from "@/components/ui/button.tsx";
+import { SignOutButton } from "@/components/sign-out-button.tsx";
 import AppSidebar from "./_components/AppSidebar.tsx";
 import MobileNav from "./_components/MobileNavbar.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
-import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles, LogOut } from "lucide-react";
+import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles } from "lucide-react";
 
 export default function AppLayout() {
-    const { isAuthenticated, signOut } = useAuth();
+    const { isAuthenticated } = useAuth();
 
     // Convex refreshed every subscriber on write; with React Query this one
     // channel does the same job by invalidating caches on Postgres changes.
@@ -51,16 +51,7 @@ export default function AppLayout() {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <ThemeToggle />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md cursor-pointer transition-colors"
-                                        onClick={() => void signOut()}
-                                        title="Sign out"
-                                        aria-label="Sign out"
-                                    >
-                                        <LogOut className="size-4" />
-                                    </Button>
+                                    <SignOutButton />
                                 </div>
                             </div>
                             <main className="flex-1 overflow-auto pb-16 md:pb-0">
@@ -84,12 +75,12 @@ const features = [
     {
         icon: Users,
         title: "Team Management",
-        description: "Assign leads, surveyors, and installation crews with role-based access",
+        description: "Assign leads and field technicians with role-based access",
     },
     {
         icon: ClipboardCheck,
-        title: "Surveys & Quotes",
-        description: "Site surveys, system sizing, and professional proposal generation",
+        title: "Inspections & Quotes",
+        description: "Site ocular inspections, system sizing, and professional proposal generation",
     },
     {
         icon: Shield,
@@ -99,7 +90,7 @@ const features = [
     {
         icon: Zap,
         title: "Installation Management",
-        description: "Schedule crews, track materials, and manage completion photos",
+        description: "Schedule technicians, track materials, and manage completion photos",
     },
     {
         icon: Sparkles,
