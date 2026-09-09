@@ -21,7 +21,8 @@ export type Stage =
   | "permitting"
   | "installation_scheduled"
   | "installation_complete"
-  | "active_customer";
+  | "active_customer"
+  | "cancelled";
 
 export const STAGES: Stage[] = [
   "lead",
@@ -33,6 +34,7 @@ export const STAGES: Stage[] = [
   "installation_scheduled",
   "installation_complete",
   "active_customer",
+  "cancelled",
 ];
 
 export const STAGE_LABELS: Record<Stage, string> = {
@@ -46,6 +48,7 @@ export const STAGE_LABELS: Record<Stage, string> = {
   installation_scheduled: "Install Scheduled",
   installation_complete: "Install Complete",
   active_customer: "Active Customer",
+  cancelled: "Cancelled",
 };
 
 export const STAGE_COLORS: Record<Stage, string> = {
@@ -58,7 +61,44 @@ export const STAGE_COLORS: Record<Stage, string> = {
   installation_scheduled: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
   installation_complete: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
   active_customer: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
 };
+
+// ─── Stage Groups ─────────────────────────────────────────────────────────
+// The three buckets the business actually thinks in. Nothing is stored
+// twice — a lead's `stage` is still the one source of truth — this is only
+// ever a lookup from that value to the group it belongs to, and back.
+export type StageGroup = "new" | "in_progress" | "completed";
+
+export const STAGE_GROUP_LABELS: Record<StageGroup, string> = {
+  new: "New Lead",
+  in_progress: "In Progress",
+  completed: "Completed",
+};
+
+export const STAGE_GROUPS: Record<StageGroup, Stage[]> = {
+  new: ["lead"],
+  in_progress: [
+    "survey_scheduled",
+    "survey_completed",
+    "proposal_sent",
+    "contract_signed",
+    "permitting",
+    "installation_scheduled",
+    "installation_complete",
+  ],
+  completed: ["active_customer", "cancelled"],
+};
+
+const STAGE_TO_GROUP: Record<Stage, StageGroup> = Object.fromEntries(
+  Object.entries(STAGE_GROUPS).flatMap(([group, stages]) =>
+    stages.map((stage) => [stage, group as StageGroup]),
+  ),
+) as Record<Stage, StageGroup>;
+
+export function groupOf(stage: Stage): StageGroup {
+  return STAGE_TO_GROUP[stage];
+}
 
 // ─── Lead Sources ─────────────────────────────────────────────────────────
 export const SOURCE_LABELS: Record<string, string> = {
@@ -71,12 +111,14 @@ export const SOURCE_LABELS: Record<string, string> = {
 
 // ─── User Roles ───────────────────────────────────────────────────────────
 // `field` replaces the old surveyor/installer pair — one person does both the
-// site ocular inspection and the installation. See 0008_field_role.sql.
+// site ocular inspection and the installation (0008_field_role.sql). `sales`
+// and `office` both fold into `admin`, and `superadmin` sits above it — the
+// only role that can approve accounts and change anyone else's role
+// (0013_roles_and_approval.sql).
 export const ROLE_LABELS: Record<string, string> = {
+  superadmin: "Superadmin",
   admin: "Admin",
-  sales: "Sales Rep",
-  field: "Field Technician",
-  office: "Office Staff",
+  field: "Technician",
 };
 
 // ─── Permit Types ─────────────────────────────────────────────────────────

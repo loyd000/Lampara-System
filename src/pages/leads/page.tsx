@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
-    STAGE_LABELS, STAGE_COLORS, SOURCE_LABELS, STAGES, type Stage,
+    STAGE_LABELS, STAGE_COLORS, SOURCE_LABELS, STAGE_GROUPS, STAGE_GROUP_LABELS,
+    type Stage, type StageGroup,
 } from "@/lib/constants.ts";
 import { Plus, Search, SlidersHorizontal, AlertTriangle, User } from "lucide-react";
 import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator,
+    SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
 import CreateLeadDialog from "./_components/CreateLeadDialog.tsx";
 import { useDebounce } from "@/hooks/use-debounce.ts";
@@ -42,7 +44,7 @@ export default function LeadsPage() {
 
     const staleCount = (page?.leads ?? []).filter((l) => {
         const days = (now - new Date(l.lastActivityAt).getTime()) / 86400000;
-        return days > 7 && !["active_customer", "installation_complete"].includes(l.stage);
+        return days > 7 && !["active_customer", "installation_complete", "cancelled"].includes(l.stage);
     }).length;
 
     return (
@@ -87,8 +89,14 @@ export default function LeadsPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All stages</SelectItem>
-                        {STAGES.map((s) => (
-                            <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                        {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group) => (
+                            <SelectGroup key={group}>
+                                <SelectSeparator />
+                                <SelectLabel>{STAGE_GROUP_LABELS[group]}</SelectLabel>
+                                {STAGE_GROUPS[group].map((s) => (
+                                    <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                                ))}
+                            </SelectGroup>
                         ))}
                     </SelectContent>
                 </Select>
@@ -162,7 +170,7 @@ export default function LeadsPage() {
                                     (now - new Date(lead.lastActivityAt).getTime()) / 86400000,
                                 );
                                 const isStale = daysOld >= 7 &&
-                                    !["active_customer", "installation_complete"].includes(lead.stage);
+                                    !["active_customer", "installation_complete", "cancelled"].includes(lead.stage);
                                 return (
                                     <tr
                                         key={lead._id}

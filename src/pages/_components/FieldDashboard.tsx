@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { cn } from "@/lib/utils.ts";
+import { QueryError } from "@/components/query-error.tsx";
 
 /**
  * The single dashboard for the merged `field` role.
@@ -90,11 +91,13 @@ function startOfDay(d: Date): Date {
 }
 
 export default function FieldDashboard({ user }: Props) {
-    const { data: inspections } = useMyInspections();
-    const { data: installations } = useMyInstallations();
+    const inspectionsQuery = useMyInspections();
+    const installationsQuery = useMyInstallations();
+    const { data: inspections } = inspectionsQuery;
+    const { data: installations } = installationsQuery;
     const navigate = useNavigate();
 
-    const loading = inspections === undefined || installations === undefined;
+    const loading = inspectionsQuery.isPending || installationsQuery.isPending;
 
     const jobs = useMemo<FieldJob[]>(() => {
         const fromInspections: FieldJob[] = (inspections ?? []).map((s) => ({
@@ -161,6 +164,12 @@ export default function FieldDashboard({ user }: Props) {
     );
 
     const open = (job: FieldJob) => navigate(`/leads/${job.leadId}`);
+
+    if (inspectionsQuery.isError || installationsQuery.isError) {
+        return <QueryError title="Couldn't load your jobs" onRetry={() => {
+            void inspectionsQuery.refetch(); void installationsQuery.refetch();
+        }} />;
+    }
 
     if (loading) {
         return (

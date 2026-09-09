@@ -35,7 +35,7 @@ type Props = {
 export default function AddPermitDialog({ open, onClose, leadId }: Props) {
     const { mutateAsync: createPermit } = useCreatePermit();
     const { data: users } = useUsers();
-    const officeUsers = users?.filter((u) => ["admin", "office", "sales"].includes(u.role)) ?? [];
+    const officeUsers = users?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),

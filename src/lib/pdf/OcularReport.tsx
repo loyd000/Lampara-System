@@ -89,11 +89,6 @@ export type ReportData = {
         other: ReportPhoto[];
     };
 
-    // Sign-off
-    preparedBy: string;
-    preparedDate: string;
-    approvedBy: string;
-    approvedDate: string;
 };
 
 const CONTENT_WIDTH = 516;
@@ -545,30 +540,6 @@ export function OcularReport({
                         <PhotoStrip photos={data.photos.other.slice(0, 3)} />
                     </>
                 )}
-
-                {/* ── Sign-off ─────────────────────────────────────────── */}
-                <View style={{ marginTop: 26, borderWidth: 0.8, borderColor: C.line }}>
-                    <View style={{ flexDirection: "row", borderBottomWidth: 0.8, borderBottomColor: C.line }}>
-                        <Text style={[s.signLabel, { width: 92 }]}>Prepared by:</Text>
-                        <View style={[s.td, { flex: 1 }]}>
-                            <Text>{data.preparedBy || " "}</Text>
-                        </View>
-                        <Text style={[s.signLabel, { width: 92 }]}>Approved by :</Text>
-                        <View style={[s.tdLast, { flex: 1 }]}>
-                            <Text>{data.approvedBy || " "}</Text>
-                        </View>
-                    </View>
-                    <View style={{ flexDirection: "row" }}>
-                        <Text style={[s.signLabel, { width: 92 }]}>Date &amp; Signature:</Text>
-                        <View style={[s.td, { flex: 1, minHeight: 34 }]}>
-                            <Text>{data.preparedDate || " "}</Text>
-                        </View>
-                        <Text style={[s.signLabel, { width: 92 }]}>Date &amp; Signature :</Text>
-                        <View style={[s.tdLast, { flex: 1, minHeight: 34 }]}>
-                            <Text>{data.approvedDate || " "}</Text>
-                        </View>
-                    </View>
-                </View>
 
                 <PageFooter name={data.name} />
             </Page>

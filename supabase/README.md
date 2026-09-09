@@ -14,6 +14,16 @@ top to bottom:
 | `0002_rls.sql` | Role helper functions and the Row Level Security policies that replace the old Convex `requireRole()` guards |
 | `0003_storage.sql` | The private `photos` and `documents` buckets plus their object policies |
 | `0004_realtime.sql` | Publishes the tables so the app receives live updates |
+| `0005_p0_fixes.sql` | Atomic stage and field-operation fixes |
+| `0006_atomic_writes.sql` | Atomic lead, quote, revision and contract writes |
+| `0007_report_functions.sql` | RLS-scoped aggregate report RPCs |
+| `0008_field_role.sql` | Merged field role and field workflow policies |
+| `0009_ocular_report.sql` | Full ocular report fields, photos and sign-off workflow |
+| `0010_recommended_vehicle.sql` | Recommended vehicle report field |
+| `0011_workflow_authorization.sql` | Approval authorization and quote/contract integrity hardening |
+| `0012_shared_report_editing.sql` | Shared editable ocular reports without an approval handoff |
+| `0013_roles_and_approval.sql` | Three roles (`superadmin`/`admin`/`field`), account approval, the `cancelled` lead stage |
+| `0014_lead_notes_and_files.sql` | `lead_notes`, `lead_files`, a 10 MB per-file bucket limit and the `leads/` storage prefix |
 
 With the CLI instead:
 

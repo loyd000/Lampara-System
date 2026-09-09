@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useScheduleSurvey, useUsers } from "@/lib/supabase/hooks.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
-import { INSPECTION_LABEL } from "@/lib/constants.ts";
+import { INSPECTION_LABEL, ROLE_LABELS } from "@/lib/constants.ts";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog.tsx";
@@ -42,7 +42,7 @@ export default function ScheduleSurveyDialog({
 }: Props) {
     const { mutateAsync: scheduleSurvey } = useScheduleSurvey();
     const { data: users } = useUsers();
-    const technicians = users?.filter((u) => ["field", "admin"].includes(u.role)) ?? [];
+    const technicians = users?.filter((u) => ["field", "admin", "superadmin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -82,7 +82,7 @@ export default function ScheduleSurveyDialog({
                                     <SelectContent>
                                         {technicians.map((u) => (
                                             <SelectItem key={u._id} value={u._id}>
-                                                {u.name ?? u.email} {u.role === "admin" ? "(Admin)" : ""}
+                                                {u.name ?? u.email} {u.role !== "field" ? `(${ROLE_LABELS[u.role]})` : ""}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

@@ -11,8 +11,8 @@ export default function MobileNav() {
         { label: "Home", to: "/", icon: LayoutDashboard },
         { label: "Pipeline", to: "/pipeline", icon: KanbanSquare },
         { label: "Leads", to: "/leads", icon: Users },
-        ...(["admin", "office", "sales"].includes(role) ? [{ label: "Reports", to: "/reports", icon: BarChart3 }] : []),
-        ...(["admin", "office"].includes(role) ? [{ label: "Team", to: "/team", icon: UserCog }] : []),
+        ...(["superadmin", "admin"].includes(role) ? [{ label: "Reports", to: "/reports", icon: BarChart3 }] : []),
+        ...(["superadmin", "admin"].includes(role) ? [{ label: "Team", to: "/team", icon: UserCog }] : []),
     ];
 
     return (

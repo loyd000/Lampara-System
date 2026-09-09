@@ -23,8 +23,8 @@ const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "Pipeline", to: "/pipeline", icon: KanbanSquare },
     { label: "Leads", to: "/leads", icon: Users },
-    { label: "Reports", to: "/reports", icon: BarChart3, roles: ["admin", "office", "sales"] },
-    { label: "Team", to: "/team", icon: UserCog, roles: ["admin", "office"] },
+    { label: "Reports", to: "/reports", icon: BarChart3, roles: ["superadmin", "admin"] },
+    { label: "Team", to: "/team", icon: UserCog, roles: ["superadmin", "admin"] },
 ];
 
 export default function AppSidebar() {

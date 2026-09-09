@@ -12,7 +12,8 @@ import { toUser, type Id, type User } from "../types.ts";
  * Returns null when signed out — or, briefly, if this races the trigger.
  */
 export async function getCurrentUser(): Promise<User | null> {
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError) throw toAppError(authError, "Failed to verify your account");
     if (!auth.user) return null;
 
     const { data, error } = await supabase

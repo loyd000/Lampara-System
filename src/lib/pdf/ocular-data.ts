@@ -178,10 +178,6 @@ export async function buildReportData(
             other,
         },
 
-        preparedBy: survey.preparedByName ?? "",
-        preparedDate: longDate(survey.preparedAt),
-        approvedBy: survey.approvedByName ?? "",
-        approvedDate: longDate(survey.approvedAt),
     };
 }
 

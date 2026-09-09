@@ -1,4 +1,4 @@
-import { ShieldOff } from "lucide-react";
+import { Hourglass, ShieldOff } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-context.ts";
 import { Button } from "@/components/ui/button.tsx";
@@ -9,16 +9,20 @@ import { COMPANY_NAME } from "@/lib/constants.ts";
 /**
  * Stands between a valid session and the app shell.
  *
- * Being signed in is not the same as having access. Two states used to fall
+ * Being signed in is not the same as having access. Three states used to fall
  * through to a working-looking app with no data in it and no explanation:
  *
  *   · the profile row does not exist yet — the signup trigger creates it, and a
  *     first OAuth sign-in can beat the first read to it
- *   · the account has been deactivated — auth_role() returns null, so every RLS
- *     policy denies, and every query comes back empty
+ *   · the account has never been approved — every new sign-up now lands
+ *     inactive (0013_roles_and_approval.sql), waiting on a superadmin
+ *   · the account was approved once and has since been deactivated
  *
- * Realtime is subscribed to `users`, so the provisioning case resolves on its
- * own the moment the row lands.
+ * `is_active` alone can't tell the second case from the third; `approvedAt`
+ * is what distinguishes "never let in" from "let in, then turned off".
+ *
+ * Realtime is subscribed to `users`, so all three resolve on their own the
+ * moment the row changes — nobody has to reload after being approved.
  */
 export function AccountGate({ children }: { children: React.ReactNode }) {
     const { data: user, isPending, isError, refetch } = useCurrentUser();
@@ -63,12 +67,28 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
         );
     }
 
+    if (!user.isActive && !user.approvedAt) {
+        return (
+            <AccountMessage
+                icon={<Hourglass className="size-7 text-muted-foreground" />}
+                title="Waiting for approval"
+                body="A superadmin needs to let your account in before you can sign in. This page will continue on its own once that happens — no need to reload."
+                action={
+                    <Button variant="secondary" onClick={() => void refetch()}>
+                        Check again
+                    </Button>
+                }
+                onSignOut={signOut}
+            />
+        );
+    }
+
     if (!user.isActive) {
         return (
             <AccountMessage
                 icon={<ShieldOff className="size-7 text-muted-foreground" />}
                 title="Your account is deactivated"
-                body="An administrator has turned off access for this account. Ask them to reactivate it from the Team page."
+                body="A superadmin has turned off access for this account. Ask them to reactivate it from the Team page."
                 onSignOut={signOut}
             />
         );

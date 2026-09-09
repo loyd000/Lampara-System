@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun, Monitor, Check } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
@@ -24,24 +23,6 @@ export function ThemeToggle({
     align = "end",
 }: ThemeToggleProps) {
     const { theme, setTheme } = useTheme();
-    const [mounted, setMounted] = React.useState(false);
-
-    React.useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    if (!mounted) {
-        return (
-            <Button
-                variant={variant}
-                size={size}
-                className={cn("text-muted-foreground transition-colors hover:text-foreground", className)}
-                aria-label="Toggle theme"
-            >
-                <Sun className="size-4 opacity-50" />
-            </Button>
-        );
-    }
 
     return (
         <DropdownMenu>
@@ -101,24 +82,11 @@ export function ThemeToggle({
  */
 export function DirectThemeToggle({ className }: { className?: string }) {
     const { theme, setTheme, resolvedTheme } = useTheme();
-    const [mounted, setMounted] = React.useState(false);
-
-    React.useEffect(() => {
-        setMounted(true);
-    }, []);
 
     const toggleTheme = () => {
         const next = (resolvedTheme || theme) === "dark" ? "light" : "dark";
         setTheme(next);
     };
-
-    if (!mounted) {
-        return (
-            <Button variant="ghost" size="icon-sm" className={className} aria-label="Toggle theme">
-                <Sun className="size-4 opacity-50" />
-            </Button>
-        );
-    }
 
     return (
         <Button

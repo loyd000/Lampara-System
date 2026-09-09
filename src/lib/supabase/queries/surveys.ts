@@ -9,7 +9,13 @@ import type {
     SurveyRow,
     SurveyStatus,
 } from "../database.types.ts";
-import { buildPath, removeFiles, signedUrlMap, uploadFile } from "../storage.ts";
+import {
+    buildPath,
+    prepareUpload,
+    removeFiles,
+    signedUrlMap,
+    uploadFile,
+} from "../storage.ts";
 import {
     displayName,
     toSurvey,
@@ -311,79 +317,6 @@ export async function saveSurveyReport(args: {
     if (error) throw toAppError(error, "Failed to save the report");
 }
 
-/** Marks the report ready for review and stamps the "Prepared by" block. */
-export async function submitSurveyReport(args: {
-    surveyId: Id<"surveys">;
-}): Promise<void> {
-    const survey = unwrap(
-        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
-        "Inspection not found",
-    ) as { lead_id: string };
-
-    const { error } = await supabase.rpc("submit_survey_report", {
-        p_survey_id: args.surveyId,
-    });
-    if (error) throw toAppError(error, "Failed to submit the report");
-
-    await logActivity({
-        leadId: survey.lead_id,
-        action: "Site ocular report submitted",
-        details: "Awaiting office approval",
-        entityType: "survey",
-        entityId: args.surveyId,
-    });
-}
-
-/**
- * Office sign-off. The RPC stamps "Approved by", sets completed_at and advances
- * the lead to `survey_completed` — which is what unlocks quoting.
- */
-export async function approveSurveyReport(args: {
-    surveyId: Id<"surveys">;
-}): Promise<void> {
-    const survey = unwrap(
-        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
-        "Inspection not found",
-    ) as { lead_id: string };
-
-    const { error } = await supabase.rpc("approve_survey_report", {
-        p_survey_id: args.surveyId,
-    });
-    if (error) throw toAppError(error, "Failed to approve the report");
-
-    await logActivity({
-        leadId: survey.lead_id,
-        action: "Site ocular report approved",
-        entityType: "survey",
-        entityId: args.surveyId,
-        touchLead: false,
-    });
-}
-
-/** Sends a submitted report back to the technician for changes. */
-export async function reopenSurveyReport(args: {
-    surveyId: Id<"surveys">;
-    reason?: string;
-}): Promise<void> {
-    const survey = unwrap(
-        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
-        "Inspection not found",
-    ) as { lead_id: string };
-
-    const { error } = await supabase.rpc("reopen_survey_report", {
-        p_survey_id: args.surveyId,
-    });
-    if (error) throw toAppError(error, "Failed to reopen the report");
-
-    await logActivity({
-        leadId: survey.lead_id,
-        action: "Site ocular report reopened",
-        details: args.reason,
-        entityType: "survey",
-        entityId: args.surveyId,
-    });
-}
-
 // ─── Report photos ────────────────────────────────────────────────────────
 
 /**
@@ -416,7 +349,10 @@ export async function addSurveyPhotos(args: {
     let next = (existing[0]?.sort_order ?? -1) + 1;
     let saved = 0;
 
-    for (const file of args.files) {
+    for (const original of args.files) {
+        // Shrunk to a 1600px WebP before it is named or uploaded — a report can
+        // carry thirty photos, and a technician uploads them from the site.
+        const file = await prepareUpload(original);
         const path = buildPath("surveys", args.surveyId, file);
         await uploadFile("photos", path, file);
 

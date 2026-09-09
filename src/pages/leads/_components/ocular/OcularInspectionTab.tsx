@@ -3,32 +3,22 @@ import { useSearchParams } from "react-router-dom";
 import {
     ArrowLeft,
     CalendarDays,
-    CheckCircle2,
     ChevronRight,
     ClipboardCheck,
     Plus,
-    RotateCcw,
-    Send,
-    ShieldCheck,
     X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-    useApproveSurveyReport,
     useCancelSurvey,
     useCurrentUser,
-    useReopenSurveyReport,
-    useSubmitSurveyReport,
     useSurveysForLead,
 } from "@/lib/supabase/hooks.ts";
 import type { Id, Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
 import {
     INSPECTION_LABEL,
-    SURVEY_STATUS_COLORS,
-    SURVEY_STATUS_LABELS,
 } from "@/lib/constants.ts";
-import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -102,9 +92,6 @@ export default function OcularInspectionTab({
     const openId = searchParams.get("report");
     const active = openId ? (surveys.find((s) => s._id === openId) ?? null) : null;
 
-    const role = currentUser?.role ?? "";
-    const isOffice = role === "admin" || role === "office";
-
     const createDialog = propertyId ? (
         <ScheduleSurveyDialog
             open={createOpen}
@@ -119,16 +106,10 @@ export default function OcularInspectionTab({
     if (active) {
         const isAssignedTech = currentUser?._id === active.assignedSurveyorId;
 
-        // While it is scheduled the report belongs to whoever is on site; once
-        // it is handed in, only the office can touch it. Approved and cancelled
-        // reports are read-only — reopen to change one, so the change is
-        // deliberate.
-        const editable =
-            active.status === "scheduled"
-                ? canSchedule || isAssignedTech
-                : active.status === "submitted"
-                  ? isOffice
-                  : false;
+        // Admins and the assigned technician share one editable report. The
+        // legacy status column is retained for existing rows, but no longer
+        // gates editing or requires an approval handoff.
+        const editable = active.status !== "cancelled" && (canSchedule || isAssignedTech);
 
         return (
             <div className="space-y-4">
@@ -147,7 +128,6 @@ export default function OcularInspectionTab({
                     lead={lead}
                     property={property}
                     canSchedule={canSchedule}
-                    isOffice={isOffice}
                     editable={editable}
                     onCancelled={() => openReport(null)}
                 />
@@ -255,14 +235,6 @@ export default function OcularInspectionTab({
                                             minute: "2-digit",
                                         })}
                                     </span>
-                                    <Badge
-                                        className={cn(
-                                            SURVEY_STATUS_COLORS[survey.status],
-                                            "text-[10px] font-semibold",
-                                        )}
-                                    >
-                                        {SURVEY_STATUS_LABELS[survey.status]}
-                                    </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
                                     {survey.surveyorName}
@@ -281,16 +253,13 @@ export default function OcularInspectionTab({
 }
 
 /**
- * What the row says about a report's progress, or null when the status badge
- * has already said everything there is to say.
+ * What the row says about a report's progress.
  *
  * "Not started" is the useful signal on a list of reports filled over days;
  * a percentage would be false precision when most of the ~40 fields are
  * optional on any given site.
  */
 function progressOf(survey: SurveyForLead): string | null {
-    if (survey.status === "cancelled") return null;
-
     const started =
         survey.inspectionDate ||
         survey.usageHabit ||
@@ -319,7 +288,6 @@ function StatusBar({
     lead,
     property,
     canSchedule,
-    isOffice,
     editable,
     onCancelled,
 }: {
@@ -327,14 +295,10 @@ function StatusBar({
     lead: Lead;
     property: Property | undefined;
     canSchedule: boolean;
-    isOffice: boolean;
     editable: boolean;
     /** Cancelling ends the visit, so the view goes back to the list. */
     onCancelled: () => void;
 }) {
-    const { mutateAsync: submitReport } = useSubmitSurveyReport();
-    const { mutateAsync: approveReport } = useApproveSurveyReport();
-    const { mutateAsync: reopenReport } = useReopenSurveyReport();
     const { mutateAsync: cancelSurvey } = useCancelSurvey();
     const [busy, setBusy] = useState(false);
 
@@ -358,14 +322,6 @@ function StatusBar({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <Badge
-                                className={cn(
-                                    SURVEY_STATUS_COLORS[survey.status],
-                                    "text-[10px] font-semibold",
-                                )}
-                            >
-                                {SURVEY_STATUS_LABELS[survey.status]}
-                            </Badge>
                             <span className="text-sm font-medium text-foreground">
                                 {survey.surveyorName}
                             </span>
@@ -385,58 +341,6 @@ function StatusBar({
 
                     <div className="flex flex-wrap gap-1.5">
                         <DownloadReportButton survey={survey} lead={lead} property={property} />
-                        {survey.status === "scheduled" && editable && (
-                            <ConfirmButton
-                                label="Submit for approval"
-                                icon={<Send className="w-3.5 h-3.5 mr-1.5" />}
-                                title="Submit this report?"
-                                description="The office reviews it next. You won't be able to edit it while it's under review."
-                                disabled={busy}
-                                onConfirm={() =>
-                                    run(() => submitReport({ surveyId }), "Report submitted")
-                                }
-                            />
-                        )}
-                        {survey.status === "submitted" && isOffice && (
-                            <>
-                                <ConfirmButton
-                                    label="Approve"
-                                    icon={<ShieldCheck className="w-3.5 h-3.5 mr-1.5" />}
-                                    title="Approve this report?"
-                                    description="This signs the report off, marks the inspection complete and unlocks quoting for this lead."
-                                    disabled={busy}
-                                    onConfirm={() =>
-                                        run(() => approveReport({ surveyId }), "Report approved")
-                                    }
-                                />
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-8 text-xs"
-                                    disabled={busy}
-                                    onClick={() =>
-                                        run(() => reopenReport({ surveyId }), "Sent back for changes")
-                                    }
-                                >
-                                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                                    Send back
-                                </Button>
-                            </>
-                        )}
-                        {survey.status === "approved" && isOffice && (
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 text-xs"
-                                disabled={busy}
-                                onClick={() =>
-                                    run(() => reopenReport({ surveyId }), "Report reopened")
-                                }
-                            >
-                                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                                Reopen
-                            </Button>
-                        )}
                         {survey.status === "scheduled" && canSchedule && (
                             <ConfirmButton
                                 label="Cancel"
@@ -457,64 +361,8 @@ function StatusBar({
                     </div>
                 </div>
 
-                {/* The two signature blocks at the foot of the printed report */}
-                {(survey.preparedByName || survey.approvedByName) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t text-xs">
-                        <SignOff
-                            label="Prepared by"
-                            name={survey.preparedByName}
-                            at={survey.preparedAt}
-                        />
-                        <SignOff
-                            label="Approved by"
-                            name={survey.approvedByName}
-                            at={survey.approvedAt}
-                        />
-                    </div>
-                )}
-
-                {!editable && survey.status === "submitted" && !isOffice && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                        Submitted for approval — ask the office to send it back if something
-                        needs changing.
-                    </p>
-                )}
-                {survey.status === "approved" && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Approved — this lead is ready to quote.
-                    </p>
-                )}
             </CardContent>
         </Card>
-    );
-}
-
-function SignOff({
-    label,
-    name,
-    at,
-}: {
-    label: string;
-    name: string | null;
-    at?: string;
-}) {
-    return (
-        <div>
-            <p className="text-muted-foreground">{label}</p>
-            <p className="font-medium text-foreground">{name ?? "—"}</p>
-            {at && (
-                <p className="text-muted-foreground/70 text-[11px]">
-                    {new Date(at).toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}
-                </p>
-            )}
-        </div>
     );
 }
 

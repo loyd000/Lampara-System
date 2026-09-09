@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCreateInstallation, useUsers } from "@/lib/supabase/hooks.ts";
 import type { Id } from "@/lib/supabase/types.ts";
+import { ROLE_LABELS } from "@/lib/constants.ts";
 import { toast } from "sonner";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -33,7 +34,7 @@ type Props = {
 export default function ScheduleInstallationDialog({ open, onClose, leadId }: Props) {
     const { mutateAsync: createInstallation } = useCreateInstallation();
     const { data: users } = useUsers();
-    const crew = users?.filter((u) => ["field", "admin"].includes(u.role)) ?? [];
+    const crew = users?.filter((u) => ["field", "admin", "superadmin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -100,7 +101,7 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
                                             />
                                             <label htmlFor={u._id} className="text-sm cursor-pointer">
                                                 {u.name ?? u.email}
-                                                {u.role === "admin" && <span className="text-muted-foreground text-xs ml-1">(Admin)</span>}
+                                                {u.role !== "field" && <span className="text-muted-foreground text-xs ml-1">({ROLE_LABELS[u.role]})</span>}
                                             </label>
                                         </div>
                                     ))}

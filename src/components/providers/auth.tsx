@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 
 import { supabase, toAppError } from "@/lib/supabase/client.ts";
 import { queryKeys } from "@/lib/supabase/hooks.ts";
+import { watchAccountAccess } from "@/lib/supabase/access-cache.ts";
 import { AuthContext, type AuthContextValue } from "./auth-context.ts";
 
 /**
@@ -20,6 +21,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     const [error, setError] = useState<Error | null>(null);
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
     const currentUserIdRef = useRef<string | null>(null);
+
+    useEffect(() => watchAccountAccess(queryClient), [queryClient]);
 
     useEffect(() => {
         let active = true;

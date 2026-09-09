@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { Crosshair, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { parseReportNumber as toNum, parseReportInteger as toInt } from "@/lib/report-number.ts";
 
 import { useSaveSurveyReport } from "@/lib/supabase/hooks.ts";
 import type { SurveyReportPatch } from "@/lib/supabase/queries/surveys.ts";
@@ -158,19 +159,6 @@ function toForm(survey: SurveyForLead): FormValues {
     };
 }
 
-/** "" and anything unparseable become undefined, which the API writes as null. */
-function toNum(value: string): number | undefined {
-    const trimmed = value.trim();
-    if (!trimmed) return undefined;
-    const n = Number(trimmed);
-    return Number.isFinite(n) ? n : undefined;
-}
-
-function toInt(value: string): number | undefined {
-    const n = toNum(value);
-    return n === undefined ? undefined : Math.trunc(n);
-}
-
 function toBool(value: string): boolean | undefined {
     if (value === "yes") return true;
     if (value === "no") return false;
@@ -183,8 +171,8 @@ function toPatch(v: FormValues): SurveyReportPatch {
         latitude: toNum(v.latitude),
         longitude: toNum(v.longitude),
         usageHabit: (v.usageHabit || undefined) as SurveyReportPatch["usageHabit"],
-        monthlyConsumptionKwh: toNum(v.monthlyConsumptionKwh),
-        monthlyBillPhp: toNum(v.monthlyBillPhp),
+        monthlyConsumptionKwh: toNum(v.monthlyConsumptionKwh, "Monthly consumption"),
+        monthlyBillPhp: toNum(v.monthlyBillPhp, "Monthly bill"),
 
         applianceAircon: v.applianceAircon,
         applianceAirconNote: v.applianceAirconNote || undefined,
@@ -234,19 +222,21 @@ function toPatch(v: FormValues): SurveyReportPatch {
 export default function OcularReportForm({
     survey,
     editable,
+    disabled: externallyDisabled = false,
 }: {
     survey: SurveyForLead;
     editable: boolean;
+    disabled?: boolean;
 }) {
     const { mutateAsync: saveReport } = useSaveSurveyReport();
     const [saving, setSaving] = useState(false);
     const [locating, setLocating] = useState(false);
+    const savingRef = useRef(false);
 
     const form = useForm<FormValues>({ defaultValues: toForm(survey) });
-    const { control, register, handleSubmit, reset, setValue, formState } = form;
+    const { control, register, handleSubmit, reset, setValue, getValues, trigger, formState } = form;
 
-    // Re-sync when the inspection being viewed changes, or when its status does
-    // (submit / approve / reopen all flip whether the form is editable). Not on
+    // Re-sync when the inspection being viewed changes. Not on
     // every refetch: Realtime hands back a new object on any write to the lead,
     // and resetting under someone's cursor loses what they were typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,16 +244,33 @@ export default function OcularReportForm({
 
     const packageType = useWatch({ control, name: "packageType" });
 
-    async function onSubmit(values: FormValues) {
+    async function saveDraft() {
+        if (!editable || !formState.isDirty) return;
+        if (savingRef.current) throw new Error("Wait for the report to finish saving.");
+        savingRef.current = true;
         setSaving(true);
         try {
-            await saveReport({ surveyId: survey._id as Id<"surveys">, patch: toPatch(values) });
+            if (!(await trigger())) throw new Error("Check the report fields before saving.");
+            const values = getValues();
+            const allFields = toPatch(values);
+            // Preserve unrelated edits made by another person since this form opened.
+            const patch = Object.fromEntries(
+                Object.entries(allFields).filter(([key]) => key in formState.dirtyFields),
+            ) as SurveyReportPatch;
+            await saveReport({ surveyId: survey._id as Id<"surveys">, patch });
             reset(values);
+        } finally {
+            savingRef.current = false;
+            setSaving(false);
+        }
+    }
+
+    async function onSubmit() {
+        try {
+            await saveDraft();
             toast.success("Report saved");
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not save the report");
-        } finally {
-            setSaving(false);
         }
     }
 
@@ -293,10 +300,10 @@ export default function OcularReportForm({
         );
     }
 
-    const disabled = !editable || saving;
+    const disabled = !editable || saving || externallyDisabled;
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={(event) => { void handleSubmit(onSubmit)(event); }} className="space-y-4">
             {/* ── Client details ───────────────────────────────────────── */}
             <FieldBlock title="Client Details">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -811,11 +818,11 @@ export default function OcularReportForm({
                             variant="ghost"
                             size="sm"
                             onClick={() => reset(toForm(survey))}
-                            disabled={saving}
+                            disabled={disabled}
                         >
                             Discard
                         </Button>
-                        <Button type="submit" size="sm" disabled={saving}>
+                        <Button type="submit" size="sm" disabled={disabled}>
                             {saving ? (
                                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                             ) : (

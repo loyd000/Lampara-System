@@ -1,7 +1,6 @@
 import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import AdminDashboard from "./_components/AdminDashboard.tsx";
-import SalesDashboard from "./_components/SalesDashboard.tsx";
 import FieldDashboard from "./_components/FieldDashboard.tsx";
 
 /**
@@ -25,13 +24,13 @@ export default function Index() {
         );
     }
 
+    // superadmin and admin share one dashboard — the roster of who can see it
+    // is a role list on Team and the nav, not a second dashboard to maintain.
     switch (user.role) {
-        case "sales":
-            return <SalesDashboard user={user} />;
         case "field":
             return <FieldDashboard user={user} />;
+        case "superadmin":
         case "admin":
-        case "office":
         default:
             return <AdminDashboard user={user} />;
     }

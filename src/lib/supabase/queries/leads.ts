@@ -91,11 +91,13 @@ export async function advanceLeadStage(
     leadId: Id<"leads">,
     stage: LeadStage,
     onlyFrom?: LeadStage[],
+    cancelledReason?: string,
 ): Promise<LeadStage | null> {
     const { data, error } = await supabase.rpc("advance_lead_stage", {
         p_lead_id: leadId,
         p_stage: stage,
         p_only_from: onlyFrom ?? null,
+        p_cancelled_reason: cancelledReason ?? null,
     });
     if (error) throw toAppError(error, "Failed to update stage");
     return data ?? null;
@@ -306,16 +308,17 @@ export async function createLead(args: CreateLeadArgs): Promise<Id<"leads">> {
     return data as string;
 }
 
+/** Omitted fields stay unchanged; null explicitly clears a nullable field. */
 export async function updateLead(args: {
     id: Id<"leads">;
     firstName?: string;
     lastName?: string;
     phone?: string;
-    email?: string;
+    email?: string | null;
     source?: LeadSource;
-    referredBy?: string;
-    notes?: string;
-    assignedSalesRepId?: Id<"users">;
+    referredBy?: string | null;
+    notes?: string | null;
+    assignedSalesRepId?: Id<"users"> | null;
 }): Promise<void> {
     const { id, ...fields } = args;
 
@@ -350,20 +353,26 @@ export async function updateLead(args: {
 export async function updateStage(args: {
     id: Id<"leads">;
     stage: LeadStage;
+    /** Required in practice when `stage` is "cancelled"; the UI prompts for it. */
+    cancelledReason?: string;
 }): Promise<void> {
-    const previous = await advanceLeadStage(args.id, args.stage);
+    const previous = await advanceLeadStage(args.id, args.stage, undefined, args.cancelledReason);
     if (!previous) throw new Error("Lead not found");
     if (previous === args.stage) return;
 
     await logActivity({
         leadId: args.id,
-        action: `Stage changed: ${previous} → ${args.stage}`,
+        action:
+            args.stage === "cancelled" && args.cancelledReason
+                ? `Stage changed: ${previous} → cancelled — ${args.cancelledReason}`
+                : `Stage changed: ${previous} → ${args.stage}`,
         entityType: "lead",
         entityId: args.id,
         touchLead: false,
     });
 }
 
+/** Omitted fields stay unchanged; null explicitly clears the optional notes. */
 export async function updateProperty(args: {
     propertyId: Id<"properties">;
     address?: string;
@@ -371,7 +380,7 @@ export async function updateProperty(args: {
     state?: string;
     zip?: string;
     propertyType?: PropertyType;
-    notes?: string;
+    notes?: string | null;
 }): Promise<void> {
     const { propertyId, ...fields } = args;
 
@@ -390,16 +399,6 @@ export async function updateProperty(args: {
     if (error) throw toAppError(error, "Failed to update property");
 }
 
-export async function addNote(args: { id: Id<"leads">; note: string }): Promise<void> {
-    await logActivity({
-        leadId: args.id,
-        action: "Note added",
-        details: args.note,
-        entityType: "lead",
-        entityId: args.id,
-    });
-}
-
 /**
  * Deletes a lead. Properties, surveys, quotes, contracts, permits,
  * installations and log rows all cascade.
@@ -409,26 +408,45 @@ export async function addNote(args: { id: Id<"leads">; note: string }): Promise<
  * buckets forever.
  */
 export async function deleteLead(args: { id: Id<"leads"> }): Promise<void> {
-    const [surveys, installations, contracts, permits] = await Promise.all([
-        supabase.from("surveys").select("photo_paths").eq("lead_id", args.id),
-        supabase.from("installations").select("completion_photo_paths").eq("lead_id", args.id),
-        supabase.from("contracts").select("document_path").eq("lead_id", args.id),
-        supabase.from("permits").select("document_path").eq("lead_id", args.id),
-    ]);
+    const [surveys, surveyPhotos, installations, contracts, permits, leadFiles] =
+        await Promise.all([
+            supabase.from("surveys").select("photo_paths").eq("lead_id", args.id),
+            // Slotted report photos, which is where every inspection photo has
+            // lived since 0009 — `photo_paths` above only still holds pre-0009
+            // rows.
+            supabase
+                .from("survey_photos")
+                .select("path, surveys!inner(lead_id)")
+                .eq("surveys.lead_id", args.id),
+            supabase
+                .from("installations")
+                .select("completion_photo_paths")
+                .eq("lead_id", args.id),
+            supabase.from("contracts").select("document_path").eq("lead_id", args.id),
+            supabase.from("permits").select("document_path").eq("lead_id", args.id),
+            supabase.from("lead_files").select("path, kind").eq("lead_id", args.id),
+        ]);
+
+    const attachments = (leadFiles.data ?? []) as { path: string; kind: string }[];
 
     const photoPaths = [
         ...((surveys.data ?? []) as { photo_paths: string[] | null }[]).flatMap(
             (s) => s.photo_paths ?? [],
         ),
+        ...((surveyPhotos.data ?? []) as { path: string }[]).map((p) => p.path),
         ...(
             (installations.data ?? []) as { completion_photo_paths: string[] | null }[]
         ).flatMap((i) => i.completion_photo_paths ?? []),
+        ...attachments.filter((f) => f.kind === "photo").map((f) => f.path),
     ];
 
     const documentPaths = [
-        ...((contracts.data ?? []) as { document_path: string | null }[]),
-        ...((permits.data ?? []) as { document_path: string | null }[]),
-    ].flatMap((row) => (row.document_path ? [row.document_path] : []));
+        ...[
+            ...((contracts.data ?? []) as { document_path: string | null }[]),
+            ...((permits.data ?? []) as { document_path: string | null }[]),
+        ].flatMap((row) => (row.document_path ? [row.document_path] : [])),
+        ...attachments.filter((f) => f.kind === "document").map((f) => f.path),
+    ];
 
     const { error } = await supabase.from("leads").delete().eq("id", args.id);
     if (error) throw toAppError(error, "Failed to delete lead");

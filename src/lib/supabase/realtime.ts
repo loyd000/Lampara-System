@@ -34,6 +34,8 @@ const WATCHED_TABLES = [
     "leads",
     "properties",
     "activity_log",
+    "lead_notes",
+    "lead_files",
     "surveys",
     "survey_photos",
     "quotes",
@@ -69,7 +71,7 @@ function rowIdOf(payload: RealtimePostgresChangesPayload<Row>): string | undefin
 }
 
 /** Which caches a change to `table` should refresh. */
-function keysFor(
+export function keysFor(
     table: string,
     payload: RealtimePostgresChangesPayload<Row>,
 ): QueryKey[] {
@@ -84,24 +86,33 @@ function keysFor(
                 ["leads", "search"],
                 ...(id ? [queryKeys.lead(id), queryKeys.leadProperties(id)] : [queryKeys.leads]),
                 queryKeys.reports,
+                ["surveys", "mine"],
+                queryKeys.myInstallations,
             ];
         }
         case "properties":
             return [
                 ["leads", "enriched"],
+                ["surveys", "mine"],
+                queryKeys.myInstallations,
                 ...(leadId ? [queryKeys.leadProperties(leadId)] : [queryKeys.leads]),
             ];
         case "activity_log":
             return leadId ? [queryKeys.leadActivity(leadId)] : [queryKeys.leads];
+        case "lead_notes":
+            return leadId ? [queryKeys.leadNotesForLead(leadId)] : [queryKeys.leadNotes];
+        case "lead_files":
+            return leadId ? [queryKeys.leadFilesForLead(leadId)] : [queryKeys.leadFiles];
         case "surveys":
             return [
                 ...(leadId ? [queryKeys.surveysForLead(leadId)] : [queryKeys.surveys]),
                 ["surveys", "mine"],
             ];
         // survey_photos rows carry no lead_id, so there is nothing to narrow to;
-        // one photo upload refreshes the inspection queries wholesale.
+        // one photo upload refreshes the inspection queries wholesale — and the
+        // Overview file lists with them, since those read report photos too.
         case "survey_photos":
-            return [queryKeys.surveys];
+            return [queryKeys.surveys, queryKeys.leadFiles];
         case "quotes":
             return [
                 ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),

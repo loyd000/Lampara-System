@@ -4,7 +4,10 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
-import { STAGES, STAGE_LABELS, STAGE_COLORS, type Stage } from "@/lib/constants.ts";
+import {
+    STAGES, STAGE_LABELS, STAGE_COLORS, STAGE_GROUPS, STAGE_GROUP_LABELS,
+    type Stage, type StageGroup,
+} from "@/lib/constants.ts";
 import type { EnrichedLead } from "@/lib/supabase/types.ts";
 import { Plus, Users, AlertTriangle } from "lucide-react";
 import CreateLeadDialog from "../leads/_components/CreateLeadDialog.tsx";
@@ -49,7 +52,7 @@ export default function PipelinePage() {
     }
 
     const totalActive = leads?.filter(
-        (l) => !["active_customer", "installation_complete"].includes(l.stage),
+        (l) => !["active_customer", "installation_complete", "cancelled"].includes(l.stage),
     ).length ?? 0;
 
     return (
@@ -71,62 +74,93 @@ export default function PipelinePage() {
                 </Button>
             </div>
 
-            {/* Kanban board */}
+            {/* Kanban board: three swim-lanes (New / In Progress / Completed), each
+                holding the substatus columns for that group. Grouping only changes
+                what the eye clusters; every column still shares one drag surface, so
+                a card can move straight from "New Lead" to "Cancelled" in one drop. */}
             {leads === undefined ? (
-                <div className="flex gap-3 overflow-x-auto p-6">
-                    {STAGES.map((s) => (
-                        <Skeleton key={s} className="h-96 w-52 flex-shrink-0 rounded-lg" />
+                <div className="flex gap-6 overflow-x-auto p-6">
+                    {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group) => (
+                        <div key={group} className="flex gap-3">
+                            {STAGE_GROUPS[group].map((s) => (
+                                <Skeleton key={s} className="h-96 w-52 flex-shrink-0 rounded-lg" />
+                            ))}
+                        </div>
                     ))}
                 </div>
             ) : (
-                <div className="flex gap-3 overflow-x-auto p-6 flex-1 min-h-0 items-start">
-                    {STAGES.map((stage) => {
-                        const cards = byStage[stage];
-                        const isOver = dragOver === stage;
+                <div className="flex gap-6 overflow-x-auto p-6 flex-1 min-h-0 items-start">
+                    {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group, groupIndex) => {
+                        const groupStages = STAGE_GROUPS[group];
+                        const groupCount = groupStages.reduce((sum, s) => sum + byStage[s].length, 0);
                         return (
                             <div
-                                key={stage}
-                                className="flex-shrink-0 w-52 flex flex-col"
-                                onDragOver={(e) => { e.preventDefault(); setDragOver(stage); }}
-                                onDragLeave={() => setDragOver(null)}
-                                onDrop={() => handleDrop(stage)}
+                                key={group}
+                                className={cn(
+                                    "flex flex-col gap-2.5 flex-shrink-0",
+                                    groupIndex > 0 && "border-l border-border/60 pl-6",
+                                )}
                             >
-                                {/* Column header */}
-                                <div className={cn(
-                                    "flex items-center justify-between mb-2.5 px-1.5 py-1 rounded-md transition-colors",
-                                    isOver && "bg-secondary",
-                                )}>
-                                    <div className="flex items-center gap-2">
-                                        <Badge className={`${STAGE_COLORS[stage]} text-[11px] font-semibold px-2 py-0.5 rounded-md`}>
-                                            {STAGE_LABELS[stage]}
-                                        </Badge>
-                                    </div>
-                                    <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-1.5 py-0.5">
-                                        {cards.length}
+                                <div className="flex items-baseline gap-2 px-1">
+                                    <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        {STAGE_GROUP_LABELS[group]}
+                                    </h2>
+                                    <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+                                        {groupCount}
                                     </span>
                                 </div>
+                                <div className="flex gap-3 items-start">
+                                    {groupStages.map((stage) => {
+                                        const cards = byStage[stage];
+                                        const isOver = dragOver === stage;
+                                        return (
+                                            <div
+                                                key={stage}
+                                                className="flex-shrink-0 w-52 flex flex-col"
+                                                onDragOver={(e) => { e.preventDefault(); setDragOver(stage); }}
+                                                onDragLeave={() => setDragOver(null)}
+                                                onDrop={() => handleDrop(stage)}
+                                            >
+                                                {/* Column header */}
+                                                <div className={cn(
+                                                    "flex items-center justify-between mb-2.5 px-1.5 py-1 rounded-md transition-colors",
+                                                    isOver && "bg-secondary",
+                                                )}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className={`${STAGE_COLORS[stage]} text-[11px] font-semibold px-2 py-0.5 rounded-md`}>
+                                                            {STAGE_LABELS[stage]}
+                                                        </Badge>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-md px-1.5 py-0.5">
+                                                        {cards.length}
+                                                    </span>
+                                                </div>
 
-                                {/* Drop zone */}
-                                <div className={cn(
-                                    "space-y-2 min-h-[6rem] rounded-lg transition-all p-1",
-                                    isOver && "bg-secondary/50 ring-2 ring-foreground/20 ring-dashed",
-                                )}>
-                                    {cards.map((lead) => (
-                                        <PipelineCard
-                                            key={lead._id}
-                                            lead={lead}
-                                            onDragStart={() => setDragging(lead._id)}
-                                            onDragEnd={() => { setDragging(null); setDragOver(null); }}
-                                            onClick={() => navigate(`/leads/${lead._id}`)}
-                                            isDragging={dragging === lead._id}
-                                        />
-                                    ))}
-                                    {cards.length === 0 && !isOver && (
-                                        <div className="border border-dashed border-border rounded-lg py-8 flex flex-col items-center justify-center gap-1">
-                                            <Users className="w-4 h-4 text-muted-foreground/30" />
-                                            <span className="text-[11px] text-muted-foreground/40">Drop here</span>
-                                        </div>
-                                    )}
+                                                {/* Drop zone */}
+                                                <div className={cn(
+                                                    "space-y-2 min-h-[6rem] rounded-lg transition-all p-1",
+                                                    isOver && "bg-secondary/50 ring-2 ring-foreground/20 ring-dashed",
+                                                )}>
+                                                    {cards.map((lead) => (
+                                                        <PipelineCard
+                                                            key={lead._id}
+                                                            lead={lead}
+                                                            onDragStart={() => setDragging(lead._id)}
+                                                            onDragEnd={() => { setDragging(null); setDragOver(null); }}
+                                                            onClick={() => navigate(`/leads/${lead._id}`)}
+                                                            isDragging={dragging === lead._id}
+                                                        />
+                                                    ))}
+                                                    {cards.length === 0 && !isOver && (
+                                                        <div className="border border-dashed border-border rounded-lg py-8 flex flex-col items-center justify-center gap-1">
+                                                            <Users className="w-4 h-4 text-muted-foreground/30" />
+                                                            <span className="text-[11px] text-muted-foreground/40">Drop here</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );

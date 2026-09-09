@@ -21,6 +21,9 @@ import type {
     FinancingOption,
     InstallationRow,
     InstallationStatus,
+    LeadFileKind,
+    LeadFileRow,
+    LeadNoteRow,
     LeadRow,
     LeadSource,
     LeadStage,
@@ -61,6 +64,7 @@ export type {
     ContractStatus,
     FinancingOption,
     InstallationStatus,
+    LeadFileKind,
     LeadSource,
     LeadStage,
     MeterForm,
@@ -96,7 +100,9 @@ export type TableNames =
     | "permits"
     | "installations"
     | "serviceTickets"
-    | "activityLog";
+    | "activityLog"
+    | "leadNotes"
+    | "leadFiles";
 
 /**
  * A row identifier.
@@ -119,6 +125,9 @@ export type User = Base & {
     role: UserRole;
     avatarUrl?: string;
     isActive: boolean;
+    /** Undefined until a superadmin has approved this account at least once. */
+    approvedAt?: string;
+    approvedById?: string;
 };
 
 export type Lead = Base & {
@@ -133,6 +142,8 @@ export type Lead = Base & {
     lastActivityAt: string;
     convertedAt?: string;
     notes?: string;
+    cancelledReason?: string;
+    cancelledAt?: string;
 };
 
 export type Property = Base & {
@@ -302,6 +313,31 @@ export type ServiceTicket = Base & {
     warrantyRelated: boolean;
 };
 
+/**
+ * A note somebody chose to write about this lead.
+ *
+ * Deliberately not an `activity_log` row: the log is the system's own account
+ * of what happened and stays machine-written, while this is prose. `updatedAt`
+ * differing from `_creationTime` is what marks a note as edited.
+ */
+export type LeadNote = Base & {
+    leadId: string;
+    authorId?: string;
+    body: string;
+    updatedAt: string;
+};
+
+/** A photo or document attached to the lead itself (not to a report). */
+export type LeadFile = Base & {
+    leadId: string;
+    path: string;
+    name: string;
+    mime: string;
+    sizeBytes: number;
+    kind: LeadFileKind;
+    uploadedById?: string;
+};
+
 export type ActivityLogEntry = Base & {
     leadId: string;
     userId: string;
@@ -332,7 +368,11 @@ export type Doc<T extends TableNames> = T extends "users"
                     ? ServiceTicket
                     : T extends "activityLog"
                       ? ActivityLogEntry
-                      : never;
+                      : T extends "leadNotes"
+                        ? LeadNote
+                        : T extends "leadFiles"
+                          ? LeadFile
+                          : never;
 
 // ─── Enriched shapes returned by the query layer ──────────────────────────
 
@@ -344,6 +384,43 @@ export type EnrichedLead = Lead & {
 export type LeadDetail = Lead & { assignedRepName: string | null };
 
 export type ActivityEntry = ActivityLogEntry & { userName: string };
+
+export type LeadNoteEntry = LeadNote & {
+    authorName: string;
+    /** True when the signed-in user wrote it, so the UI can offer Edit. */
+    isOwn: boolean;
+    /** True when this note has been changed since it was posted. */
+    edited: boolean;
+};
+
+/**
+ * One row of the Overview's file list.
+ *
+ * The list is a **view over two tables**: files attached to the lead, and the
+ * photos already uploaded against its ocular inspections. Report photos are
+ * listed here, never copied here — one object, two places it is shown — which
+ * is why an entry carries where it came from and whether this screen is
+ * allowed to remove it.
+ */
+export type LeadFileEntry = {
+    _id: string;
+    _creationTime: number;
+    kind: LeadFileKind;
+    name: string;
+    mime: string | null;
+    /** Null for report photos, which were stored before size was recorded. */
+    sizeBytes: number | null;
+    path: string;
+    bucket: "photos" | "documents";
+    /** Short-lived signed URL, or null if the object could not be signed. */
+    url: string | null;
+    source: "lead" | "inspection";
+    /** The report slot an inspection photo fills ("Roof View"); null otherwise. */
+    sourceLabel: string | null;
+    uploadedByName: string | null;
+    /** Report photos are managed on the report, not from the Overview. */
+    removable: boolean;
+};
 
 export type SurveyForLead = Survey & {
     surveyorName: string;
@@ -412,6 +489,8 @@ export function toUser(row: UserRow): User {
         role: row.role,
         avatarUrl: opt(row.avatar_url),
         isActive: row.is_active,
+        approvedAt: opt(row.approved_at),
+        approvedById: opt(row.approved_by),
     };
 }
 
@@ -429,6 +508,8 @@ export function toLead(row: LeadRow): Lead {
         lastActivityAt: row.last_activity_at,
         convertedAt: opt(row.converted_at),
         notes: opt(row.notes),
+        cancelledReason: opt(row.cancelled_reason),
+        cancelledAt: opt(row.cancelled_at),
     };
 }
 
@@ -604,6 +685,29 @@ export function toServiceTicket(row: ServiceTicketRow): ServiceTicket {
         resolvedAt: opt(row.resolved_at),
         scheduledVisitAt: opt(row.scheduled_visit_at),
         warrantyRelated: row.warranty_related,
+    };
+}
+
+export function toLeadNote(row: LeadNoteRow): LeadNote {
+    return {
+        ...base(row),
+        leadId: row.lead_id,
+        authorId: opt(row.author_id),
+        body: row.body,
+        updatedAt: row.updated_at,
+    };
+}
+
+export function toLeadFile(row: LeadFileRow): LeadFile {
+    return {
+        ...base(row),
+        leadId: row.lead_id,
+        path: row.path,
+        name: row.name,
+        mime: row.mime,
+        sizeBytes: Number(row.size_bytes),
+        kind: row.kind,
+        uploadedById: opt(row.uploaded_by),
     };
 }
 

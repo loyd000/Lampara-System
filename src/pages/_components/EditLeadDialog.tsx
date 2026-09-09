@@ -50,7 +50,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
     const { mutateAsync: updateLead } = useUpdateLead();
     const { mutateAsync: updateProperty } = useUpdateProperty();
     const { data: users } = useUsers();
-    const salesReps = users?.filter((u) => ["sales", "admin"].includes(u.role)) ?? [];
+    const assignableReps = users?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -104,13 +104,13 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                 firstName: values.firstName,
                 lastName: values.lastName,
                 phone: values.phone,
-                email: values.email || undefined,
+                email: values.email || null,
                 source: values.source,
-                referredBy: values.referredBy || undefined,
-                notes: values.notes || undefined,
+                referredBy: values.referredBy || null,
+                notes: values.notes || null,
                 assignedSalesRepId: (values.assignedSalesRepId && values.assignedSalesRepId !== "none")
                     ? values.assignedSalesRepId as Id<"users">
-                    : undefined,
+                    : null,
             });
 
             if (property) {
@@ -121,7 +121,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                     state: values.state || undefined,
                     zip: values.zip || undefined,
                     propertyType: values.propertyType,
-                    notes: values.propertyNotes || undefined,
+                    notes: values.propertyNotes || null,
                 });
             }
 
@@ -183,12 +183,12 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                     )} />
                                 </div>
                                 <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
-                                    <FormItem><FormLabel>Assigned Sales Rep</FormLabel>
+                                    <FormItem><FormLabel>Assigned To</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                             <FormControl><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 <SelectItem value="none">Unassigned</SelectItem>
-                                                {salesReps.map((u) => (
+                                                {assignableReps.map((u) => (
                                                     <SelectItem key={u._id} value={u._id}>{u.name ?? u.email}</SelectItem>
                                                 ))}
                                             </SelectContent>

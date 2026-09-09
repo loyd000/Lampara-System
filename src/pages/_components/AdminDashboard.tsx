@@ -14,16 +14,26 @@ import {
 } from "lucide-react";
 import { STAGE_LABELS, STAGE_COLORS } from "@/lib/constants.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { QueryError } from "@/components/query-error.tsx";
 
 type Props = { user: Doc<"users"> };
 
 export default function AdminDashboard({ user }: Props) {
     // Counts come from the pipeline report, which aggregates in Postgres — the
     // dashboard no longer pulls every lead into the browser to count them.
-    const { data: pipeline } = usePipelineSummary();
-    const { data: permitsReport } = usePermitsSummary();
-    const { data: recentLeads } = useLeads({ limit: RECENT_LEAD_COUNT });
+    const pipelineQuery = usePipelineSummary();
+    const permitsQuery = usePermitsSummary();
+    const leadsQuery = useLeads({ limit: RECENT_LEAD_COUNT });
+    const { data: pipeline } = pipelineQuery;
+    const { data: permitsReport } = permitsQuery;
+    const { data: recentLeads } = leadsQuery;
     const navigate = useNavigate();
+
+    if (pipelineQuery.isError || permitsQuery.isError || leadsQuery.isError) {
+        return <QueryError title="Couldn't load your dashboard" onRetry={() => {
+            void pipelineQuery.refetch(); void permitsQuery.refetch(); void leadsQuery.refetch();
+        }} />;
+    }
 
     const byStage = pipeline?.stageCounts ?? {};
     const countIn = (...stages: string[]) =>
@@ -34,7 +44,7 @@ export default function AdminDashboard({ user }: Props) {
             total: pipeline.totalLeads,
             active:
                 pipeline.totalLeads -
-                countIn("installation_complete", "active_customer"),
+                countIn("installation_complete", "active_customer", "cancelled"),
             contracts: pipeline.converted,
             installs: countIn(
                 "installation_scheduled",
@@ -135,7 +145,9 @@ export default function AdminDashboard({ user }: Props) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
-                            {!hasAlerts ? (
+                            {pipelineQuery.isPending || permitsQuery.isPending ? (
+                                <Skeleton className="h-10 mx-6 mb-6" />
+                            ) : !hasAlerts ? (
                                 <div className="px-6 pb-6 flex items-center gap-2 text-sm text-emerald-600">
                                     <CheckCircle2 className="w-4 h-4" />
                                     All leads are up to date

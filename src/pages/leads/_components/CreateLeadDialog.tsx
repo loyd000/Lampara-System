@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useCreateLead, useCurrentUser, useUsers } from "@/lib/supabase/hooks.ts";
+import { useCreateLead, useUsers } from "@/lib/supabase/hooks.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
 import {
@@ -40,8 +40,9 @@ type Props = { open: boolean; onClose: () => void };
 export default function CreateLeadDialog({ open, onClose }: Props) {
     const { mutateAsync: createLead } = useCreateLead();
     const { data: users } = useUsers();
-    const { data: currentUser } = useCurrentUser();
-    const salesReps = users?.filter(u => ["sales", "admin"].includes(u.role)) ?? [];
+    // Everyone who can create a lead is admin/superadmin now — no self-hiding
+    // rule like the old "sales reps only assign to themselves" behaviour.
+    const assignableReps = users?.filter(u => ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -107,20 +108,18 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                     </Select>
                                     <FormMessage /></FormItem>
                             )} />
-                            {currentUser?.role !== "sales" && (
-                                <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
-                                    <FormItem><FormLabel>Assign to Sales Rep</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                {salesReps.map(u => (
-                                                    <SelectItem key={u._id} value={u._id}>{u.name ?? u.email}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage /></FormItem>
-                                )} />
-                            )}
+                            <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
+                                <FormItem><FormLabel>Assign To</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {assignableReps.map(u => (
+                                                <SelectItem key={u._id} value={u._id}>{u.name ?? u.email}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage /></FormItem>
+                            )} />
                         </div>
 
                         <p className="text-sm font-semibold text-muted-foreground pt-1">Property / Site</p>

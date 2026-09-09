@@ -39,7 +39,7 @@ type Props = {
 export default function CreateTicketDialog({ open, onClose, leadId, installationId }: Props) {
     const { mutateAsync: createTicket } = useCreateTicket();
     const { data: users } = useUsers();
-    const assignableUsers = users?.filter((u) => ["admin", "office", "field"].includes(u.role)) ?? [];
+    const assignableUsers = users?.filter((u) => ["admin", "superadmin", "field"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),

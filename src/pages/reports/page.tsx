@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { STAGE_LABELS, STAGE_COLORS, STAGES } from "@/lib/constants.ts";
 import { cn } from "@/lib/utils.ts";
+import { QueryError } from "@/components/query-error.tsx";
 
 const PERMIT_TYPE_LABELS: Record<string, string> = {
     building_permit: "Building Permit",
@@ -28,11 +29,22 @@ const FINANCING_LABELS: Record<string, string> = {
 };
 
 export default function ReportsPage() {
-    const { data: pipeline } = usePipelineSummary();
-    const { data: permits } = usePermitsSummary();
-    const { data: revenue } = useQuotesRevenueSummary();
-    const { data: installations } = useInstallationsSummary();
+    const pipelineQuery = usePipelineSummary();
+    const permitsQuery = usePermitsSummary();
+    const revenueQuery = useQuotesRevenueSummary();
+    const installationsQuery = useInstallationsSummary();
+    const { data: pipeline } = pipelineQuery;
+    const { data: permits } = permitsQuery;
+    const { data: revenue } = revenueQuery;
+    const { data: installations } = installationsQuery;
     const navigate = useNavigate();
+
+    const queries = [pipelineQuery, permitsQuery, revenueQuery, installationsQuery];
+    if (queries.some((query) => query.isError)) {
+        return <QueryError title="Couldn't load your reports" onRetry={() => {
+            queries.forEach((query) => void query.refetch());
+        }} />;
+    }
 
     const isLoading = pipeline === undefined || permits === undefined || revenue === undefined || installations === undefined;
 

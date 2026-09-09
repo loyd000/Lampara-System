@@ -4,7 +4,6 @@ import { ArrowLeft, Clock, Pencil, Trash2, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-    useAddNote,
     useCurrentUser,
     useDeleteLead,
     useInstallationForLead,
@@ -23,9 +22,11 @@ import {
     INSPECTION_LABEL_SHORT,
     PROPERTY_TYPE_LABELS,
     SOURCE_LABELS,
-    STAGES,
+    STAGE_GROUPS,
+    STAGE_GROUP_LABELS,
     STAGE_LABELS,
     type Stage,
+    type StageGroup,
 } from "@/lib/constants.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
@@ -35,10 +36,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.t
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
+    SelectSeparator,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select.tsx";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog.tsx";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -51,6 +63,8 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
 import EditLeadDialog from "../../_components/EditLeadDialog.tsx";
+import LeadFiles from "../_components/LeadFiles.tsx";
+import LeadNotes from "../_components/LeadNotes.tsx";
 import OcularInspectionTab from "../_components/ocular/OcularInspectionTab.tsx";
 import QuotesSection from "../_components/QuotesSection.tsx";
 import ContractSection from "../_components/ContractSection.tsx";
@@ -139,11 +153,10 @@ export default function LeadDetailPage() {
 
     const { mutateAsync: updateStage } = useUpdateStage();
     const { mutateAsync: deleteLead } = useDeleteLead();
-    const { mutateAsync: addNote } = useAddNote();
 
-    const [note, setNote] = useState("");
-    const [savingNote, setSavingNote] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
+    const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
     const now = useNow();
 
     const requested = searchParams.get("tab");
@@ -196,9 +209,13 @@ export default function LeadDetailPage() {
     const prop = properties[0];
     const daysOld = Math.floor((now - new Date(lead.lastActivityAt).getTime()) / 86400000);
     const isStale =
-        daysOld >= 7 && !["active_customer", "installation_complete"].includes(lead.stage);
-    const canEdit = ["admin", "sales", "office"].includes(currentUser?.role ?? "");
-    const canDelete = currentUser?.role === "admin";
+        daysOld >= 7 && !["active_customer", "installation_complete", "cancelled"].includes(lead.stage);
+    const canEdit = ["superadmin", "admin"].includes(currentUser?.role ?? "");
+    const canDelete = ["superadmin", "admin"].includes(currentUser?.role ?? "");
+    // Notes and files are the two things a technician contributes to a lead
+    // they cannot otherwise edit — a note from the crew on site is exactly what
+    // the office needs to read.
+    const canContribute = ["superadmin", "admin", "field"].includes(currentUser?.role ?? "");
 
     const openTickets = tickets?.filter((t) => !["resolved", "closed"].includes(t.status)) ?? [];
     const counts: Record<string, number | undefined> = {
@@ -209,27 +226,29 @@ export default function LeadDetailPage() {
         maintenance: openTickets.length,
     };
 
-    async function handleStageChange(stage: string) {
+    async function applyStageChange(stage: Stage, cancelledReason?: string) {
         try {
-            await updateStage({ id: lead!._id, stage: stage as Stage });
-            toast.success(`Moved to ${STAGE_LABELS[stage as Stage]}`);
+            await updateStage({ id: lead!._id, stage, cancelledReason });
+            toast.success(stage === "cancelled" ? "Lead cancelled" : `Moved to ${STAGE_LABELS[stage]}`);
         } catch {
             toast.error("Failed to update stage");
         }
     }
 
-    async function handleAddNote() {
-        if (!note.trim()) return;
-        setSavingNote(true);
-        try {
-            await addNote({ id: lead!._id, note: note.trim() });
-            setNote("");
-            toast.success("Note added");
-        } catch {
-            toast.error("Failed to add note");
-        } finally {
-            setSavingNote(false);
+    // Cancelling is the one stage change that needs a reason on record — every
+    // other move is self-explanatory from the stage name alone.
+    function handleStageChange(stage: string) {
+        if (stage === "cancelled") {
+            setCancelReason("");
+            setCancelPromptOpen(true);
+            return;
         }
+        void applyStageChange(stage as Stage);
+    }
+
+    async function confirmCancel() {
+        await applyStageChange("cancelled", cancelReason.trim() || undefined);
+        setCancelPromptOpen(false);
     }
 
     async function handleDelete() {
@@ -320,10 +339,16 @@ export default function LeadDetailPage() {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {STAGES.map((s) => (
-                                <SelectItem key={s} value={s}>
-                                    {STAGE_LABELS[s]}
-                                </SelectItem>
+                            {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group, i) => (
+                                <SelectGroup key={group}>
+                                    {i > 0 && <SelectSeparator />}
+                                    <SelectLabel>{STAGE_GROUP_LABELS[group]}</SelectLabel>
+                                    {STAGE_GROUPS[group].map((s) => (
+                                        <SelectItem key={s} value={s}>
+                                            {STAGE_LABELS[s]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
                             ))}
                         </SelectContent>
                     </Select>
@@ -352,87 +377,116 @@ export default function LeadDetailPage() {
                     narrow rail, values in a readable column, hairlines instead
                     of boxes. Nothing here is repeated from the header. */}
                 <TabsContent value="overview" className="mt-6">
-                    <dl className="max-w-2xl divide-y divide-border">
-                        <DetailRow label="Phone">
-                            <a
-                                href={`tel:${lead.phone}`}
-                                className="underline-offset-4 hover:underline hover:text-primary transition-colors"
-                            >
-                                {lead.phone}
-                            </a>
-                        </DetailRow>
-
-                        <DetailRow label="Email">
-                            {lead.email ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] gap-8 lg:gap-12 items-start">
+                        <dl className="divide-y divide-border">
+                            <DetailRow label="Phone">
                                 <a
-                                    href={`mailto:${lead.email}`}
-                                    className="underline-offset-4 hover:underline hover:text-primary transition-colors break-all"
+                                    href={`tel:${lead.phone}`}
+                                    className="underline-offset-4 hover:underline hover:text-primary transition-colors"
                                 >
-                                    {lead.email}
+                                    {lead.phone}
                                 </a>
-                            ) : (
-                                <NotRecorded />
-                            )}
-                        </DetailRow>
+                            </DetailRow>
 
-                        <DetailRow label="Address">
-                            {prop ? (
-                                <>
-                                    {prop.address}
-                                    <span className="block text-muted-foreground">
-                                        {prop.city}, {prop.state} {prop.zip}
+                            <DetailRow label="Email">
+                                {lead.email ? (
+                                    <a
+                                        href={`mailto:${lead.email}`}
+                                        className="underline-offset-4 hover:underline hover:text-primary transition-colors break-all"
+                                    >
+                                        {lead.email}
+                                    </a>
+                                ) : (
+                                    <NotRecorded />
+                                )}
+                            </DetailRow>
+
+                            <DetailRow label="Address">
+                                {prop ? (
+                                    <>
+                                        {prop.address}
+                                        <span className="block text-muted-foreground">
+                                            {prop.city}, {prop.state} {prop.zip}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <NotRecorded
+                                        action={canEdit ? "Add a property" : undefined}
+                                        onAction={() => setEditOpen(true)}
+                                    />
+                                )}
+                            </DetailRow>
+
+                            {prop && (
+                                <DetailRow label="Property type">
+                                    {PROPERTY_TYPE_LABELS[prop.propertyType] ?? prop.propertyType}
+                                </DetailRow>
+                            )}
+
+                            <DetailRow label="Source">
+                                {SOURCE_LABELS[lead.source] ?? lead.source}
+                                {lead.referredBy && (
+                                    <span className="text-muted-foreground">
+                                        {" "}
+                                        · referred by {lead.referredBy}
                                     </span>
-                                </>
-                            ) : (
-                                <NotRecorded
-                                    action={canEdit ? "Add a property" : undefined}
-                                    onAction={() => setEditOpen(true)}
-                                />
+                                )}
+                            </DetailRow>
+
+                            <DetailRow label="Assigned to">
+                                {lead.assignedRepName ?? <NotRecorded label="Unassigned" />}
+                            </DetailRow>
+
+                            {lead.convertedAt && (
+                                <DetailRow label="Customer since">
+                                    {new Date(lead.convertedAt).toLocaleDateString(undefined, {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                    })}
+                                </DetailRow>
                             )}
-                        </DetailRow>
 
-                        {prop && (
-                            <DetailRow label="Property type">
-                                {PROPERTY_TYPE_LABELS[prop.propertyType] ?? prop.propertyType}
-                            </DetailRow>
-                        )}
-
-                        <DetailRow label="Source">
-                            {SOURCE_LABELS[lead.source] ?? lead.source}
-                            {lead.referredBy && (
-                                <span className="text-muted-foreground">
-                                    {" "}
-                                    · referred by {lead.referredBy}
-                                </span>
+                            {lead.stage === "cancelled" && (
+                                <DetailRow label="Cancelled">
+                                    {lead.cancelledAt && (
+                                        <span className="text-muted-foreground">
+                                            {new Date(lead.cancelledAt).toLocaleDateString(undefined, {
+                                                day: "numeric",
+                                                month: "long",
+                                                year: "numeric",
+                                            })}
+                                            {lead.cancelledReason && " — "}
+                                        </span>
+                                    )}
+                                    {lead.cancelledReason ?? (
+                                        <span className="text-muted-foreground">No reason given</span>
+                                    )}
+                                </DetailRow>
                             )}
-                        </DetailRow>
 
-                        <DetailRow label="Assigned to">
-                            {lead.assignedRepName ?? <NotRecorded label="Unassigned" />}
-                        </DetailRow>
+                            {lead.notes && (
+                                <DetailRow label="Notes">
+                                    <p className="whitespace-pre-wrap">{lead.notes}</p>
+                                </DetailRow>
+                            )}
 
-                        {lead.convertedAt && (
-                            <DetailRow label="Customer since">
-                                {new Date(lead.convertedAt).toLocaleDateString(undefined, {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                })}
-                            </DetailRow>
-                        )}
+                            {prop?.notes && (
+                                <DetailRow label="Site notes">
+                                    <p className="whitespace-pre-wrap">{prop.notes}</p>
+                                </DetailRow>
+                            )}
+                        </dl>
 
-                        {lead.notes && (
-                            <DetailRow label="Notes">
-                                <p className="whitespace-pre-wrap">{lead.notes}</p>
-                            </DetailRow>
-                        )}
-
-                        {prop?.notes && (
-                            <DetailRow label="Site notes">
-                                <p className="whitespace-pre-wrap">{prop.notes}</p>
-                            </DetailRow>
-                        )}
-                    </dl>
+                        {/* Notes and files: what people write down about this
+                            lead, and what they attach to it. Both are additions
+                            to the record rather than facts about the property,
+                            so they sit beside the spec sheet, not inside it. */}
+                        <div className="space-y-8 lg:sticky lg:top-14">
+                            <LeadNotes leadId={lead._id} canWrite={canContribute} />
+                            <LeadFiles leadId={lead._id} canWrite={canContribute} />
+                        </div>
+                    </div>
                 </TabsContent>
 
                 {/* Site Ocular Inspection */}
@@ -484,32 +538,9 @@ export default function LeadDetailPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <div className="px-6 pb-4 border-b space-y-2">
-                                <Textarea
-                                    placeholder="Add a note or update…"
-                                    value={note}
-                                    onChange={(e) => setNote(e.target.value)}
-                                    className="text-sm min-h-[72px] resize-none"
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                                            handleAddNote();
-                                        }
-                                    }}
-                                />
-                                <div className="flex items-center justify-between gap-3">
-                                    <p className="text-[11px] text-muted-foreground">
-                                        ⌘/Ctrl + Enter to save
-                                    </p>
-                                    <Button
-                                        size="sm"
-                                        onClick={handleAddNote}
-                                        disabled={savingNote || !note.trim()}
-                                    >
-                                        {savingNote ? "Saving…" : "Add Note"}
-                                    </Button>
-                                </div>
-                            </div>
-
+                            {/* Read-only. This is the system's own record of
+                                what happened; anything a person wants to say is
+                                a note on the Overview. */}
                             <div className="divide-y">
                                 {activity === undefined ? (
                                     <div className="px-6 py-4 space-y-2">
@@ -519,7 +550,8 @@ export default function LeadDetailPage() {
                                     </div>
                                 ) : activity.length === 0 ? (
                                     <p className="px-6 py-8 text-sm text-muted-foreground text-center">
-                                        No activity yet. Notes and pipeline changes show up here.
+                                        No activity yet. Pipeline changes and every note written
+                                        show up here.
                                     </p>
                                 ) : (
                                     activity.map((log) => (
@@ -559,6 +591,36 @@ export default function LeadDetailPage() {
                 open={editOpen}
                 onClose={() => setEditOpen(false)}
             />
+
+            <Dialog open={cancelPromptOpen} onOpenChange={setCancelPromptOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Cancel this lead?</DialogTitle>
+                        <DialogDescription>
+                            {lead.firstName} {lead.lastName} moves to Completed as Cancelled.
+                            Say why — this is the only place that reason lives.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        autoFocus
+                        placeholder="Reason (optional, but worth leaving one)"
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        className="min-h-[88px] text-sm"
+                    />
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setCancelPromptOpen(false)}>
+                            Back
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => void confirmCancel()}
+                        >
+                            Cancel Lead
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

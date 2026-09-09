@@ -7,12 +7,37 @@
  * can put straight into an <img src> or download link.
  */
 
+import { compressImage } from "../image.ts";
 import { supabase, toAppError } from "./client.ts";
 
 export type Bucket = "photos" | "documents";
 
 /** How long a minted signed URL stays valid. Long enough to view a gallery. */
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+/**
+ * A year, and immutable with it.
+ *
+ * Object paths carry a UUID and are never rewritten — the same path always
+ * serves the same bytes — so there is nothing for a shorter window to catch.
+ * The old one-hour value meant a lead page with twenty photos re-downloaded all
+ * twenty every hour, from an egress budget of 5 GB a month.
+ */
+const CACHE_CONTROL = "31536000, immutable";
+
+/**
+ * The largest file either bucket accepts, matching `file_size_limit` in 0014.
+ *
+ * Checked in the client so the user gets a sentence instead of a 413, but the
+ * bucket is what actually enforces it.
+ */
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+export function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function sanitize(filename: string): string {
     const cleaned = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
@@ -34,12 +59,23 @@ export async function uploadFile(
     file: File,
 ): Promise<string> {
     const { error } = await supabase.storage.from(bucket).upload(path, file, {
-        cacheControl: "3600",
+        cacheControl: CACHE_CONTROL,
         contentType: file.type || "application/octet-stream",
         upsert: false,
     });
     if (error) throw toAppError(error, "Upload failed");
     return path;
+}
+
+/**
+ * Shrinks a photo before it is measured, named or uploaded.
+ *
+ * Compression can change the extension (`.HEIC` → `.webp`), so it has to run
+ * before `buildPath` — otherwise the stored name would describe bytes that are
+ * no longer there. Non-images and anything already small come back untouched.
+ */
+export function prepareUpload(file: File): Promise<File> {
+    return compressImage(file);
 }
 
 /** Uploads several files sequentially, returning their paths in order. */
@@ -50,7 +86,8 @@ export async function uploadFiles(
     files: File[],
 ): Promise<string[]> {
     const paths: string[] = [];
-    for (const file of files) {
+    for (const original of files) {
+        const file = await prepareUpload(original);
         paths.push(await uploadFile(bucket, buildPath(prefix, ownerId, file), file));
     }
     return paths;

@@ -17,6 +17,7 @@ import type {
     ChecklistItem,
     FinancingOption,
     InstallationStatus,
+    LeadFileKind,
     LeadSource,
     LeadStage,
     PermitStatus,
@@ -33,6 +34,8 @@ import type { Id } from "./types.ts";
 
 import * as contractsApi from "./queries/contracts.ts";
 import * as installationsApi from "./queries/installations.ts";
+import * as leadFilesApi from "./queries/lead-files.ts";
+import * as leadNotesApi from "./queries/lead-notes.ts";
 import * as leadsApi from "./queries/leads.ts";
 import * as permitsApi from "./queries/permits.ts";
 import * as quotesApi from "./queries/quotes.ts";
@@ -55,6 +58,12 @@ export const queryKeys = {
     leadProperties: (id: string) => ["leads", "properties", id] as const,
     leadActivity: (id: string) => ["leads", "activity", id] as const,
     leadSearch: (q: string) => ["leads", "search", q] as const,
+
+    leadNotes: ["leadNotes"] as const,
+    leadNotesForLead: (leadId: string) => ["leadNotes", "lead", leadId] as const,
+
+    leadFiles: ["leadFiles"] as const,
+    leadFilesForLead: (leadId: string) => ["leadFiles", "lead", leadId] as const,
 
     surveys: ["surveys"] as const,
     surveysForLead: (leadId: string) => ["surveys", "lead", leadId] as const,
@@ -252,11 +261,90 @@ export function useUpdateProperty() {
     });
 }
 
-export function useAddNote() {
+// ─── Overview: notes ──────────────────────────────────────────────────────
+
+export function useLeadNotes(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.leadNotesForLead(leadId ?? ""),
+        queryFn: () => leadNotesApi.listLeadNotes(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+/**
+ * Writing a note also writes an activity line and bumps `last_activity_at`,
+ * so the lead's staleness and history both have to be refreshed with it.
+ */
+export function useAddLeadNote() {
     const client = useQueryClient();
     return useMutation({
-        mutationFn: leadsApi.addNote,
-        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.leads }),
+        mutationFn: leadNotesApi.addLeadNote,
+        onSuccess: (_result, variables) =>
+            Promise.all([
+                client.invalidateQueries({
+                    queryKey: queryKeys.leadNotesForLead(variables.leadId),
+                }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+/** An edit touches only the note's own text — nothing downstream reads it. */
+export function useUpdateLeadNote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadNotesApi.updateLeadNote,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.leadNotes }),
+    });
+}
+
+export function useDeleteLeadNote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadNotesApi.deleteLeadNote,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.leadNotes }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
+            ]),
+    });
+}
+
+// ─── Overview: files ──────────────────────────────────────────────────────
+
+export function useLeadFiles(leadId: Id<"leads"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.leadFilesForLead(leadId ?? ""),
+        queryFn: () => leadFilesApi.listLeadFiles(leadId!),
+        enabled: !!leadId,
+    });
+}
+
+export function useUploadLeadFiles() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadFilesApi.uploadLeadFiles,
+        onSuccess: (_result, variables) =>
+            Promise.all([
+                client.invalidateQueries({
+                    queryKey: queryKeys.leadFilesForLead(variables.leadId),
+                }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useDeleteLeadFile() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: leadFilesApi.deleteLeadFile,
+        onSuccess: (_result, variables) =>
+            Promise.all([
+                client.invalidateQueries({
+                    queryKey: queryKeys.leadFilesForLead(variables.leadId),
+                }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
+            ]),
     });
 }
 
@@ -309,42 +397,6 @@ export function useSaveSurveyReport() {
     return useMutation({
         mutationFn: surveysApi.saveSurveyReport,
         onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.surveys }),
-    });
-}
-
-export function useSubmitSurveyReport() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: surveysApi.submitSurveyReport,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.surveys }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
-export function useApproveSurveyReport() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: surveysApi.approveSurveyReport,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.surveys }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
-export function useReopenSurveyReport() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: surveysApi.reopenSurveyReport,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.surveys }),
-                invalidatePipeline(client),
-            ]),
     });
 }
 
@@ -731,6 +783,7 @@ export type {
     ChecklistItem,
     FinancingOption,
     InstallationStatus,
+    LeadFileKind,
     LeadSource,
     LeadStage,
     PermitStatus,

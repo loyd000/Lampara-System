@@ -10,7 +10,7 @@
  * camelCase document types in ./types.ts — the query layer maps between them.
  */
 
-export type UserRole = "admin" | "sales" | "field" | "office";
+export type UserRole = "superadmin" | "admin" | "field";
 
 export type LeadStage =
     | "lead"
@@ -21,7 +21,8 @@ export type LeadStage =
     | "permitting"
     | "installation_scheduled"
     | "installation_complete"
-    | "active_customer";
+    | "active_customer"
+    | "cancelled";
 
 export type LeadSource =
     | "referral"
@@ -91,6 +92,9 @@ export type UserRow = Timestamps & {
     role: UserRole;
     avatar_url: string | null;
     is_active: boolean;
+    /** Null until the first time a superadmin lets this account in. */
+    approved_at: string | null;
+    approved_by: string | null;
 };
 
 export type LeadRow = Timestamps & {
@@ -106,6 +110,8 @@ export type LeadRow = Timestamps & {
     last_activity_at: string;
     converted_at: string | null;
     notes: string | null;
+    cancelled_reason: string | null;
+    cancelled_at: string | null;
 };
 
 export type PropertyRow = Timestamps & {
@@ -271,6 +277,31 @@ export type ServiceTicketRow = Timestamps & {
     warranty_related: boolean;
 };
 
+/** Overview attachments: `photo` lives in the photos bucket, `document` in documents. */
+export type LeadFileKind = "photo" | "document";
+
+export type LeadNoteRow = Timestamps & {
+    id: string;
+    lead_id: string;
+    /** Null once the author's account has been deleted; the note survives. */
+    author_id: string | null;
+    body: string;
+};
+
+export type LeadFileRow = {
+    id: string;
+    lead_id: string;
+    /** Object path under the `leads/<lead_id>/` prefix of the bucket `kind` picks. */
+    path: string;
+    /** The name the uploader saw. `path` is uuid-prefixed and not showable. */
+    name: string;
+    mime: string;
+    size_bytes: number;
+    kind: LeadFileKind;
+    uploaded_by: string | null;
+    created_at: string;
+};
+
 export type ActivityLogRow = {
     id: string;
     lead_id: string;
@@ -298,6 +329,8 @@ export type Database = {
             properties: TableDef<PropertyRow>;
             surveys: TableDef<SurveyRow>;
             survey_photos: TableDef<SurveyPhotoRow>;
+            lead_notes: TableDef<LeadNoteRow>;
+            lead_files: TableDef<LeadFileRow>;
             quotes: TableDef<QuoteRow>;
             contracts: TableDef<ContractRow>;
             permits: TableDef<PermitRow>;
@@ -369,6 +402,7 @@ export type Database = {
                     p_lead_id: string;
                     p_stage: LeadStage;
                     p_only_from?: LeadStage[] | null;
+                    p_cancelled_reason?: string | null;
                 };
                 Returns: LeadStage | null;
             };
@@ -391,18 +425,6 @@ export type Database = {
             can_edit_survey: {
                 Args: { p_survey_id: string };
                 Returns: boolean;
-            };
-            submit_survey_report: {
-                Args: { p_survey_id: string };
-                Returns: undefined;
-            };
-            approve_survey_report: {
-                Args: { p_survey_id: string };
-                Returns: undefined;
-            };
-            reopen_survey_report: {
-                Args: { p_survey_id: string };
-                Returns: undefined;
             };
         };
         Enums: Record<never, never>;
