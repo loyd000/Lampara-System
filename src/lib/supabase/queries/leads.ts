@@ -2,6 +2,7 @@
 
 import { supabase, toAppError, unwrap } from "../client.ts";
 import { removeFiles } from "../storage.ts";
+import { notifyEvent } from "./notifications.ts";
 import type {
     ActivityLogRow,
     LeadRow,
@@ -305,7 +306,17 @@ export async function createLead(args: CreateLeadArgs): Promise<Id<"leads">> {
     });
 
     if (error) throw toAppError(error, "Failed to create lead");
-    return data as string;
+    const leadId = data as string;
+
+    if (args.assignedSalesRepId) {
+        await notifyEvent({
+            event: "lead_assigned",
+            leadId,
+            recipientUserIds: [args.assignedSalesRepId],
+        });
+    }
+
+    return leadId;
 }
 
 /** Omitted fields stay unchanged; null explicitly clears a nullable field. */
@@ -321,6 +332,18 @@ export async function updateLead(args: {
     assignedSalesRepId?: Id<"users"> | null;
 }): Promise<void> {
     const { id, ...fields } = args;
+
+    // Fetch the current assignee before overwriting it — the only way to know
+    // whether this update is actually a reassignment worth notifying about.
+    let previousRepId: string | null = null;
+    if (fields.assignedSalesRepId !== undefined) {
+        const { data: current } = await supabase
+            .from("leads")
+            .select("assigned_sales_rep_id")
+            .eq("id", id)
+            .maybeSingle<{ assigned_sales_rep_id: string | null }>();
+        previousRepId = current?.assigned_sales_rep_id ?? null;
+    }
 
     const { error } = await supabase
         .from("leads")
@@ -348,6 +371,18 @@ export async function updateLead(args: {
         entityId: id,
         touchLead: false,
     });
+
+    if (
+        fields.assignedSalesRepId !== undefined &&
+        fields.assignedSalesRepId &&
+        fields.assignedSalesRepId !== previousRepId
+    ) {
+        await notifyEvent({
+            event: "lead_assigned",
+            leadId: id,
+            recipientUserIds: [fields.assignedSalesRepId],
+        });
+    }
 }
 
 export async function updateStage(args: {

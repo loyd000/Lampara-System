@@ -5,6 +5,9 @@ const db = vi.hoisted(() => ({
     update: vi.fn(),
     eq: vi.fn(),
     rpc: vi.fn(),
+    select: vi.fn(),
+    selectEq: vi.fn(),
+    maybeSingle: vi.fn(),
 }));
 
 vi.mock("../client.ts", () => ({
@@ -13,13 +16,23 @@ vi.mock("../client.ts", () => ({
     unwrap: vi.fn(),
 }));
 
+vi.mock("./notifications.ts", () => ({
+    notifyEvent: vi.fn(),
+}));
+
 import { updateLead, updateProperty } from "./leads.ts";
 
 beforeEach(() => {
     vi.clearAllMocks();
-    db.from.mockReturnValue({ update: db.update });
+    // `updateLead` reads the lead's current rep before overwriting it, to
+    // detect an actual reassignment worth notifying about — a separate
+    // `select().eq().maybeSingle()` chain from the `update().eq()` one below.
+    db.from.mockReturnValue({ update: db.update, select: db.select });
     db.update.mockReturnValue({ eq: db.eq });
     db.eq.mockResolvedValue({ error: null });
+    db.select.mockReturnValue({ eq: db.selectEq });
+    db.selectEq.mockReturnValue({ maybeSingle: db.maybeSingle });
+    db.maybeSingle.mockResolvedValue({ data: null });
     db.rpc.mockResolvedValue({ error: null });
 });
 

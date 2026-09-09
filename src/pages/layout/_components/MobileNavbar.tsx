@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 import { cn } from "@/lib/utils.ts";
-import { LayoutDashboard, Users, KanbanSquare, UserCog, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, KanbanSquare, UserCog, BarChart3, CalendarDays } from "lucide-react";
 
 export default function MobileNav() {
     const { data: currentUser } = useCurrentUser();
@@ -11,6 +11,7 @@ export default function MobileNav() {
         { label: "Home", to: "/", icon: LayoutDashboard },
         { label: "Pipeline", to: "/pipeline", icon: KanbanSquare },
         { label: "Leads", to: "/leads", icon: Users },
+        { label: "Calendar", to: "/calendar", icon: CalendarDays },
         ...(["superadmin", "admin"].includes(role) ? [{ label: "Reports", to: "/reports", icon: BarChart3 }] : []),
         ...(["superadmin", "admin"].includes(role) ? [{ label: "Team", to: "/team", icon: UserCog }] : []),
     ];

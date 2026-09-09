@@ -333,26 +333,28 @@ export default function OcularReportForm({
                         <Label className="text-xs font-medium text-muted-foreground">
                             Coordinates
                         </Label>
-                        <div className="flex gap-2">
-                            <input
-                                {...register("latitude")}
-                                placeholder="Latitude"
-                                inputMode="decimal"
-                                disabled={disabled}
-                                className="flex-1 min-w-0 h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-                            />
-                            <input
-                                {...register("longitude")}
-                                placeholder="Longitude"
-                                inputMode="decimal"
-                                disabled={disabled}
-                                className="flex-1 min-w-0 h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-                            />
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="flex gap-2">
+                                <input
+                                    {...register("latitude")}
+                                    placeholder="Latitude"
+                                    inputMode="decimal"
+                                    disabled={disabled}
+                                    className="flex-1 min-w-0 h-10 sm:h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                                />
+                                <input
+                                    {...register("longitude")}
+                                    placeholder="Longitude"
+                                    inputMode="decimal"
+                                    disabled={disabled}
+                                    className="flex-1 min-w-0 h-10 sm:h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                                />
+                            </div>
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="size-9 shrink-0"
+                                className="size-10 sm:size-9 shrink-0 w-full sm:w-auto"
                                 onClick={useMyLocation}
                                 disabled={disabled || locating}
                                 title="Use this device's location"
@@ -363,6 +365,7 @@ export default function OcularReportForm({
                                 ) : (
                                     <Crosshair className="size-4" />
                                 )}
+                                <span className="sm:hidden ml-1.5 text-sm">Use my location</span>
                             </Button>
                         </div>
                     </div>

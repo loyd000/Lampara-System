@@ -104,13 +104,13 @@ export default function AdminDashboard({ user }: Props) {
                             <CardTitle className="text-base">Recent Leads</CardTitle>
                             <Button size="sm" onClick={() => navigate("/leads")}>View all</Button>
                         </CardHeader>
-                        <CardContent className="p-0">
+                        <CardContent className="p-0 overflow-x-auto">
                             {recentLeads === undefined ? (
                                 <div className="px-6 py-4 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
                             ) : recentLeads.length === 0 ? (
                                 <p className="px-6 py-8 text-muted-foreground text-sm">No leads yet.</p>
                             ) : (
-                                <table className="w-full text-sm">
+                                <table className="w-full text-sm min-w-[380px]">
                                     <tbody>
                                         {recentLeads.map(lead => (
                                             <tr

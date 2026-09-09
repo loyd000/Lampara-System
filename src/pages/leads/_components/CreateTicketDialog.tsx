@@ -80,7 +80,15 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                if (!v) {
+                    form.reset();
+                    onClose();
+                }
+            }}
+        >
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New Service Ticket</DialogTitle>
@@ -161,7 +169,7 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
                         )} />
 
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                            <Button type="button" variant="ghost" onClick={() => { form.reset(); onClose(); }}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting ? "Creating…" : "Create Ticket"}
                             </Button>

@@ -124,7 +124,7 @@ export default function LeadsPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-lg border border-border overflow-hidden bg-card shadow-2xs">
+            <div className="rounded-lg border border-border overflow-x-auto bg-card shadow-2xs">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b bg-muted/30">

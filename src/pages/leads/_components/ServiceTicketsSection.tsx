@@ -45,6 +45,7 @@ export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props)
     const { mutateAsync: updateStatus } = useUpdateTicketStatus();
     const [createOpen, setCreateOpen] = useState(false);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
 
     const isUnlocked = stage === "active_customer" || stage === "installation_complete";
 
@@ -61,11 +62,14 @@ export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props)
         ticketId: Id<"serviceTickets">,
         status: "open" | "in_progress" | "resolved" | "closed",
     ) {
+        setChangingStatusId(ticketId);
         try {
             await updateStatus({ ticketId, status });
             toast.success(`Ticket ${status.replace("_", " ")}`);
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to update ticket");
+        } finally {
+            setChangingStatusId(null);
         }
     }
 
@@ -167,25 +171,29 @@ export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props)
                                             {canEdit && (
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {ticket.status === "open" && (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                        <Button size="sm" variant="outline" className="h-9 text-xs"
+                                                            disabled={changingStatusId === ticket._id}
                                                             onClick={() => handleStatusChange(ticket._id as Id<"serviceTickets">, "in_progress")}>
                                                             Start Work
                                                         </Button>
                                                     )}
                                                     {ticket.status === "in_progress" && (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800"
+                                                        <Button size="sm" variant="outline" className="h-9 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800"
+                                                            disabled={changingStatusId === ticket._id}
                                                             onClick={() => handleStatusChange(ticket._id as Id<"serviceTickets">, "resolved")}>
                                                             Mark Resolved
                                                         </Button>
                                                     )}
                                                     {ticket.status === "resolved" && (
-                                                        <Button size="sm" variant="ghost" className="h-7 text-xs"
+                                                        <Button size="sm" variant="ghost" className="h-9 text-xs"
+                                                            disabled={changingStatusId === ticket._id}
                                                             onClick={() => handleStatusChange(ticket._id as Id<"serviceTickets">, "closed")}>
                                                             Close Ticket
                                                         </Button>
                                                     )}
                                                     {["resolved", "closed"].includes(ticket.status) && (
-                                                        <Button size="sm" variant="ghost" className="h-7 text-xs"
+                                                        <Button size="sm" variant="ghost" className="h-9 text-xs"
+                                                            disabled={changingStatusId === ticket._id}
                                                             onClick={() => handleStatusChange(ticket._id as Id<"serviceTickets">, "open")}>
                                                             Reopen
                                                         </Button>

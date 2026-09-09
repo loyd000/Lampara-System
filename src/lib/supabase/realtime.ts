@@ -73,6 +73,14 @@ function rowIdOf(payload: RealtimePostgresChangesPayload<Row>): string | undefin
     return typeof value === "string" ? value : undefined;
 }
 
+/** `quote_items` rows carry the parent quote's id under `quote_id`, not `id`. */
+function quoteIdOf(payload: RealtimePostgresChangesPayload<Row>): string | undefined {
+    const row = (payload.new ?? {}) as Row;
+    const previous = (payload.old ?? {}) as Row;
+    const value = row.quote_id ?? previous.quote_id;
+    return typeof value === "string" ? value : undefined;
+}
+
 /** Which caches a change to `table` should refresh. */
 export function keysFor(
     table: string,
@@ -116,12 +124,22 @@ export function keysFor(
         // Overview file lists with them, since those read report photos too.
         case "survey_photos":
             return [queryKeys.surveys, queryKeys.leadFiles];
-        case "quotes":
-        case "quote_items":
+        case "quotes": {
+            const id = rowIdOf(payload);
             return [
                 ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),
+                ...(id ? [queryKeys.quoteWithItems(id)] : []),
                 queryKeys.reports,
             ];
+        }
+        case "quote_items": {
+            const quoteId = quoteIdOf(payload);
+            return [
+                ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),
+                ...(quoteId ? [queryKeys.quoteWithItems(quoteId)] : []),
+                queryKeys.reports,
+            ];
+        }
         case "contracts":
             return leadId ? [queryKeys.contractForLead(leadId)] : [queryKeys.contracts];
         case "permits":

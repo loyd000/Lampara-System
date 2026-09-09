@@ -290,7 +290,7 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                                     <Button
                                         size="icon"
                                         variant="ghost"
-                                        className="size-8"
+                                        className="size-9"
                                         onClick={onEdit}
                                     >
                                         <Pencil className="size-3.5" />
@@ -309,7 +309,7 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="size-8 text-muted-foreground hover:text-destructive"
+                                                    className="size-9 text-muted-foreground hover:text-destructive"
                                                     disabled={busy}
                                                 >
                                                     <Archive className="size-3.5" />
@@ -342,7 +342,7 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="size-8 text-muted-foreground hover:text-emerald-600"
+                                            className="size-9 text-muted-foreground hover:text-emerald-600"
                                             disabled={busy}
                                             onClick={onToggleActive}
                                         >
@@ -358,8 +358,8 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
 
                 {/* Expanded: line items table */}
                 {expanded && pkg.items.length > 0 && (
-                    <div className="border-t border-border/50 bg-muted/20 px-4 py-3">
-                        <table className="w-full text-sm">
+                    <div className="border-t border-border/50 bg-muted/20 px-4 py-3 overflow-x-auto">
+                        <table className="w-full text-sm min-w-[420px]">
                             <thead>
                                 <tr className="text-xs text-muted-foreground border-b border-border/40">
                                     <th className="text-left pb-2 font-medium w-8">#</th>

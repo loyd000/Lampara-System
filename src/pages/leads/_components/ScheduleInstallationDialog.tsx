@@ -65,7 +65,15 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                if (!v) {
+                    form.reset();
+                    onClose();
+                }
+            }}
+        >
             <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Schedule Installation</DialogTitle>
@@ -131,7 +139,7 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
                         )} />
 
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                            <Button type="button" variant="ghost" onClick={() => { form.reset(); onClose(); }}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting ? "Scheduling…" : "Schedule Installation"}
                             </Button>

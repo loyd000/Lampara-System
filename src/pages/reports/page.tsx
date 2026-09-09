@@ -73,7 +73,7 @@ export default function ReportsPage() {
                 />
                 <KpiCard
                     label="Pipeline Value"
-                    value={revenue ? `$${(revenue.pipelineValue / 1000).toFixed(0)}k` : undefined}
+                    value={revenue ? `₱${(revenue.pipelineValue / 1000).toFixed(0)}k` : undefined}
                     icon={<DollarSign className="w-5 h-5" />}
                     color="bg-secondary text-foreground"
                     loading={isLoading}
@@ -133,8 +133,8 @@ export default function ReportsPage() {
                         {isLoading ? <LoadingSkeleton /> : (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <MetricBox label="Closed Value" value={`$${revenue.closedValue.toLocaleString()}`} />
-                                    <MetricBox label="Avg Deal Size" value={`$${revenue.avgDealSize.toLocaleString()}`} />
+                                    <MetricBox label="Closed Value" value={`₱${revenue.closedValue.toLocaleString()}`} />
+                                    <MetricBox label="Avg Deal Size" value={`₱${revenue.avgDealSize.toLocaleString()}`} />
                                     <MetricBox label="Total Quotes" value={revenue.totalQuotes} />
                                     <MetricBox label="Accepted" value={revenue.acceptedQuotes} />
                                 </div>
@@ -266,13 +266,13 @@ export default function ReportsPage() {
                             </Badge>
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                                    <th className="px-6 py-3 text-left">Customer</th>
-                                    <th className="px-6 py-3 text-left">Stage</th>
-                                    <th className="px-6 py-3 text-left">Inactive</th>
+                                    <th className="px-3 sm:px-6 py-3 text-left">Customer</th>
+                                    <th className="px-3 sm:px-6 py-3 text-left">Stage</th>
+                                    <th className="px-3 sm:px-6 py-3 text-left">Inactive</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -282,13 +282,13 @@ export default function ReportsPage() {
                                         className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                                         onClick={() => navigate(`/leads/${lead._id}`)}
                                     >
-                                        <td className="px-6 py-3.5 font-medium">{lead.name}</td>
-                                        <td className="px-6 py-3.5">
+                                        <td className="px-3 sm:px-6 py-3.5 font-medium whitespace-nowrap">{lead.name}</td>
+                                        <td className="px-3 sm:px-6 py-3.5">
                                             <Badge className={cn(STAGE_COLORS[lead.stage as keyof typeof STAGE_COLORS], "text-xs")}>
                                                 {STAGE_LABELS[lead.stage as keyof typeof STAGE_LABELS]}
                                             </Badge>
                                         </td>
-                                        <td className="px-6 py-3.5">
+                                        <td className="px-3 sm:px-6 py-3.5">
                                             <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-xs">
                                                 {lead.daysStale}d inactive
                                             </Badge>

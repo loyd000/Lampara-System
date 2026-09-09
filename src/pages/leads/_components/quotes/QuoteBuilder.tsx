@@ -669,9 +669,11 @@ export default function QuoteBuilder({
                                                     {editable ? (
                                                         <Input
                                                             type="number"
+                                                            inputMode="decimal"
                                                             step="any"
                                                             min="0.01"
                                                             value={item.qty}
+                                                            onWheel={(e) => e.currentTarget.blur()}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     item.id,
@@ -679,7 +681,7 @@ export default function QuoteBuilder({
                                                                     parseFloat(e.target.value) || 0,
                                                                 )
                                                             }
-                                                            className="h-7 text-xs py-1 px-2"
+                                                            className="h-9 text-xs py-1 px-2"
                                                         />
                                                     ) : (
                                                         <span className="tabular-nums font-mono">
@@ -698,7 +700,7 @@ export default function QuoteBuilder({
                                                                     e.target.value,
                                                                 )
                                                             }
-                                                            className="h-7 text-xs py-1 px-2"
+                                                            className="h-9 text-xs py-1 px-2"
                                                         />
                                                     ) : (
                                                         <span className="text-muted-foreground">
@@ -710,9 +712,11 @@ export default function QuoteBuilder({
                                                     {editable ? (
                                                         <Input
                                                             type="number"
+                                                            inputMode="decimal"
                                                             step="any"
                                                             min="0"
                                                             value={item.unitPricePhp}
+                                                            onWheel={(e) => e.currentTarget.blur()}
                                                             onChange={(e) =>
                                                                 handleItemChange(
                                                                     item.id,
@@ -720,7 +724,7 @@ export default function QuoteBuilder({
                                                                     parseFloat(e.target.value) || 0,
                                                                 )
                                                             }
-                                                            className="h-7 text-xs py-1 px-2 text-right font-mono"
+                                                            className="h-9 text-xs py-1 px-2 text-right font-mono"
                                                         />
                                                     ) : (
                                                         <span className="tabular-nums font-mono">

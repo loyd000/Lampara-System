@@ -31,7 +31,7 @@ export function TextField({
                 {label}
             </Label>
             <div className="relative">
-                <Input id={id} {...props} className={cn("h-9", suffix && "pr-10")} />
+                <Input id={id} {...props} className={cn("h-10 sm:h-9", suffix && "pr-10")} />
                 {suffix && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
                         {suffix}
@@ -208,7 +208,7 @@ export function ApplianceField({
                 // horsepower, whatever the technician thinks is worth noting.
                 placeholder="qty / notes"
                 disabled={disabled || !checked}
-                className="h-8 text-sm w-full min-w-0 sm:w-auto sm:flex-1"
+                className="h-10 sm:h-8 text-sm w-full min-w-0 sm:w-auto sm:flex-1"
             />
         </div>
     );

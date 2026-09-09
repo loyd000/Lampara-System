@@ -18,6 +18,7 @@ import {
     type InstallationForInstaller,
 } from "../types.ts";
 import { advanceLeadStage, logActivity } from "./leads.ts";
+import { notifyEvent } from "./notifications.ts";
 
 export async function getInstallationForLead(
     leadId: Id<"leads">,
@@ -130,6 +131,13 @@ export async function createInstallation(args: {
         details: `Date: ${new Date(args.scheduledDate).toLocaleDateString()}`,
         entityType: "installation",
         entityId: installation.id,
+    });
+
+    await notifyEvent({
+        event: "installation_scheduled",
+        leadId: args.leadId,
+        recipientUserIds: args.assignedCrewIds,
+        meta: { scheduledDate: new Date(args.scheduledDate).toLocaleDateString() },
     });
 
     return installation.id;

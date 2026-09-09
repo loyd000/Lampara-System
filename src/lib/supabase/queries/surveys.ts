@@ -26,6 +26,7 @@ import {
     type SurveyForSurveyor,
 } from "../types.ts";
 import { advanceLeadStage, logActivity } from "./leads.ts";
+import { notifyEvent } from "./notifications.ts";
 
 type NameOnly = { name: string | null; email: string | null } | null;
 
@@ -175,6 +176,13 @@ export async function scheduleSurvey(args: {
         entityType: "survey",
         entityId: survey.id,
         touchLead: false,
+    });
+
+    await notifyEvent({
+        event: "inspection_scheduled",
+        leadId: args.leadId,
+        recipientUserIds: [args.assignedSurveyorId],
+        meta: { scheduledAt: new Date(args.scheduledAt).toLocaleString() },
     });
 
     return survey.id;
@@ -416,6 +424,47 @@ export async function cancelSurvey(args: {
         leadId: survey.lead_id,
         action: "Ocular inspection cancelled",
         details: args.reason,
+        entityType: "survey",
+        entityId: args.surveyId,
+    });
+}
+
+/**
+ * Hard-deletes a report — a mistaken or duplicate entry, not a called-off
+ * visit (that's `cancelSurvey`). Restricted to superadmin/admin by
+ * `surveys_delete`; `survey_photos` cascades at the DB level, but the
+ * storage objects those rows pointed at need explicit best-effort cleanup.
+ */
+export async function deleteSurvey(args: { surveyId: Id<"surveys"> }): Promise<void> {
+    const survey = unwrap(
+        await supabase
+            .from("surveys")
+            .select("lead_id, photo_paths")
+            .eq("id", args.surveyId)
+            .single(),
+        "Survey not found",
+    ) as { lead_id: string; photo_paths: string[] | null };
+
+    const { data: photoRows } = await supabase
+        .from("survey_photos")
+        .select("path")
+        .eq("survey_id", args.surveyId);
+
+    const paths = [
+        ...(survey.photo_paths ?? []),
+        ...((photoRows ?? []) as { path: string }[]).map((p) => p.path),
+    ];
+
+    const { error } = await supabase.from("surveys").delete().eq("id", args.surveyId);
+    if (error) throw toAppError(error, "Failed to delete inspection report");
+
+    // Best-effort: the row is already gone, so a storage hiccup here should
+    // not surface as a failed delete.
+    await removeFiles("photos", paths);
+
+    await logActivity({
+        leadId: survey.lead_id,
+        action: "Ocular inspection report deleted",
         entityType: "survey",
         entityId: args.surveyId,
     });

@@ -11,6 +11,7 @@ import {
     type QuoteWithItems,
 } from "../types.ts";
 import { advanceLeadStage, logActivity } from "./leads.ts";
+import { notifyEvent } from "./notifications.ts";
 
 type NameOnly = { name: string | null; email: string | null } | null;
 
@@ -227,7 +228,7 @@ export async function approveQuote(args: { quoteId: Id<"quotes"> }): Promise<voi
     const quote = unwrap(
         await supabase
             .from("quotes")
-            .select("lead_id, version, total_php, quotation_no")
+            .select("lead_id, version, total_php, quotation_no, leads(assigned_sales_rep_id)")
             .eq("id", args.quoteId)
             .single(),
         "Quote not found",
@@ -236,6 +237,7 @@ export async function approveQuote(args: { quoteId: Id<"quotes"> }): Promise<voi
         version: number;
         total_php: number;
         quotation_no: string;
+        leads: { assigned_sales_rep_id: string | null } | null;
     };
 
     const { error } = await supabase
@@ -254,6 +256,16 @@ export async function approveQuote(args: { quoteId: Id<"quotes"> }): Promise<voi
         entityType: "quote",
         entityId: args.quoteId,
     });
+
+    const repId = quote.leads?.assigned_sales_rep_id;
+    if (repId) {
+        await notifyEvent({
+            event: "quote_accepted",
+            leadId: quote.lead_id,
+            recipientUserIds: [repId],
+            meta: { quotationNo: quote.quotation_no },
+        });
+    }
 }
 
 /**
@@ -408,12 +420,24 @@ export async function deleteQuotes(args: { quoteIds: Id<"quotes">[] }): Promise<
     const { error } = await supabase.from("quotes").delete().in("id", args.quoteIds);
     if (error) throw toAppError(error, "Failed to delete quotes");
 
-    if (quotes.length > 0) {
-        await logActivity({
-            leadId: quotes[0].lead_id,
-            action: `${quotes.length} quotes deleted`,
-            details: quotes.map((q) => q.quotation_no || `v${q.version}`).join(", "),
-            entityType: "quote",
-        });
+    // One quote row can belong to any lead in the selection — log against each
+    // lead separately so a bulk delete spanning multiple leads doesn't leave
+    // every lead but the first with no record of its quote being removed.
+    const byLead = new Map<string, typeof quotes>();
+    for (const q of quotes) {
+        const forLead = byLead.get(q.lead_id) ?? [];
+        forLead.push(q);
+        byLead.set(q.lead_id, forLead);
     }
+
+    await Promise.all(
+        [...byLead.entries()].map(([leadId, leadQuotes]) =>
+            logActivity({
+                leadId,
+                action: `${leadQuotes.length} quote${leadQuotes.length !== 1 ? "s" : ""} deleted`,
+                details: leadQuotes.map((q) => q.quotation_no || `v${q.version}`).join(", "),
+                entityType: "quote",
+            }),
+        ),
+    );
 }

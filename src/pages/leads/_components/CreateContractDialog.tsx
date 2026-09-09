@@ -51,41 +51,62 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
 
     async function onSubmit(values: FormValues) {
         setUploading(true);
+        let contractId: string | undefined;
         try {
-            const contractId = await createContract({
+            contractId = await createContract({
                 leadId,
                 quoteId,
                 notes: values.notes || undefined,
             });
-
-            // Upload document if provided
-            if (docFile) {
-                await attachDocument({ contractId, file: docFile });
-            }
-
-            toast.success("Contract created — lead advanced to Contract Signed");
-            form.reset();
-            setDocFile(null);
-            onClose();
-
-            // Switch to the Contracts tab so the user sees the new contract immediately!
-            setSearchParams((prev) => {
-                const next = new URLSearchParams(prev);
-                next.set("tab", "contracts");
-                next.delete("quote");
-                return next;
-            });
         } catch (e) {
             const msg = e instanceof Error ? e.message : "Failed to create contract";
             toast.error(msg);
-        } finally {
             setUploading(false);
+            return;
         }
+
+        // The contract now exists — a document-upload failure from here on is a
+        // separate, recoverable problem (the Contract tab's own dropzone can
+        // retry it), not a reason to tell the user contract creation failed or
+        // to leave this dialog open inviting a duplicate contract.
+        if (docFile) {
+            try {
+                await attachDocument({ contractId, file: docFile });
+                toast.success("Contract created and document attached — lead advanced to Contract Signed");
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : "Failed to attach the document";
+                toast.error(`Contract created, but the document didn't upload: ${msg}`);
+            }
+        } else {
+            toast.success("Contract created — lead advanced to Contract Signed");
+        }
+
+        setUploading(false);
+        form.reset();
+        setDocFile(null);
+        onClose();
+
+        // Switch to the Contracts tab so the user sees the new contract immediately!
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("tab", "contracts");
+            next.delete("quote");
+            return next;
+        });
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-w-sm">
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                if (!v) {
+                    form.reset();
+                    setDocFile(null);
+                    onClose();
+                }
+            }}
+        >
+            <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Create Contract</DialogTitle>
                 </DialogHeader>
@@ -136,7 +157,7 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
                         )} />
 
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                            <Button type="button" variant="ghost" onClick={() => { form.reset(); setDocFile(null); onClose(); }}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting || uploading}>
                                 {uploading ? (
                                     <><Upload className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Uploading…</>

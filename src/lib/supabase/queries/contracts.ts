@@ -7,6 +7,7 @@ import { toContract, type ContractDetail, type Id } from "../types.ts";
 // The stage advance for a new contract happens inside create_contract itself,
 // so it stays in the same transaction as the insert.
 import { logActivity } from "./leads.ts";
+import { notifyEvent } from "./notifications.ts";
 
 export async function getContractForLead(
     leadId: Id<"leads">,
@@ -83,9 +84,13 @@ export async function markContractSigned(args: {
     contractId: Id<"contracts">;
 }): Promise<void> {
     const contract = unwrap(
-        await supabase.from("contracts").select("lead_id").eq("id", args.contractId).single(),
+        await supabase
+            .from("contracts")
+            .select("lead_id, leads(assigned_sales_rep_id)")
+            .eq("id", args.contractId)
+            .single(),
         "Contract not found",
-    ) as { lead_id: string };
+    ) as { lead_id: string; leads: { assigned_sales_rep_id: string | null } | null };
 
     const { error } = await supabase
         .from("contracts")
@@ -99,6 +104,15 @@ export async function markContractSigned(args: {
         entityType: "contract",
         entityId: args.contractId,
     });
+
+    const repId = contract.leads?.assigned_sales_rep_id;
+    if (repId) {
+        await notifyEvent({
+            event: "contract_signed",
+            leadId: contract.lead_id,
+            recipientUserIds: [repId],
+        });
+    }
 }
 
 export async function markContractCancelled(args: {
@@ -172,6 +186,36 @@ export async function updateContractNotes(args: {
         .update({ notes: args.notes })
         .eq("id", args.contractId);
     if (error) throw toAppError(error, "Failed to update notes");
+}
+
+/** Fields the DOCX template fills in. Edit before generating. */
+export async function updateContractDetails(args: {
+    contractId: Id<"contracts">;
+    homeownerName: string;
+    siteAddress: string;
+    phoneNumber: string;
+    systemSizeKw: number | null;
+    panelLine: string;
+    inverterLine: string;
+    batteryLine: string;
+    pricePhp: number | null;
+    preparedByName: string;
+    contractDate: string | null;
+}): Promise<void> {
+    const { error } = await supabase.rpc("update_contract_details", {
+        p_contract_id: args.contractId,
+        p_homeowner_name: args.homeownerName,
+        p_site_address: args.siteAddress,
+        p_phone_number: args.phoneNumber,
+        p_system_size_kw: args.systemSizeKw,
+        p_panel_line: args.panelLine,
+        p_inverter_line: args.inverterLine,
+        p_battery_line: args.batteryLine,
+        p_price_php: args.pricePhp,
+        p_prepared_by_name: args.preparedByName,
+        p_contract_date: args.contractDate,
+    });
+    if (error) throw toAppError(error, "Failed to update contract details");
 }
 
 export async function deleteContract(args: {

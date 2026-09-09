@@ -213,8 +213,12 @@ export default function LeadDetailPage() {
     const daysOld = Math.floor((now - new Date(lead.lastActivityAt).getTime()) / 86400000);
     const isStale =
         daysOld >= 7 && !["active_customer", "installation_complete", "cancelled"].includes(lead.stage);
-    const canEdit = ["superadmin", "admin"].includes(currentUser?.role ?? "");
-    const canDelete = ["superadmin", "admin"].includes(currentUser?.role ?? "");
+    // Both gates are the same admin/superadmin check today — kept as two names
+    // for readability at call sites, but derived from one flag so a future
+    // change to one permission can't silently drift from the other.
+    const isAdmin = ["superadmin", "admin"].includes(currentUser?.role ?? "");
+    const canEdit = isAdmin;
+    const canDelete = isAdmin;
     // Notes and files are the two things a technician contributes to a lead
     // they cannot otherwise edit — a note from the crew on site is exactly what
     // the office needs to read.
@@ -226,7 +230,7 @@ export default function LeadDetailPage() {
         quotes: quotes?.length,
         contracts: contract ? 1 : undefined,
         permits: permits?.length,
-        installation: installation ? 1 : 0,
+        installation: installation ? 1 : undefined,
         maintenance: openTickets.length,
     };
 
@@ -298,7 +302,7 @@ export default function LeadDetailPage() {
                         )}
                     </p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center flex-wrap gap-2 flex-shrink-0">
                     {canEdit && (
                         <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
                             <Pencil className="w-3.5 h-3.5 mr-1.5" />
@@ -339,7 +343,7 @@ export default function LeadDetailPage() {
                         </AlertDialog>
                     )}
                     <Select value={lead.stage} onValueChange={handleStageChange}>
-                        <SelectTrigger className="w-52">
+                        <SelectTrigger className="w-full sm:w-52">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -506,7 +510,12 @@ export default function LeadDetailPage() {
                 {/* Contract */}
                 <TabsContent value="contracts" className="mt-4">
                     <div className="max-w-3xl">
-                        <ContractSection leadId={lead._id} stage={lead.stage} canEdit={canEdit} />
+                        <ContractSection
+                            leadId={lead._id}
+                            lead={lead}
+                            stage={lead.stage}
+                            canEdit={canEdit}
+                        />
                     </div>
                 </TabsContent>
 

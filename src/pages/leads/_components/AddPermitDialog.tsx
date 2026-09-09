@@ -69,8 +69,16 @@ export default function AddPermitDialog({ open, onClose, leadId }: Props) {
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-w-sm">
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                if (!v) {
+                    form.reset();
+                    onClose();
+                }
+            }}
+        >
+            <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Add Permit</DialogTitle>
                 </DialogHeader>
@@ -128,7 +136,7 @@ export default function AddPermitDialog({ open, onClose, leadId }: Props) {
                         )} />
 
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                            <Button type="button" variant="ghost" onClick={() => { form.reset(); onClose(); }}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting ? "Adding…" : "Add Permit"}
                             </Button>

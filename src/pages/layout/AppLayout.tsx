@@ -50,8 +50,8 @@ export default function AppLayout() {
                                     <span className="font-bold text-sm tracking-tight text-foreground">{COMPANY_NAME}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <ThemeToggle />
-                                    <SignOutButton />
+                                    <ThemeToggle size="icon" className="size-10" />
+                                    <SignOutButton className="size-10" />
                                 </div>
                             </div>
                             {/*

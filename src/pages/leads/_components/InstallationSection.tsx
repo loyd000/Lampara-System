@@ -54,6 +54,8 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const [newItem, setNewItem] = useState("");
     const [addingItem, setAddingItem] = useState(false);
     const [uploadingPhotos, setUploadingPhotos] = useState(false);
+    const [changingStatus, setChangingStatus] = useState(false);
+    const [activating, setActivating] = useState(false);
     const photoInputRef = useRef<HTMLInputElement>(null);
 
     // `canEdit` is about *running the pipeline* — scheduling the job, converting
@@ -71,10 +73,15 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
 
     async function handleStatusChange(status: "scheduled" | "in_progress" | "completed" | "on_hold") {
         if (!installation) return;
+        setChangingStatus(true);
         try {
             await updateStatus({ installationId: installation._id, status });
             toast.success(`Installation marked ${STATUS_LABEL[status]}`);
-        } catch { toast.error("Failed to update status"); }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to update status");
+        } finally {
+            setChangingStatus(false);
+        }
     }
 
     async function handleToggleItem(idx: number) {
@@ -94,8 +101,9 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
         try {
             await addChecklistItem({ installationId: installation._id, item: newItem.trim() });
             setNewItem("");
-        } catch { toast.error("Failed to add item"); }
-        finally { setAddingItem(false); }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to add item");
+        } finally { setAddingItem(false); }
     }
 
     async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -113,10 +121,15 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     }
 
     async function handleActivateCustomer() {
+        setActivating(true);
         try {
             await activateCustomer({ leadId });
             toast.success("Lead activated as customer");
-        } catch { toast.error("Failed to activate customer"); }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to activate customer");
+        } finally {
+            setActivating(false);
+        }
     }
 
     return (
@@ -185,31 +198,36 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                             {canWork && (
                                 <div className="flex flex-wrap gap-1.5">
                                     {installation.status === "scheduled" && (
-                                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                                        <Button size="sm" variant="outline" className="h-9 text-xs"
+                                            disabled={changingStatus}
                                             onClick={() => handleStatusChange("in_progress")}>
                                             <Zap className="w-3 h-3 mr-1" />Start Installation
                                         </Button>
                                     )}
                                     {installation.status === "in_progress" && (
                                         <>
-                                            <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
+                                            <Button size="sm" variant="outline" className="h-9 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
+                                                disabled={changingStatus}
                                                 onClick={() => handleStatusChange("completed")}>
                                                 <CheckCircle2 className="w-3 h-3 mr-1" />Mark Complete
                                             </Button>
-                                            <Button size="sm" variant="ghost" className="h-7 text-xs"
+                                            <Button size="sm" variant="ghost" className="h-9 text-xs"
+                                                disabled={changingStatus}
                                                 onClick={() => handleStatusChange("on_hold")}>
                                                 <PauseCircle className="w-3 h-3 mr-1" />Pause
                                             </Button>
                                         </>
                                     )}
                                     {installation.status === "on_hold" && (
-                                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                                        <Button size="sm" variant="outline" className="h-9 text-xs"
+                                            disabled={changingStatus}
                                             onClick={() => handleStatusChange("in_progress")}>
                                             <Zap className="w-3 h-3 mr-1" />Resume
                                         </Button>
                                     )}
                                     {installation.status === "completed" && stage !== "active_customer" && canEdit && (
-                                        <Button size="sm" className="h-7 text-xs"
+                                        <Button size="sm" className="h-9 text-xs"
+                                            disabled={activating}
                                             onClick={handleActivateCustomer}>
                                             <CheckCircle2 className="w-3 h-3 mr-1" />Activate as Customer
                                         </Button>
@@ -253,9 +271,9 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                             onChange={(e) => setNewItem(e.target.value)}
                                             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddItem(); } }}
                                             placeholder="Add material item…"
-                                            className="flex-1 text-xs px-2.5 py-1.5 rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                                            className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                                         />
-                                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                                        <Button size="sm" variant="ghost" className="h-9 px-2 text-xs"
                                             onClick={handleAddItem} disabled={!newItem.trim() || addingItem}>
                                             <Plus className="w-3 h-3" />
                                         </Button>
@@ -273,11 +291,12 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                                 ref={photoInputRef}
                                                 type="file"
                                                 accept="image/*"
+                                                capture="environment"
                                                 multiple
                                                 className="hidden"
                                                 onChange={handlePhotoUpload}
                                             />
-                                            <Button size="sm" variant="ghost" className="h-6 text-xs"
+                                            <Button size="sm" variant="ghost" className="h-8 text-xs"
                                                 onClick={() => photoInputRef.current?.click()}
                                                 disabled={uploadingPhotos}>
                                                 <Camera className="w-3 h-3 mr-1" />

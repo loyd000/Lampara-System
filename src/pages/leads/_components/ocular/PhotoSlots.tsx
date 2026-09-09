@@ -128,6 +128,7 @@ function Slot({
                                 ref={inputRef}
                                 type="file"
                                 accept="image/*"
+                                capture="environment"
                                 multiple
                                 className="hidden"
                                 onChange={handleFiles}
@@ -135,7 +136,7 @@ function Slot({
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 text-xs"
+                                className="h-9 text-xs"
                                 onClick={() => inputRef.current?.click()}
                                 disabled={uploading || full}
                                 title={full ? `This slot already holds ${max}` : undefined}
@@ -185,7 +186,7 @@ function Slot({
                                     type="button"
                                     onClick={() => handleDelete(photo)}
                                     aria-label={`Remove photo from ${label}`}
-                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1 shadow-sm hover:bg-destructive/90 transition-colors"
                                 >
                                     <X className="w-3 h-3" />
                                 </button>

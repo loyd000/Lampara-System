@@ -310,71 +310,76 @@ export default function QuotesTab({
                                 <div
                                     key={q._id}
                                     onClick={() => openQuote(q._id)}
-                                    className={`group p-4 rounded-lg border bg-card hover:border-primary/50 transition-all cursor-pointer shadow-sm flex items-start gap-3.5 ${
-                                        isChecked ? "border-primary/60 bg-primary/5" : ""
-                                    }`}
-                                >
-                                    {/* Multi-Select Checkbox */}
-                                    {canEdit && (
-                                        <div
-                                            className="pt-0.5"
-                                            onClick={(e) => toggleSelect(q._id, e)}
-                                        >
-                                            <Checkbox
-                                                checked={isChecked}
-                                                onCheckedChange={() => toggleSelect(q._id)}
-                                            />
-                                        </div>
+                                    className={cn(
+                                        "group p-4 rounded-lg border bg-card hover:border-primary/50 transition-all cursor-pointer shadow-sm",
+                                        "flex flex-col sm:flex-row sm:items-start gap-3",
+                                        isChecked && "border-primary/60 bg-primary/5",
                                     )}
-
-                                    <div className="min-w-0 flex-1 space-y-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                                                {q.quotationNo || `Quotation v${q.version}`}
-                                            </span>
-                                            <Badge
-                                                variant="outline"
-                                                className="text-[10px] font-semibold"
+                                >
+                                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                                        {/* Multi-Select Checkbox */}
+                                        {canEdit && (
+                                            <div
+                                                className="pt-0.5 shrink-0"
+                                                onClick={(e) => toggleSelect(q._id, e)}
                                             >
-                                                v{q.version}
-                                            </Badge>
-                                            {isApproved ? (
-                                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
-                                                    <Lock className="w-2.5 h-2.5" />
-                                                    Approved
+                                                <Checkbox
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => toggleSelect(q._id)}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="min-w-0 flex-1 space-y-1.5">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                                                    {q.quotationNo || `Quotation v${q.version}`}
+                                                </span>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-[10px] font-semibold"
+                                                >
+                                                    v{q.version}
                                                 </Badge>
-                                            ) : (
-                                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
-                                                    In Progress
-                                                </Badge>
+                                                {isApproved ? (
+                                                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
+                                                        <Lock className="w-2.5 h-2.5" />
+                                                        Approved
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
+                                                        In Progress
+                                                    </Badge>
+                                                )}
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                                                <span className="font-bold font-mono text-foreground text-sm">
+                                                    {formatPhp(q.totalPhp)}
+                                                </span>
+                                                <span className="text-muted-foreground/40" aria-hidden>•</span>
+                                                <span>
+                                                    {q.items?.length ?? 0}{" "}
+                                                    {(q.items?.length ?? 0) === 1 ? "item" : "items"}
+                                                </span>
+                                                <span className="text-muted-foreground/40" aria-hidden>•</span>
+                                                <span className="truncate">
+                                                    Prepared by {q.preparerName || q.createdByName}
+                                                </span>
+                                            </div>
+
+                                            {q.items && q.items.length > 0 && (
+                                                <p className="text-[11px] text-muted-foreground/70 truncate pt-0.5">
+                                                    {q.items.map((it) => it.description).join(" · ")}
+                                                </p>
                                             )}
                                         </div>
-
-                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                            <span className="font-bold font-mono text-foreground text-sm">
-                                                {formatPhp(q.totalPhp)}
-                                            </span>
-                                            <span>•</span>
-                                            <span>
-                                                {q.items?.length ?? 0}{" "}
-                                                {(q.items?.length ?? 0) === 1 ? "item" : "items"}
-                                            </span>
-                                            <span>•</span>
-                                            <span>
-                                                Prepared by {q.preparerName || q.createdByName}
-                                            </span>
-                                        </div>
-
-                                        {q.items && q.items.length > 0 && (
-                                            <p className="text-[11px] text-muted-foreground/70 truncate pt-0.5">
-                                                {q.items.map((it) => it.description).join(" · ")}
-                                            </p>
-                                        )}
                                     </div>
 
-                                    {/* Action Buttons */}
+                                    {/* Action Buttons — wraps below the content on mobile,
+                                        lines up on the right on wider screens */}
                                     <div
-                                        className="flex items-center gap-2 shrink-0 self-center"
+                                        className="flex items-center flex-wrap gap-2 pl-8 sm:pl-0 sm:shrink-0 sm:self-center"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <DownloadQuotePdfButton
@@ -383,7 +388,7 @@ export default function QuotesTab({
                                             property={property}
                                             size="sm"
                                             variant="outline"
-                                            className="h-7 text-xs"
+                                            className="h-9 sm:h-8 text-xs"
                                         />
 
                                         {isApproved && canEdit && (
@@ -393,7 +398,7 @@ export default function QuotesTab({
                                                         size="sm"
                                                         variant="outline"
                                                         className={cn(
-                                                            "h-7 text-xs font-medium",
+                                                            "h-9 sm:h-8 text-xs font-medium",
                                                             contract.status === "cancelled"
                                                                 ? "text-muted-foreground bg-muted/40 hover:bg-muted/70 border-muted"
                                                                 : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-300 dark:text-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-800",
@@ -421,7 +426,7 @@ export default function QuotesTab({
                                                 <Button
                                                     size="sm"
                                                     variant="secondary"
-                                                    className="h-7 text-xs"
+                                                    className="h-9 sm:h-8 text-xs"
                                                     onClick={() =>
                                                         setContractQuoteId(q._id as Id<"quotes">)
                                                     }
@@ -436,7 +441,7 @@ export default function QuotesTab({
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="size-9 sm:size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Delete quote"
                                                 onClick={() => setQuoteToDelete(q._id)}
                                             >
@@ -445,10 +450,11 @@ export default function QuotesTab({
                                         )}
 
                                         <Button
-                                            size="sm"
+                                            size="icon"
                                             variant="ghost"
-                                            className="h-7 px-2 text-xs group-hover:translate-x-0.5 transition-transform"
+                                            className="size-9 sm:size-8 ml-auto sm:ml-0 group-hover:translate-x-0.5 transition-transform"
                                             onClick={() => openQuote(q._id)}
+                                            aria-label="Open quote"
                                         >
                                             <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                         </Button>

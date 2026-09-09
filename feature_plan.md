@@ -32,14 +32,14 @@ Two things worth naming now because they shape everything below:
 The order is dependency-driven, not wish-list order:
 
 ```
-Phase 1  Field role merge + ocular rename + logout confirm   <- foundation, touches roles everything else reads
-Phase 2  Lead detail tabs rework                             <- restructures the page phases 3/9 hook into
-Phase 3  PDF generation (incl. the ocular inspection report)
+Phase 1  Field role merge + ocular rename + logout confirm   <- done
+Phase 2  Lead detail tabs rework                             <- done
+Phase 3  PDF generation (incl. the ocular inspection report) <- done (superseded by v2, see status note)
 Phase 4  CSV import & export
 Phase 5  UX polish & global search
-Phase 6  Calendar view
+Phase 6  Calendar view                                       <- done
 Phase 7  Lead map view                                       <- needs the geocoding migration from its own step
-Phase 8  Email notifications                                 <- first edge function, sets up the deploy path
+Phase 8  Email notifications                                 <- done, not deployed (see status note)
 Phase 9  AI assistant                                        <- reuses phase 8's function infra
 ```
 
@@ -432,7 +432,22 @@ status-badge colour maps, which are currently duplicated across
 
 ---
 
-## Phase 6 — Calendar view
+## Phase 6 — Calendar view ✅ built
+
+> **Status:** implemented as planned, no migration needed — the calendar reads
+> `surveys`/`installations` directly rather than owning its own table.
+> `src/lib/supabase/queries/calendar.ts`'s `listCalendarEvents({from, to})`
+> merges both, scoped to "mine" for `field` role exactly like
+> `listMyInspections`/`listMyInstallations` already do. `CalendarEvent` keeps
+> inspections (`allDay: false`, a real time) and installations (`allDay: true`,
+> a date only) as a discriminated union rather than forcing both into one
+> instant — the plan's own "watch out" about `scheduled_date` being a plain
+> date turned out to matter for the event *shape*, not just rendering.
+> Route + `src/pages/calendar/page.tsx` (month grid with a `+N more` popover,
+> plus a week list view — mobile defaults to week via an initial
+> `window.innerWidth` check, both toggleable). Added to both
+> `AppSidebar.tsx` (unconditional, matches Dashboard/Pipeline/Leads) and
+> `MobileNavbar.tsx`'s curated slot list, unconditional as well.
 
 New route `/calendar`, sidebar + mobile nav entry.
 
@@ -510,7 +525,46 @@ never a `VITE_` variable.
 
 ---
 
-## Phase 8 — Email notifications
+## Phase 8 — Email notifications ✅ built
+
+> **Status:** implemented — schema, Edge Function code, client wiring and a
+> preferences UI are all written, but **nothing is deployed**. Same limitation
+> as every migration in this repo: no reachable Supabase org from here, so
+> `supabase/migrations/0020_notifications.sql` needs applying and
+> `supabase functions deploy notify` needs running by hand, with
+> `RESEND_API_KEY` / `NOTIFY_FROM` set via `supabase secrets set` first —
+> nothing will actually send email until both of those happen.
+>
+> Deviations from the plan below:
+> - **Migration is `0020`, not `0011`** — `0011` was already
+>   `0011_workflow_authorization.sql` by the time this phase started; the
+>   ledger at the bottom of this doc was written against a much earlier state
+>   of the migrations directory.
+> - **The client never sends a recipient's email address.** Every
+>   `notifyEvent()` call passes user *ids* (`recipientUserIds`); the `notify`
+>   function resolves the actual address server-side with the service-role
+>   key, exactly as this phase's "Function responsibilities" note demanded —
+>   just clarifying that "never trust the recipient address from the request
+>   body" is satisfied by never putting an address in the body at all, not by
+>   validating one that's there.
+> - **Preferences live on the Team page**, not a new `/settings` route — the
+>   plan named this as an acceptable alternative, and there was no other
+>   reason for a `/settings` page to exist yet.
+> - **Permit-overdue has no trigger.** It's a real event in the schema and the
+>   function's template list, but nothing fires it — the plan's own note that
+>   this needs `pg_cron`/`pg_net` and "an extra extension enable" is exactly
+>   right, and enabling extensions is a dashboard-level step this migration
+>   left as a commented-out, ready-to-uncomment block rather than guessing at
+>   your project ref and service-role key.
+> - **The other five events are wired into the mutations that already
+>   existed**, not new ones: `createLead` and `updateLead` (rep reassignment,
+>   detected by fetching the previous `assigned_sales_rep_id` before the
+>   write — `updateLead` had no such check before), `scheduleSurvey`,
+>   `createInstallation`, `approveQuote` (widened its `select()` to join the
+>   lead's assigned rep), and `markContractSigned` (same join). All fire
+>   *after* the write succeeds and never throw on failure — same fire-and-forget
+>   contract as `logActivity`, and for the same reason: a notification email
+>   failing must never read as the user's actual action having failed.
 
 **Infrastructure this repo does not have yet.** This phase pays that setup cost.
 
@@ -610,12 +664,21 @@ AI-generated, and keep a visible "regenerate" so a bad output isn't sticky.
 
 ## Migration ledger
 
+**This table was written before Phase 1 landed and the numbers below never
+matched what actually got applied** — Phase 1 alone consumed `0008`, and by
+the time Phase 8 was built the migrations directory was up to `0019`. Treat
+the table as historical intent, not a lookup: the real, current file for a
+built phase is named in that phase's own status note above (Phase 1 → `0008`,
+Phase 8 → `0020_notifications.sql`). Phases 4, 5, 7, 9 haven't been built, so
+their numbers below remain unclaimed guesses until whoever builds them checks
+`supabase/migrations/` for the actual next-available number.
+
 | # | File | Phase |
 | --- | --- | --- |
 | 0008 | `0008_field_role.sql` — role merge, `append_survey_photos`, optional activity-log relabel | 1 |
 | 0009 | `0009_import_and_search.sql` — `leads.import_batch_id`, ticket trigram index, `search_all()` | 4, 5 |
 | 0010 | `0010_property_geocoding.sql` — `lat` / `lng` / `geocoded_at` | 7 |
-| 0011 | `0011_notifications.sql` — `notification_preferences`, `notification_log`, optional `pg_cron` job | 8 |
+| 0011 | ~~`0011_notifications.sql`~~ — superseded by `0020_notifications.sql`, see Phase 8 above | 8 |
 
 Each is idempotent and applied by hand (`supabase db push` or the SQL editor) —
 the MCP connector cannot reach this project's org.

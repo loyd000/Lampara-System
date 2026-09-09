@@ -10,6 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog.tsx";
 import { Shield, Plus, Upload, ExternalLink, FileText, Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -59,6 +70,8 @@ export default function PermitsSection({ leadId, stage, canEdit }: Props) {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
     const [uploadingId, setUploadingId] = useState<string | null>(null);
+    const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const isUnlocked = !["lead", "survey_scheduled", "survey_completed", "proposal_sent"].includes(stage);
 
@@ -75,20 +88,26 @@ export default function PermitsSection({ leadId, stage, canEdit }: Props) {
         permitId: Id<"permits">,
         newStatus: "not_submitted" | "submitted" | "approved" | "rejected",
     ) {
+        setChangingStatusId(permitId);
         try {
             await updateStatus({ permitId, status: newStatus });
             toast.success(`Permit marked ${STATUS_LABEL[newStatus]}`);
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to update permit");
+        } finally {
+            setChangingStatusId(null);
         }
     }
 
     async function handleDelete(permitId: Id<"permits">) {
+        setDeletingId(permitId);
         try {
             await deletePermit({ permitId });
             toast.success("Permit removed");
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to remove permit");
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -227,29 +246,55 @@ export default function PermitsSection({ leadId, stage, canEdit }: Props) {
 
                                             {/* Actions */}
                                             {canEdit && (
-                                                <div className="flex flex-wrap gap-1.5">
+                                                <div className="flex flex-wrap items-center gap-1.5">
                                                     {nextStatus && permit.status !== "rejected" && (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                        <Button size="sm" variant="outline" className="h-8 text-xs"
+                                                            disabled={changingStatusId === permit._id}
                                                             onClick={() => handleStatusChange(permit._id as Id<"permits">, nextStatus)}>
                                                             Mark {STATUS_LABEL[nextStatus]}
                                                         </Button>
                                                     )}
                                                     {permit.status === "submitted" && (
-                                                        <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500 hover:text-red-600"
+                                                        <Button size="sm" variant="ghost" className="h-8 text-xs text-red-500 hover:text-red-600"
+                                                            disabled={changingStatusId === permit._id}
                                                             onClick={() => handleStatusChange(permit._id as Id<"permits">, "rejected")}>
                                                             Mark Rejected
                                                         </Button>
                                                     )}
                                                     {permit.status === "rejected" && (
-                                                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                        <Button size="sm" variant="outline" className="h-8 text-xs"
+                                                            disabled={changingStatusId === permit._id}
                                                             onClick={() => handleStatusChange(permit._id as Id<"permits">, "submitted")}>
                                                             Resubmit
                                                         </Button>
                                                     )}
-                                                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive ml-auto"
-                                                        onClick={() => handleDelete(permit._id as Id<"permits">)}>
-                                                        <Trash2 className="w-3 h-3" />
-                                                    </Button>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button size="icon" variant="ghost"
+                                                                className="size-9 text-destructive hover:text-destructive ml-auto"
+                                                                disabled={deletingId === permit._id}
+                                                                onClick={(e) => e.stopPropagation()}>
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Remove this permit?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This permanently removes the {TYPE_LABEL[permit.type]} record, including its document and history. This cannot be undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Keep Permit</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleDelete(permit._id as Id<"permits">)}
+                                                                    className="bg-destructive hover:bg-destructive/90 text-white"
+                                                                >
+                                                                    Remove
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </div>
                                             )}
                                         </div>

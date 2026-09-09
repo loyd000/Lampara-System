@@ -126,9 +126,9 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                         <FormField control={form.control} name="address" render={({ field }) => (
                             <FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="123 Solar Way" {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <FormField control={form.control} name="city" render={({ field }) => (
-                                <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="Sunnyvale" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem className="col-span-2 sm:col-span-1"><FormLabel>City</FormLabel><FormControl><Input placeholder="Sunnyvale" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="state" render={({ field }) => (
                                 <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="CA" {...field} /></FormControl><FormMessage /></FormItem>

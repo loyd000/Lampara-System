@@ -27,9 +27,9 @@ Migrations continue at **0013**.
 ```
 Phase 3  Roles + account approval + status groups   ← done
 Phase 4  Overview notes + files (+ storage plan)    ← done
-Phase 5  Packages page (superadmin)                 ← the quote builder picks from these
-Phase 6  Quote builder + quote PDF
-Phase 7  Contract generation (DOCX)
+Phase 5  Packages page (superadmin)                 ← done
+Phase 6  Quote builder + quote PDF                  ← done
+Phase 7  Contract generation (DOCX)                 ← done
 ```
 
 Phase 5 must precede 6. Phase 7 needs 6's approved-quote state. 4 is independent
@@ -364,7 +364,61 @@ lazy-loaded. From `Quotation Sample.docx`:
 
 ---
 
-## 7. Contract — and why DOCX
+## 7. Contract — and why DOCX ✅ built
+
+> **Status:** implemented, but on top of a codebase that had moved past what
+> this plan assumed. Phases 5 and 6 were already fully built (packages page,
+> itemised quote builder, quote PDF) by the time this phase started, and a
+> **manual-upload contract feature already existed** — `contracts` (from
+> `0001_initial_schema.sql`) plus `ContractSection.tsx` /
+> `CreateContractDialog.tsx`, wired to `create_contract()`. That flow handles
+> sign / cancel / delete / attach-the-signed-file and is exercised from an
+> approved quote exactly as this plan describes — so Phase 7 **extends it in
+> place** with DOCX *generation*, rather than replacing it.
+>
+> `supabase/migrations/0018_contracts.sql` is written but **not applied** —
+> apply it after `0017_package_items_name.sql`. `0017` was already
+> consumed by an unrelated packages fix before this phase started, so the
+> contracts migration is `0018`, not the `0017` the ledger below originally
+> named.
+>
+> Deviations from the plan below:
+> - **The template is hand-tokenised, not built from scratch.** The provided
+>   `Contract Sample.docx` is a filled-in example, not a template — its
+>   twelve values (homeowner name, site address, phone, system size, the
+>   three equipment lines, price in figures, price in words, preparer name,
+>   contract date) were byte-surgically replaced with `{docxtemplater}`
+>   tokens directly in `word/document.xml`, since Word commonly splits a
+>   single visible value across several XML runs and a naive find/replace on
+>   the raw text corrupts the document. The result is
+>   `public/Contract Template.docx`; `Contract Sample.docx` is left alone as
+>   a reference. Verified by an actual `docxtemplater` render round-trip, not
+>   just by eye.
+> - **Price-in-words is not a stored column.** It's derived client-side from
+>   `contracts.price_php` at generation time (`number-to-words.ts`), so it
+>   can never drift out of sync with the number it's supposed to spell out —
+>   the alternative (a stored, independently-editable `price_words`) is
+>   exactly the kind of two-places-to-update bug 4a's notes/activity-log
+>   split was written to avoid.
+> - **The other nine fields *are* snapshotted onto `contracts`** at creation
+>   time by `create_contract()` (homeowner name, site address, phone from the
+>   lead/property; price and preparer from the quote; equipment lines
+>   best-effort matched from `quote_items` by keyword — `%panel%`,
+>   `%invert%`, `%batter%`), matching 0016's "snapshot so the document
+>   doesn't silently change later" precedent for quote items. Staff can edit
+>   the snapshot in a new **Contract Details** form on the Contract tab
+>   before generating — auto-fill is a starting point, not a constraint —
+>   via `update_contract_details()`.
+> - **Generate is download-only, not auto-attached.** The DOCX button
+>   produces an editable working document for the office to review, sign, or
+>   turn into a PDF — exactly the "generated file is an internal working
+>   document, not the thing you hand over" caveat below. The existing signed-
+>   document upload dropzone is untouched; generating and attaching stay two
+>   separate, deliberate steps.
+> - **No tab-locking was added.** The empty-state CTA already in
+>   `ContractSection.tsx` ("approve a quote, then Create Contract") already
+>   satisfies "unlocks when approved" without introducing a disabled-tab
+>   pattern the codebase has no other precedent for.
 
 **Recommendation: generate the contract as a `.docx`, and keep the quote as a
 PDF.** They are different documents with different jobs.
@@ -418,7 +472,8 @@ SIXTY SIX THOUSAND FIVE HUNDRED PESOS ONLY" by hand.
 | 0014 | `0014_lead_notes_and_files.sql` — `lead_notes`, `lead_files`, bucket size limit | 4 |
 | 0015 | `0015_packages.sql` — `packages`, `package_items` | 5 |
 | 0016 | `0016_quote_items.sql` — `quote_items`, quote status, totals in PHP | 6 |
-| 0017 | `0017_contracts.sql` — contract fields the template needs | 7 |
+| 0017 | `0017_package_items_name.sql` — packages follow-up fix, unrelated to Phase 7 | 5 |
+| 0018 | `0018_contracts.sql` — contract fields the template needs | 7 |
 
 ## New dependencies
 

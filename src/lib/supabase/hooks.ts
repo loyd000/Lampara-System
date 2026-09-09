@@ -32,11 +32,13 @@ import type {
 } from "./database.types.ts";
 import type { Id } from "./types.ts";
 
+import * as calendarApi from "./queries/calendar.ts";
 import * as contractsApi from "./queries/contracts.ts";
 import * as installationsApi from "./queries/installations.ts";
 import * as leadFilesApi from "./queries/lead-files.ts";
 import * as leadNotesApi from "./queries/lead-notes.ts";
 import * as leadsApi from "./queries/leads.ts";
+import * as notificationsApi from "./queries/notifications.ts";
 import * as packagesApi from "./queries/packages.ts";
 import * as permitsApi from "./queries/permits.ts";
 import * as quotesApi from "./queries/quotes.ts";
@@ -93,6 +95,10 @@ export const queryKeys = {
 
     packages: ["packages"] as const,
     activePackages: ["packages", "active"] as const,
+
+    calendarEvents: (from: string, to: string) => ["calendarEvents", from, to] as const,
+
+    myNotificationPreferences: ["notificationPreferences", "mine"] as const,
 } as const;
 
 /**
@@ -441,6 +447,18 @@ export function useCancelSurvey() {
     });
 }
 
+export function useDeleteSurvey() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.deleteSurvey,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
 // ─── Quotes ───────────────────────────────────────────────────────────────
 
 export function useQuotesForLead(leadId: Id<"leads"> | undefined) {
@@ -619,6 +637,14 @@ export function useUpdateContractNotes() {
     const client = useQueryClient();
     return useMutation({
         mutationFn: contractsApi.updateContractNotes,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.contracts }),
+    });
+}
+
+export function useUpdateContractDetails() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.updateContractDetails,
         onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.contracts }),
     });
 }
@@ -898,6 +924,33 @@ export function useInstallationsSummary() {
     return useQuery({
         queryKey: ["reports", "installations"],
         queryFn: reportsApi.installationsSummary,
+    });
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────
+
+export function useCalendarEvents(range: { from: string; to: string }) {
+    return useQuery({
+        queryKey: queryKeys.calendarEvents(range.from, range.to),
+        queryFn: () => calendarApi.listCalendarEvents(range),
+    });
+}
+
+// ─── Notification preferences ──────────────────────────────────────────────
+
+export function useMyNotificationPreferences() {
+    return useQuery({
+        queryKey: queryKeys.myNotificationPreferences,
+        queryFn: notificationsApi.getMyNotificationPreferences,
+    });
+}
+
+export function useUpdateMyNotificationPreferences() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: notificationsApi.updateMyNotificationPreferences,
+        onSuccess: () =>
+            client.invalidateQueries({ queryKey: queryKeys.myNotificationPreferences }),
     });
 }
 

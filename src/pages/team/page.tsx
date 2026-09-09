@@ -24,6 +24,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
 import { QueryError } from "@/components/query-error.tsx";
+import NotificationPreferencesCard from "./_components/NotificationPreferencesCard.tsx";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
     superadmin: <Shield className="w-3.5 h-3.5" />,
@@ -131,6 +132,10 @@ export default function TeamPage() {
                 </p>
             </div>
 
+            <div className="max-w-md">
+                <NotificationPreferencesCard />
+            </div>
+
             {users === undefined ? (
                 <div className="space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
             ) : (
@@ -150,16 +155,18 @@ export default function TeamPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {pending.map((user) => (
                                     <Card key={user._id} className="border-amber-200/60 dark:border-amber-800/40">
-                                        <CardContent className="flex items-center gap-3">
-                                            <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
-                                                {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-sm truncate">{user.name ?? "No name"}</p>
-                                                {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                                        <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
+                                                    {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-sm truncate">{user.name ?? "No name"}</p>
+                                                    {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                                                </div>
                                             </div>
                                             {isSuperadmin ? (
-                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                <div className="flex items-center flex-wrap gap-1.5 flex-shrink-0">
                                                     <Select
                                                         value={pendingRole[user._id] ?? "field"}
                                                         onValueChange={(v) =>
@@ -236,21 +243,23 @@ export default function TeamPage() {
                                 const isSelf = user._id === currentUser?._id;
                                 return (
                                     <Card key={user._id} className={!user.isActive ? "opacity-60" : undefined}>
-                                        <CardContent className="flex items-center gap-3">
-                                            <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
-                                                {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-sm truncate">{user.name ?? "No name"}</p>
-                                                {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
-                                                {!user.isActive && (
-                                                    <p className="text-[11px] text-muted-foreground mt-0.5">Deactivated</p>
-                                                )}
+                                        <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
+                                                    {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-sm truncate">{user.name ?? "No name"}</p>
+                                                    {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                                                    {!user.isActive && (
+                                                        <p className="text-[11px] text-muted-foreground mt-0.5">Deactivated</p>
+                                                    )}
+                                                </div>
                                             </div>
                                             {isSuperadmin && !isSelf ? (
                                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <Select value={user.role} onValueChange={(v) => handleRoleChange(user._id, v)}>
-                                                        <SelectTrigger className="w-32 h-8 text-xs">
+                                                        <SelectTrigger className="w-32 h-9 text-xs">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -262,7 +271,7 @@ export default function TeamPage() {
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="size-8 text-muted-foreground hover:text-destructive"
+                                                        className="size-9 text-muted-foreground hover:text-destructive"
                                                         disabled={busyId === user._id}
                                                         onClick={() => void handleToggleActive(user)}
                                                         title={user.isActive ? "Deactivate" : "Reactivate"}

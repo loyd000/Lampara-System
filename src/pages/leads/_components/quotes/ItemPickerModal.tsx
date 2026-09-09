@@ -67,21 +67,26 @@ export default function ItemPickerModal({
         } else {
             // Expand all package items.
             // When items don't carry individual prices, the first item carries
-            // the package base price so the quote total immediately matches.
+            // the package base price so the quote total immediately matches —
+            // labelled explicitly, so deleting that line later is a deliberate
+            // choice rather than an accidental way to make the whole package's
+            // price silently vanish from the quote.
             const hasExistingPrices = pkg.items.some((it) => it.unitPricePhp > 0);
-            const newItems: QuoteItemInput[] = pkg.items.map((it, idx) => ({
-                description: it.name
+            const newItems: QuoteItemInput[] = pkg.items.map((it, idx) => {
+                const baseDescription = it.name
                     ? `${it.name}${it.description ? ` · ${it.description}` : ""}`
-                    : it.description,
-                qty: it.qty,
-                unit: it.unit,
-                unitPricePhp: hasExistingPrices
-                    ? it.unitPricePhp
-                    : idx === 0
-                      ? pkg.basePricePhp
-                      : 0,
-                sourcePackageId: pkg._id,
-            }));
+                    : it.description;
+                const carriesPackagePrice = !hasExistingPrices && idx === 0;
+                return {
+                    description: carriesPackagePrice
+                        ? `${baseDescription} (${pkg.name} package price)`
+                        : baseDescription,
+                    qty: it.qty,
+                    unit: it.unit,
+                    unitPricePhp: carriesPackagePrice ? pkg.basePricePhp : hasExistingPrices ? it.unitPricePhp : 0,
+                    sourcePackageId: pkg._id,
+                };
+            });
             onAddItems(newItems);
         }
         onClose();
@@ -241,7 +246,7 @@ export default function ItemPickerModal({
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="custom-qty" className="text-xs font-medium">
                                         Quantity
@@ -249,11 +254,13 @@ export default function ItemPickerModal({
                                     <Input
                                         id="custom-qty"
                                         type="number"
+                                        inputMode="decimal"
                                         step="any"
                                         min="0.01"
                                         value={qty}
+                                        onWheel={(e) => e.currentTarget.blur()}
                                         onChange={(e) => setQty(e.target.value)}
-                                        className="h-8 text-xs"
+                                        className="h-10 text-xs"
                                         required
                                     />
                                 </div>
@@ -291,12 +298,14 @@ export default function ItemPickerModal({
                                     <Input
                                         id="custom-price"
                                         type="number"
+                                        inputMode="decimal"
                                         step="any"
                                         min="0"
                                         placeholder="0.00"
                                         value={unitPrice}
+                                        onWheel={(e) => e.currentTarget.blur()}
                                         onChange={(e) => setUnitPrice(e.target.value)}
-                                        className="h-8 text-xs"
+                                        className="h-10 text-xs"
                                         required
                                     />
                                 </div>

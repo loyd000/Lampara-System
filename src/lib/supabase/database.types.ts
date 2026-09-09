@@ -281,6 +281,16 @@ export type ContractRow = Timestamps & {
     signed_at: string | null;
     document_path: string | null;
     notes: string | null;
+    homeowner_name: string | null;
+    site_address: string | null;
+    phone_number: string | null;
+    system_size_kw: number | string | null;
+    panel_line: string | null;
+    inverter_line: string | null;
+    battery_line: string | null;
+    price_php: number | string | null;
+    prepared_by_name: string | null;
+    contract_date: string | null;
 };
 
 export type PermitRow = Timestamps & {
@@ -360,6 +370,37 @@ export type ActivityLogRow = {
     created_at: string;
 };
 
+export type NotificationPreferencesRow = {
+    user_id: string;
+    lead_assigned: boolean;
+    inspection_scheduled: boolean;
+    installation_scheduled: boolean;
+    permit_overdue: boolean;
+    quote_accepted: boolean;
+    contract_signed: boolean;
+    updated_at: string;
+};
+
+export type NotificationEvent =
+    | "lead_assigned"
+    | "inspection_scheduled"
+    | "installation_scheduled"
+    | "quote_accepted"
+    | "contract_signed"
+    | "permit_overdue";
+
+export type NotificationStatus = "sent" | "skipped" | "failed";
+
+export type NotificationLogRow = {
+    id: string;
+    event: NotificationEvent;
+    lead_id: string | null;
+    recipient_user_id: string | null;
+    status: NotificationStatus;
+    error: string | null;
+    created_at: string;
+};
+
 /** Table name → row/insert/update triple, in the shape supabase-js expects. */
 type TableDef<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
     Row: Row;
@@ -387,6 +428,8 @@ export type Database = {
             packages: TableDef<PackageRow>;
             package_items: TableDef<PackageItemRow>;
             activity_log: TableDef<ActivityLogRow>;
+            notification_preferences: TableDef<NotificationPreferencesRow>;
+            notification_log: TableDef<NotificationLogRow>;
         };
         Views: Record<never, never>;
         Functions: {
@@ -429,6 +472,22 @@ export type Database = {
             create_contract: {
                 Args: { p_lead_id: string; p_quote_id: string; p_notes?: string | null };
                 Returns: string;
+            };
+            update_contract_details: {
+                Args: {
+                    p_contract_id: string;
+                    p_homeowner_name: string;
+                    p_site_address: string;
+                    p_phone_number: string;
+                    p_system_size_kw: number | null;
+                    p_panel_line: string;
+                    p_inverter_line: string;
+                    p_battery_line: string;
+                    p_price_php: number | null;
+                    p_prepared_by_name: string;
+                    p_contract_date: string | null;
+                };
+                Returns: undefined;
             };
             // Each returns one jsonb object; the shape lives in queries/reports.ts.
             report_pipeline_summary: { Args: Record<never, never>; Returns: unknown };

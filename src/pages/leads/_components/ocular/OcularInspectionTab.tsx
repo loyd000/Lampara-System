@@ -6,6 +6,7 @@ import {
     ChevronRight,
     ClipboardCheck,
     Plus,
+    Trash2,
     X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 import {
     useCancelSurvey,
     useCurrentUser,
+    useDeleteSurvey,
     useSurveysForLead,
 } from "@/lib/supabase/hooks.ts";
 import type { Id, Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
@@ -130,6 +132,7 @@ export default function OcularInspectionTab({
                     canSchedule={canSchedule}
                     editable={editable}
                     onCancelled={() => openReport(null)}
+                    onDeleted={() => openReport(null)}
                 />
 
                 <OcularReportForm survey={active} editable={editable} />
@@ -290,6 +293,7 @@ function StatusBar({
     canSchedule,
     editable,
     onCancelled,
+    onDeleted,
 }: {
     survey: SurveyForLead;
     lead: Lead;
@@ -298,8 +302,11 @@ function StatusBar({
     editable: boolean;
     /** Cancelling ends the visit, so the view goes back to the list. */
     onCancelled: () => void;
+    /** Deleting removes the report entirely, so the view goes back to the list. */
+    onDeleted: () => void;
 }) {
     const { mutateAsync: cancelSurvey } = useCancelSurvey();
+    const { mutateAsync: deleteSurvey } = useDeleteSurvey();
     const [busy, setBusy] = useState(false);
 
     const surveyId = survey._id as Id<"surveys">;
@@ -358,6 +365,25 @@ function StatusBar({
                                 }
                             />
                         )}
+                        {canSchedule && (
+                            <div className="flex items-center ml-1 pl-1.5 border-l">
+                                <ConfirmButton
+                                    label="Delete Report"
+                                    variant="ghost"
+                                    destructive
+                                    icon={<Trash2 className="w-3.5 h-3.5 mr-1.5" />}
+                                    title="Delete this report?"
+                                    description="This permanently removes the report and its photos. This cannot be undone — use Cancel instead if you just want to record that the visit was called off."
+                                    disabled={busy}
+                                    onConfirm={() =>
+                                        run(
+                                            () => deleteSurvey({ surveyId }).then(onDeleted),
+                                            "Report deleted",
+                                        )
+                                    }
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -392,7 +418,7 @@ function ConfirmButton({
                     size="sm"
                     variant={variant}
                     disabled={disabled}
-                    className={cn("h-8 text-xs", destructive && "text-destructive hover:text-destructive")}
+                    className={cn("h-9 text-xs", destructive && "text-destructive hover:text-destructive")}
                 >
                     {icon}
                     {label}

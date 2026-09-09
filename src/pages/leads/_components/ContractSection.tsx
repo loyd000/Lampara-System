@@ -6,11 +6,17 @@ import {
     useDeleteContract,
     useMarkContractCancelled,
     useMarkContractSigned,
+    useUpdateContractDetails,
 } from "@/lib/supabase/hooks.ts";
-import type { Id } from "@/lib/supabase/types.ts";
+import type { Contract, Id, Lead } from "@/lib/supabase/types.ts";
+import type { ContractDetailsInput } from "@/lib/docx/contract-data.ts";
+import { buildContractDocxData, contractDocxFileName } from "@/lib/docx/contract-data.ts";
+import DownloadContractDocxButton from "./DownloadContractDocxButton.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
     AlertDialog,
@@ -42,9 +48,25 @@ import { toast } from "sonner";
 
 type Props = {
     leadId: Id<"leads">;
+    lead: Lead;
     stage: string;
     canEdit: boolean;
 };
+
+function toFormState(contract: Contract): ContractDetailsInput {
+    return {
+        homeownerName: contract.homeownerName || "",
+        siteAddress: contract.siteAddress || "",
+        phoneNumber: contract.phoneNumber || "",
+        systemSizeKw: contract.systemSizeKw ?? null,
+        panelLine: contract.panelLine || "",
+        inverterLine: contract.inverterLine || "",
+        batteryLine: contract.batteryLine || "",
+        pricePhp: contract.pricePhp ?? null,
+        preparedByName: contract.preparedByName || "",
+        contractDate: contract.contractDate || "",
+    };
+}
 
 const STATUS_BADGE: Record<string, string> = {
     pending_signature:
@@ -61,18 +83,43 @@ const STATUS_LABEL: Record<string, string> = {
     cancelled: "Cancelled",
 };
 
-export default function ContractSection({ leadId, canEdit }: Props) {
+export default function ContractSection({ leadId, lead, canEdit }: Props) {
     const { data: contract, isLoading, error, refetch } = useContractForLead(leadId);
     const { mutateAsync: markSigned, isPending: isSigning } = useMarkContractSigned();
     const { mutateAsync: markCancelled, isPending: isCancelling } = useMarkContractCancelled();
     const { mutateAsync: deleteContract, isPending: isDeleting } = useDeleteContract();
     const { mutateAsync: attachDocument } = useAttachContractDocument();
+    const { mutateAsync: saveDetails, isPending: isSavingDetails } = useUpdateContractDetails();
     const [, setSearchParams] = useSearchParams();
 
     const [uploading, setUploading] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [details, setDetails] = useState<ContractDetailsInput | null>(null);
+    const [syncedContractId, setSyncedContractId] = useState<string | null>(null);
+    if (contract && contract._id !== syncedContractId) {
+        setSyncedContractId(contract._id);
+        setDetails(toFormState(contract));
+    }
+
+    function updateField<K extends keyof ContractDetailsInput>(
+        field: K,
+        value: ContractDetailsInput[K],
+    ) {
+        setDetails((prev) => (prev ? { ...prev, [field]: value } : prev));
+    }
+
+    async function handleSaveDetails() {
+        if (!contract || !details) return;
+        try {
+            await saveDetails({ contractId: contract._id, ...details });
+            toast.success("Contract details saved");
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to save contract details");
+        }
+    }
 
     function goToQuotes() {
         setSearchParams((prev) => {
@@ -268,6 +315,176 @@ export default function ContractSection({ leadId, canEdit }: Props) {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Contract Details — feeds the generated DOCX */}
+                            {details && (
+                                <div className="space-y-3 p-4 rounded-lg border">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-semibold text-foreground block">
+                                            Contract Details
+                                        </label>
+                                        <span className="text-[11px] text-muted-foreground">
+                                            Fills the generated contract document
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px]">Homeowner Name</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                value={details.homeownerName}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("homeownerName", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px]">Phone Number</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                value={details.phoneNumber}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("phoneNumber", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <Label className="text-[11px]">Site Address</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                value={details.siteAddress}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("siteAddress", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px]">System Size (kW-DC)</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                type="number"
+                                                inputMode="decimal"
+                                                step="0.01"
+                                                value={details.systemSizeKw ?? ""}
+                                                disabled={!canEdit}
+                                                onWheel={(e) => e.currentTarget.blur()}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        "systemSizeKw",
+                                                        e.target.value === ""
+                                                            ? null
+                                                            : Number(e.target.value),
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px]">Contract Price (₱)</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                type="number"
+                                                inputMode="decimal"
+                                                step="0.01"
+                                                value={details.pricePhp ?? ""}
+                                                disabled={!canEdit}
+                                                onWheel={(e) => e.currentTarget.blur()}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        "pricePhp",
+                                                        e.target.value === ""
+                                                            ? null
+                                                            : Number(e.target.value),
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <Label className="text-[11px]">Panel Line</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                placeholder="( 12 PCS )  TIER 1 610-630 WATTS"
+                                                value={details.panelLine}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("panelLine", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <Label className="text-[11px]">Inverter Line</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                placeholder="( 1 PC/S )  SOLIS S6-EH1P6K L-PRO/PLUS"
+                                                value={details.inverterLine}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("inverterLine", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <Label className="text-[11px]">Battery Line</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                placeholder="( 1 PC/S )  PYLONTECH 51.2V 314AH"
+                                                value={details.batteryLine}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("batteryLine", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px]">Prepared By</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                value={details.preparedByName}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("preparedByName", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px]">Contract Date</Label>
+                                            <Input
+                                                className="h-10 sm:h-9 text-xs"
+                                                type="date"
+                                                value={details.contractDate}
+                                                disabled={!canEdit}
+                                                onChange={(e) =>
+                                                    updateField("contractDate", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {canEdit && (
+                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-9 text-xs"
+                                                onClick={handleSaveDetails}
+                                                disabled={isSavingDetails}
+                                            >
+                                                {isSavingDetails ? "Saving…" : "Save Details"}
+                                            </Button>
+                                            <DownloadContractDocxButton
+                                                data={buildContractDocxData(details)}
+                                                fileName={contractDocxFileName(
+                                                    lead.firstName,
+                                                    lead.lastName,
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Document Section */}
                             <div className="space-y-2">

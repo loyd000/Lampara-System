@@ -8,6 +8,7 @@ import {
     UserCog,
     BarChart3,
     Package,
+    CalendarDays,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { SignOutButton } from "@/components/sign-out-button.tsx";
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "Pipeline", to: "/pipeline", icon: KanbanSquare },
     { label: "Leads", to: "/leads", icon: Users },
+    { label: "Calendar", to: "/calendar", icon: CalendarDays },
     { label: "Reports", to: "/reports", icon: BarChart3, roles: ["superadmin", "admin"] },
     { label: "Packages", to: "/packages", icon: Package, roles: ["superadmin"] },
     { label: "Team", to: "/team", icon: UserCog, roles: ["superadmin", "admin"] },

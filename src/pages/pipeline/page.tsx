@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { useEnrichedLeads, useUpdateStage } from "@/lib/supabase/hooks.ts";
+import { useCurrentUser, useEnrichedLeads, useUpdateStage } from "@/lib/supabase/hooks.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select.tsx";
 import { useNavigate } from "react-router-dom";
 import {
     STAGES, STAGE_LABELS, STAGE_COLORS, STAGE_GROUPS, STAGE_GROUP_LABELS,
@@ -17,12 +20,19 @@ import { toast } from "sonner";
 
 export default function PipelinePage() {
     const { data: page } = useEnrichedLeads();
+    const { data: currentUser } = useCurrentUser();
     const leads = page?.leads;
     const navigate = useNavigate();
     const [createOpen, setCreateOpen] = useState(false);
     const { mutateAsync: updateStage } = useUpdateStage();
     const [dragging, setDragging] = useState<string | null>(null);
     const [dragOver, setDragOver] = useState<Stage | null>(null);
+
+    // Matches the leads_update RLS policy (superadmin/admin only) — without this
+    // a field user could drag a card and get nothing but a silent "failed to
+    // move lead" from the server rejecting a write the UI never should have
+    // offered.
+    const canMoveStage = ["superadmin", "admin"].includes(currentUser?.role ?? "");
 
     const byStage = STAGES.reduce<Record<Stage, EnrichedLead[]>>((acc, s) => {
         acc[s] = [];
@@ -33,20 +43,23 @@ export default function PipelinePage() {
         if (byStage[l.stage]) byStage[l.stage].push(l);
     });
 
-    async function handleDrop(stage: Stage) {
-        if (!dragging || !leads) return;
-        const lead = leads.find((l) => l._id === dragging);
-        if (!lead || lead.stage === stage) {
-            setDragging(null);
-            setDragOver(null);
-            return;
-        }
+    async function moveLead(leadId: string, stage: Stage) {
+        const lead = leads?.find((l) => l._id === leadId);
+        if (!lead || lead.stage === stage) return;
         try {
             await updateStage({ id: lead._id, stage });
             toast.success(`Moved to ${STAGE_LABELS[stage]}`);
         } catch {
             toast.error("Failed to move lead");
         }
+    }
+
+    async function handleDrop(stage: Stage) {
+        if (!dragging) {
+            setDragOver(null);
+            return;
+        }
+        await moveLead(dragging, stage);
         setDragging(null);
         setDragOver(null);
     }
@@ -117,9 +130,9 @@ export default function PipelinePage() {
                                             <div
                                                 key={stage}
                                                 className="flex-shrink-0 w-52 flex flex-col"
-                                                onDragOver={(e) => { e.preventDefault(); setDragOver(stage); }}
-                                                onDragLeave={() => setDragOver(null)}
-                                                onDrop={() => handleDrop(stage)}
+                                                onDragOver={canMoveStage ? (e) => { e.preventDefault(); setDragOver(stage); } : undefined}
+                                                onDragLeave={canMoveStage ? () => setDragOver(null) : undefined}
+                                                onDrop={canMoveStage ? () => handleDrop(stage) : undefined}
                                             >
                                                 {/* Column header */}
                                                 <div className={cn(
@@ -145,9 +158,11 @@ export default function PipelinePage() {
                                                         <PipelineCard
                                                             key={lead._id}
                                                             lead={lead}
+                                                            canMoveStage={canMoveStage}
                                                             onDragStart={() => setDragging(lead._id)}
                                                             onDragEnd={() => { setDragging(null); setDragOver(null); }}
                                                             onClick={() => navigate(`/leads/${lead._id}`)}
+                                                            onMoveTo={(nextStage) => moveLead(lead._id, nextStage)}
                                                             isDragging={dragging === lead._id}
                                                         />
                                                     ))}
@@ -175,15 +190,19 @@ export default function PipelinePage() {
 
 function PipelineCard({
     lead,
+    canMoveStage,
     onDragStart,
     onDragEnd,
     onClick,
+    onMoveTo,
     isDragging,
 }: {
     lead: EnrichedLead;
+    canMoveStage: boolean;
     onDragStart: () => void;
     onDragEnd: () => void;
     onClick: () => void;
+    onMoveTo: (stage: Stage) => void;
     isDragging: boolean;
 }) {
     const now = useNow();
@@ -194,13 +213,13 @@ function PipelineCard({
 
     return (
         <div
-            draggable
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
+            draggable={canMoveStage}
+            onDragStart={canMoveStage ? onDragStart : undefined}
+            onDragEnd={canMoveStage ? onDragEnd : undefined}
             onClick={onClick}
             className={cn(
-                "bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing",
-                "hover:shadow-xs hover:border-foreground/30 transition-all select-none",
+                "bg-card border border-border rounded-lg p-3 transition-all select-none",
+                canMoveStage && "cursor-grab active:cursor-grabbing hover:shadow-xs hover:border-foreground/30",
                 isDragging && "opacity-40 scale-95",
                 isStale && "border-amber-300/60 dark:border-amber-700/40",
             )}
@@ -246,6 +265,27 @@ function PipelineCard({
                     {daysSinceActivity === 0 ? "Today" : daysSinceActivity === 1 ? "1d" : `${daysSinceActivity}d`}
                 </span>
             </div>
+
+            {/* Tap-to-move — drag works on desktop, but a phone has no drag
+                surface, so this is the only way a technician moves a card on
+                mobile. Kept visible on every size, not just small screens, since
+                it is also just a faster path than a drag on desktop. */}
+            {canMoveStage && (
+                <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+                    <Select value={lead.stage} onValueChange={(v) => onMoveTo(v as Stage)}>
+                        <SelectTrigger className="h-8 text-[11px] w-full" aria-label="Move to stage">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {STAGES.map((s) => (
+                                <SelectItem key={s} value={s} className="text-xs">
+                                    {STAGE_LABELS[s]}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
         </div>
     );
 }

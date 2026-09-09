@@ -301,6 +301,16 @@ export type Contract = Base & {
     signedAt?: string;
     documentPath?: string;
     notes?: string;
+    homeownerName?: string;
+    siteAddress?: string;
+    phoneNumber?: string;
+    systemSizeKw?: number;
+    panelLine?: string;
+    inverterLine?: string;
+    batteryLine?: string;
+    pricePhp?: number;
+    preparedByName?: string;
+    contractDate?: string;
 };
 
 export type Permit = Base & {
@@ -700,10 +710,10 @@ export function toQuoteItem(row: QuoteItemRow): QuoteItem {
         _creationTime: Date.parse(row.created_at),
         quoteId: row.quote_id,
         description: row.description,
-        qty: Number(row.qty),
+        qty: num(row.qty) ?? 0,
         unit: row.unit,
-        unitPricePhp: Number(row.unit_price_php),
-        lineTotalPhp: Number(row.line_total_php),
+        unitPricePhp: num(row.unit_price_php) ?? 0,
+        lineTotalPhp: num(row.line_total_php) ?? 0,
         sourcePackageId: opt(row.source_package_id),
         sortOrder: row.sort_order,
     };
@@ -718,6 +728,16 @@ export function toContract(row: ContractRow): Contract {
         signedAt: opt(row.signed_at),
         documentPath: opt(row.document_path),
         notes: opt(row.notes),
+        homeownerName: opt(row.homeowner_name),
+        siteAddress: opt(row.site_address),
+        phoneNumber: opt(row.phone_number),
+        systemSizeKw: num(row.system_size_kw),
+        panelLine: opt(row.panel_line),
+        inverterLine: opt(row.inverter_line),
+        batteryLine: opt(row.battery_line),
+        pricePhp: num(row.price_php),
+        preparedByName: opt(row.prepared_by_name),
+        contractDate: opt(row.contract_date),
     };
 }
 
@@ -809,7 +829,7 @@ export function toPackage(row: PackageRow): Package {
         name: row.name,
         description: opt(row.description),
         systemSizeKw: num(row.system_size_kw),
-        basePricePhp: Number(row.base_price_php),
+        basePricePhp: num(row.base_price_php) ?? 0,
         isActive: row.is_active,
         sortOrder: row.sort_order,
         createdById: opt(row.created_by),
@@ -823,9 +843,9 @@ export function toPackageItem(row: PackageItemRow): PackageItem {
         packageId: row.package_id,
         name: opt(row.name),
         description: row.description,
-        qty: Number(row.qty),
+        qty: num(row.qty) ?? 0,
         unit: row.unit,
-        unitPricePhp: Number(row.unit_price_php || 0),
+        unitPricePhp: num(row.unit_price_php) ?? 0,
         sortOrder: row.sort_order,
     };
 }
