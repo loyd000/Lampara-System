@@ -184,7 +184,11 @@ export function ApplianceField({
 }) {
     const id = useId();
     return (
-        <div className="flex items-center gap-2.5">
+        // Wraps on a phone: an <input> will not shrink below its intrinsic
+        // ~20-character width, so a fixed-width label beside one on a 375px
+        // screen pushes the whole page into a horizontal scroll. Below `sm` the
+        // note drops onto its own full-width line instead.
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <Checkbox
                 id={id}
                 checked={checked}
@@ -193,7 +197,7 @@ export function ApplianceField({
             />
             <Label
                 htmlFor={id}
-                className="text-sm font-normal cursor-pointer w-32 shrink-0"
+                className="text-sm font-normal cursor-pointer min-w-0 flex-1 sm:w-32 sm:flex-none"
             >
                 {label}
             </Label>
@@ -204,7 +208,7 @@ export function ApplianceField({
                 // horsepower, whatever the technician thinks is worth noting.
                 placeholder="qty / notes"
                 disabled={disabled || !checked}
-                className="h-8 text-sm flex-1"
+                className="h-8 text-sm w-full min-w-0 sm:w-auto sm:flex-1"
             />
         </div>
     );

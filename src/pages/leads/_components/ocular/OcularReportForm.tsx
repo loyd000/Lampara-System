@@ -296,7 +296,7 @@ export default function OcularReportForm({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* ── Client details ───────────────────────────────────────── */}
             <FieldBlock title="Client Details">
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <TextField
                         label="Date of inspection"
                         type="date"
@@ -467,7 +467,7 @@ export default function OcularReportForm({
 
             {/* ── Roof ─────────────────────────────────────────────────── */}
             <FieldBlock title="Roof">
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Controller
                         control={control}
                         name="roofType"
@@ -506,12 +506,15 @@ export default function OcularReportForm({
                     )}
                 />
 
-                <div className="grid grid-cols-3 gap-3">
+                {/* Three number fields with unit suffixes leave ~85px each on a
+                    phone. Area takes its own line there; width and length pair. */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <TextField
                         label="Roof area"
                         inputMode="decimal"
                         suffix="m²"
                         disabled={disabled}
+                        className="col-span-2 sm:col-span-1"
                         {...register("roofAreaSqm")}
                     />
                     <TextField
@@ -530,7 +533,7 @@ export default function OcularReportForm({
                     />
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Controller
                         control={control}
                         name="roofAccess"
@@ -596,7 +599,7 @@ export default function OcularReportForm({
 
             {/* ── Electric meter ───────────────────────────────────────── */}
             <FieldBlock title="Electric Meter">
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Controller
                         control={control}
                         name="meterPhase"
@@ -667,7 +670,7 @@ export default function OcularReportForm({
 
             {/* ── Panel & network ──────────────────────────────────────── */}
             <FieldBlock title="Panel & Network">
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Controller
                         control={control}
                         name="grounding"
@@ -730,7 +733,7 @@ export default function OcularReportForm({
                         />
                     )}
                 />
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Controller
                         control={control}
                         name="packageType"

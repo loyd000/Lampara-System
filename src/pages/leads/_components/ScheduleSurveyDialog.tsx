@@ -29,9 +29,17 @@ type Props = {
     onClose: () => void;
     leadId: Id<"leads">;
     propertyId: Id<"properties">;
+    /** Handed the new inspection's id, so the caller can open it. */
+    onCreated?: (surveyId: Id<"surveys">) => void;
 };
 
-export default function ScheduleSurveyDialog({ open, onClose, leadId, propertyId }: Props) {
+export default function ScheduleSurveyDialog({
+    open,
+    onClose,
+    leadId,
+    propertyId,
+    onCreated,
+}: Props) {
     const { mutateAsync: scheduleSurvey } = useScheduleSurvey();
     const { data: users } = useUsers();
     const technicians = users?.filter((u) => ["field", "admin"].includes(u.role)) ?? [];
@@ -43,15 +51,16 @@ export default function ScheduleSurveyDialog({ open, onClose, leadId, propertyId
 
     async function onSubmit(values: FormValues) {
         try {
-            await scheduleSurvey({
+            const surveyId = await scheduleSurvey({
                 leadId,
                 propertyId,
                 assignedSurveyorId: values.assignedSurveyorId as Id<"users">,
                 scheduledAt: new Date(values.scheduledAt).toISOString(),
             });
-            toast.success("Inspection scheduled");
+            toast.success("Ocular report created");
             form.reset();
             onClose();
+            onCreated?.(surveyId);
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to schedule inspection");
         }

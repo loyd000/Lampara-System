@@ -14,6 +14,7 @@ import Index from "./pages/Index.tsx";
 // signed-in user sees first, so they stay in the entry chunk; the rest — and
 // their form/validation dependencies — load when someone actually navigates.
 const AuthCallback = lazy(() => import("./pages/auth/Callback.tsx"));
+const Preview = lazy(() => import("./pages/__preview.tsx")); // TEMP
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const LeadsPage = lazy(() => import("./pages/leads/page.tsx"));
 const LeadDetailPage = lazy(() => import("./pages/leads/[id]/page.tsx"));
@@ -44,6 +45,7 @@ export default function App() {
                         <Suspense fallback={<RouteFallback />}>
                             <Routes>
                                 <Route path="/auth/callback" element={<AuthCallback />} />
+                                <Route path="/__preview" element={<Preview />} />
                                 <Route element={<AppLayout />}>
                                     <Route path="/" element={<Index />} />
                                     <Route path="/pipeline" element={<PipelinePage />} />

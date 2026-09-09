@@ -1,18 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import {
-    ArrowLeft,
-    Building2,
-    Clock,
-    FileText,
-    Mail,
-    MapPin,
-    Pencil,
-    Phone,
-    Shield,
-    Trash2,
-    UserCircle,
-} from "lucide-react";
+import { ArrowLeft, Clock, Pencil, Trash2, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -33,13 +21,12 @@ import { useNow } from "@/hooks/use-now.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import {
     INSPECTION_LABEL_SHORT,
+    PROPERTY_TYPE_LABELS,
     SOURCE_LABELS,
     STAGES,
-    STAGE_COLORS,
     STAGE_LABELS,
     type Stage,
 } from "@/lib/constants.ts";
-import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -70,7 +57,6 @@ import ContractSection from "../_components/ContractSection.tsx";
 import PermitsSection from "../_components/PermitsSection.tsx";
 import InstallationSection from "../_components/InstallationSection.tsx";
 import ServiceTicketsSection from "../_components/ServiceTicketsSection.tsx";
-import { cn } from "@/lib/utils.ts";
 
 /**
  * One lead, one tab per stage of its life.
@@ -89,6 +75,49 @@ const TABS = [
     { value: "maintenance", label: "Maintenance" },
     { value: "activity", label: "Activity History" },
 ] as const;
+
+/**
+ * One labelled fact. The label sits in a fixed rail on desktop so every value
+ * starts on the same line, and stacks above the value on a phone where a rail
+ * would leave the values too narrow to read.
+ */
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-[8.5rem_1fr] gap-0.5 sm:gap-6 py-3.5">
+            <dt className="text-xs font-medium text-muted-foreground sm:pt-0.5">{label}</dt>
+            <dd className="text-sm text-foreground min-w-0">{children}</dd>
+        </div>
+    );
+}
+
+/** A fact nobody has filled in, optionally with the way to fill it. */
+function NotRecorded({
+    label = "Not recorded",
+    action,
+    onAction,
+}: {
+    label?: string;
+    action?: string;
+    onAction?: () => void;
+}) {
+    return (
+        <span className="text-muted-foreground">
+            {label}
+            {action && onAction && (
+                <>
+                    {" · "}
+                    <button
+                        type="button"
+                        onClick={onAction}
+                        className="underline underline-offset-4 hover:text-foreground transition-colors"
+                    >
+                        {action}
+                    </button>
+                </>
+            )}
+        </span>
+    );
+}
 
 export default function LeadDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -142,7 +171,7 @@ export default function LeadDetailPage() {
                     <Skeleton className="h-8 w-56 rounded-md" />
                 </div>
                 <Skeleton className="h-9 w-full max-w-2xl rounded-lg" />
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[...Array(3)].map((_, i) => (
                         <Skeleton key={i} className="h-48 w-full rounded-lg" />
                     ))}
@@ -227,31 +256,21 @@ export default function LeadDetailPage() {
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                            {lead.firstName} {lead.lastName}
-                        </h1>
-                        <Badge className={cn(STAGE_COLORS[lead.stage], "text-xs font-semibold")}>
-                            {STAGE_LABELS[lead.stage]}
-                        </Badge>
-                        {isStale && (
-                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-xs">
-                                {daysOld}d inactive
-                            </Badge>
-                        )}
-                        {lead.convertedAt && (
-                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs">
-                                Customer
-                            </Badge>
-                        )}
-                    </div>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                        {lead.firstName} {lead.lastName}
+                    </h1>
+                    {/* One quiet line instead of a row of badges. The stage
+                        already has a control beside it, and "Customer" is the
+                        conversion date on the Overview. Staleness is the only
+                        thing here the page does not say twice, so it keeps a
+                        little colour and nothing else does. */}
                     <p className="text-muted-foreground text-sm mt-1">
-                        {SOURCE_LABELS[lead.source]}
-                        {lead.referredBy && ` · Referred by ${lead.referredBy}`}
-                        {lead.assignedRepName && (
-                            <span className="ml-2 inline-flex items-center gap-1">
-                                <UserCircle className="w-3 h-3" />
-                                {lead.assignedRepName}
+                        {SOURCE_LABELS[lead.source] ?? lead.source}
+                        {lead.assignedRepName && ` · ${lead.assignedRepName}`}
+                        {isStale && (
+                            <span className="text-amber-800 dark:text-amber-500 font-medium">
+                                {" · "}
+                                No activity for {daysOld} days
                             </span>
                         )}
                     </p>
@@ -329,114 +348,91 @@ export default function LeadDetailPage() {
                     </TabsList>
                 </div>
 
-                {/* Overview */}
-                <TabsContent value="overview" className="mt-4">
-                    <div className="grid md:grid-cols-3 gap-4">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2">
-                                    <UserCircle className="w-4 h-4 text-muted-foreground" />
-                                    Contact Info
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2.5 text-sm">
-                                <div className="flex items-center gap-2.5">
-                                    <Phone className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                    <a
-                                        href={`tel:${lead.phone}`}
-                                        className="hover:text-primary transition-colors"
-                                    >
-                                        {lead.phone}
-                                    </a>
-                                </div>
-                                {lead.email && (
-                                    <div className="flex items-center gap-2.5">
-                                        <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                        <a
-                                            href={`mailto:${lead.email}`}
-                                            className="hover:text-primary transition-colors truncate"
-                                        >
-                                            {lead.email}
-                                        </a>
-                                    </div>
-                                )}
-                                {lead.convertedAt && (
-                                    <div className="flex items-center gap-2.5 text-emerald-600 text-xs">
-                                        <Shield className="w-3.5 h-3.5 flex-shrink-0" />
-                                        Customer since{" "}
-                                        {new Date(lead.convertedAt).toLocaleDateString()}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                {/* Overview — a spec sheet, not a wall of cards. Labels in a
+                    narrow rail, values in a readable column, hairlines instead
+                    of boxes. Nothing here is repeated from the header. */}
+                <TabsContent value="overview" className="mt-6">
+                    <dl className="max-w-2xl divide-y divide-border">
+                        <DetailRow label="Phone">
+                            <a
+                                href={`tel:${lead.phone}`}
+                                className="underline-offset-4 hover:underline hover:text-primary transition-colors"
+                            >
+                                {lead.phone}
+                            </a>
+                        </DetailRow>
 
-                        {prop ? (
-                            <Card>
-                                <CardHeader className="pb-3">
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Building2 className="w-4 h-4 text-muted-foreground" />
-                                        Property
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2 text-sm">
-                                    <div className="flex items-start gap-2.5">
-                                        <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                        <div>
-                                            <p className="text-foreground">{prop.address}</p>
-                                            <p className="text-muted-foreground">
-                                                {prop.city}, {prop.state} {prop.zip}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Badge variant="secondary" className="text-xs capitalize">
-                                        {prop.propertyType}
-                                    </Badge>
-                                    {prop.notes && (
-                                        <p className="text-xs text-muted-foreground">{prop.notes}</p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            <Card>
-                                <CardContent className="py-8 flex flex-col items-center gap-2 text-center">
-                                    <Building2 className="w-7 h-7 text-muted-foreground/30" />
-                                    <p className="text-sm text-muted-foreground">
-                                        No property on this lead yet
-                                    </p>
-                                    {canEdit && (
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="text-xs h-7"
-                                            onClick={() => setEditOpen(true)}
-                                        >
-                                            Add a property
-                                        </Button>
-                                    )}
-                                </CardContent>
-                            </Card>
+                        <DetailRow label="Email">
+                            {lead.email ? (
+                                <a
+                                    href={`mailto:${lead.email}`}
+                                    className="underline-offset-4 hover:underline hover:text-primary transition-colors break-all"
+                                >
+                                    {lead.email}
+                                </a>
+                            ) : (
+                                <NotRecorded />
+                            )}
+                        </DetailRow>
+
+                        <DetailRow label="Address">
+                            {prop ? (
+                                <>
+                                    {prop.address}
+                                    <span className="block text-muted-foreground">
+                                        {prop.city}, {prop.state} {prop.zip}
+                                    </span>
+                                </>
+                            ) : (
+                                <NotRecorded
+                                    action={canEdit ? "Add a property" : undefined}
+                                    onAction={() => setEditOpen(true)}
+                                />
+                            )}
+                        </DetailRow>
+
+                        {prop && (
+                            <DetailRow label="Property type">
+                                {PROPERTY_TYPE_LABELS[prop.propertyType] ?? prop.propertyType}
+                            </DetailRow>
                         )}
 
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-muted-foreground" />
-                                    Notes
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {lead.notes ? (
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                        {lead.notes}
-                                    </p>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground/60">
-                                        Nothing recorded.
-                                    </p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+                        <DetailRow label="Source">
+                            {SOURCE_LABELS[lead.source] ?? lead.source}
+                            {lead.referredBy && (
+                                <span className="text-muted-foreground">
+                                    {" "}
+                                    · referred by {lead.referredBy}
+                                </span>
+                            )}
+                        </DetailRow>
+
+                        <DetailRow label="Assigned to">
+                            {lead.assignedRepName ?? <NotRecorded label="Unassigned" />}
+                        </DetailRow>
+
+                        {lead.convertedAt && (
+                            <DetailRow label="Customer since">
+                                {new Date(lead.convertedAt).toLocaleDateString(undefined, {
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                })}
+                            </DetailRow>
+                        )}
+
+                        {lead.notes && (
+                            <DetailRow label="Notes">
+                                <p className="whitespace-pre-wrap">{lead.notes}</p>
+                            </DetailRow>
+                        )}
+
+                        {prop?.notes && (
+                            <DetailRow label="Site notes">
+                                <p className="whitespace-pre-wrap">{prop.notes}</p>
+                            </DetailRow>
+                        )}
+                    </dl>
                 </TabsContent>
 
                 {/* Site Ocular Inspection */}
@@ -450,7 +446,7 @@ export default function LeadDetailPage() {
 
                 {/* Quotes & Contract */}
                 <TabsContent value="quotes" className="mt-4">
-                    <div className="grid lg:grid-cols-2 gap-4 items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                         <QuotesSection leadId={lead._id} stage={lead.stage} canEdit={canEdit} />
                         <ContractSection leadId={lead._id} stage={lead.stage} canEdit={canEdit} />
                     </div>

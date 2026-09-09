@@ -51,7 +51,7 @@ export default function TeamPage() {
             {users === undefined ? (
                 <div className="space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
             ) : (
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {users.map(user => (
                         <Card key={user._id}>
                             <CardContent className="flex items-center gap-3">
