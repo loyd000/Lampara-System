@@ -30,3 +30,6 @@ tsconfig.tsbuildinfo
 .env*
 # ...but the template that documents which Supabase keys are needed is committed.
 !.env.example
+
+# Local output of scripts/preview-ocular-pdf.tsx
+ocular-report-preview.pdf

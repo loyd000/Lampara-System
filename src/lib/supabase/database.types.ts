@@ -153,6 +153,7 @@ export type SurveyRow = Timestamps & {
     appliance_washer: boolean;
     appliance_washer_note: string | null;
     appliance_others: string | null;
+    recommended_vehicle: string | null;
 
     roof_type_note: string | null;
     support_purlins: SupportPurlin[];

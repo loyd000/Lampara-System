@@ -183,6 +183,8 @@ export type Survey = Base & {
     applianceWasher: boolean;
     applianceWasherNote?: string;
     applianceOthers?: string;
+    /** "Recommended vehicle (Carabao, Tamaraw)" on the printed form. */
+    recommendedVehicle?: string;
 
     // ── Roof ─────────────────────────────────────────────────────────────
     roofTypeNote?: string;
@@ -474,6 +476,7 @@ export function toSurvey(row: SurveyRow): Survey {
         applianceWasher: row.appliance_washer ?? false,
         applianceWasherNote: opt(row.appliance_washer_note),
         applianceOthers: opt(row.appliance_others),
+        recommendedVehicle: opt(row.recommended_vehicle),
 
         roofTypeNote: opt(row.roof_type_note),
         supportPurlins: row.support_purlins ?? [],

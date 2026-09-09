@@ -54,7 +54,18 @@ export default function AppLayout() {
                                     <SignOutButton />
                                 </div>
                             </div>
-                            <main className="flex-1 overflow-auto pb-16 md:pb-0">
+                            {/*
+                              `relative` is load-bearing. Radix renders a hidden
+                              native <input> inside every Checkbox and Radio for
+                              form participation, positioned absolutely — and
+                              `overflow: auto` does not establish a containing
+                              block. Without a positioned ancestor those inputs
+                              resolve against the document instead, stretching it
+                              to their lowest coordinate: a second scrollbar, and
+                              a page that scrolls past the shell into empty space.
+                              Worst on the ocular report, which has ~40 of them.
+                            */}
+                            <main className="relative flex-1 overflow-auto pb-16 md:pb-0">
                                 <Outlet />
                             </main>
                         </div>

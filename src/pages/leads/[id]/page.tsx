@@ -437,11 +437,7 @@ export default function LeadDetailPage() {
 
                 {/* Site Ocular Inspection */}
                 <TabsContent value="ocular" className="mt-4">
-                    <OcularInspectionTab
-                        leadId={lead._id}
-                        propertyId={prop?._id}
-                        canSchedule={canEdit}
-                    />
+                    <OcularInspectionTab lead={lead} property={prop} canSchedule={canEdit} />
                 </TabsContent>
 
                 {/* Quotes & Contract */}

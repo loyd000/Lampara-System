@@ -201,6 +201,7 @@ export type SurveyReportPatch = Partial<
         | "applianceWasher"
         | "applianceWasherNote"
         | "applianceOthers"
+        | "recommendedVehicle"
         | "roofType"
         | "roofTypeNote"
         | "supportPurlins"
@@ -252,6 +253,7 @@ const REPORT_COLUMNS: Record<keyof SurveyReportPatch, string> = {
     applianceWasher: "appliance_washer",
     applianceWasherNote: "appliance_washer_note",
     applianceOthers: "appliance_others",
+    recommendedVehicle: "recommended_vehicle",
     roofType: "roof_type",
     roofTypeNote: "roof_type_note",
     supportPurlins: "support_purlins",

@@ -64,6 +64,7 @@ type FormValues = {
     applianceWasher: boolean;
     applianceWasherNote: string;
     applianceOthers: string;
+    recommendedVehicle: string;
 
     roofType: string;
     roofTypeNote: string;
@@ -121,6 +122,7 @@ function toForm(survey: SurveyForLead): FormValues {
         applianceWasher: survey.applianceWasher,
         applianceWasherNote: str(survey.applianceWasherNote),
         applianceOthers: str(survey.applianceOthers),
+        recommendedVehicle: str(survey.recommendedVehicle),
 
         roofType: str(survey.roofType),
         roofTypeNote: str(survey.roofTypeNote),
@@ -193,6 +195,7 @@ function toPatch(v: FormValues): SurveyReportPatch {
         applianceWasher: v.applianceWasher,
         applianceWasherNote: v.applianceWasherNote || undefined,
         applianceOthers: v.applianceOthers || undefined,
+        recommendedVehicle: v.recommendedVehicle || undefined,
 
         roofType: (v.roofType || undefined) as SurveyReportPatch["roofType"],
         roofTypeNote: v.roofTypeNote || undefined,
@@ -463,6 +466,14 @@ export default function OcularReportForm({
                         />
                     </div>
                 </div>
+
+                <TextField
+                    label="Recommended vehicle"
+                    // The paper form names two by way of example; the road decides.
+                    placeholder="Carabao, Tamaraw…"
+                    disabled={disabled}
+                    {...register("recommendedVehicle")}
+                />
             </FieldBlock>
 
             {/* ── Roof ─────────────────────────────────────────────────── */}

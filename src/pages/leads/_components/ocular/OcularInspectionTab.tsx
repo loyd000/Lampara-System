@@ -22,7 +22,7 @@ import {
     useSubmitSurveyReport,
     useSurveysForLead,
 } from "@/lib/supabase/hooks.ts";
-import type { Id, SurveyForLead } from "@/lib/supabase/types.ts";
+import type { Id, Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
 import {
     INSPECTION_LABEL,
     SURVEY_STATUS_COLORS,
@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils.ts";
 import ScheduleSurveyDialog from "../ScheduleSurveyDialog.tsx";
 import OcularReportForm from "./OcularReportForm.tsx";
 import PhotoSlots from "./PhotoSlots.tsx";
+import DownloadReportButton from "./DownloadReportButton.tsx";
 
 /**
  * The Ocular Inspection tab.
@@ -60,14 +61,16 @@ import PhotoSlots from "./PhotoSlots.tsx";
  * specific write-up the same way `?tab=` points at this tab.
  */
 export default function OcularInspectionTab({
-    leadId,
-    propertyId,
+    lead,
+    property,
     canSchedule,
 }: {
-    leadId: Id<"leads">;
-    propertyId: Id<"properties"> | undefined;
+    lead: Lead;
+    property: Property | undefined;
     canSchedule: boolean;
 }) {
+    const leadId = lead._id as Id<"leads">;
+    const propertyId = property?._id as Id<"properties"> | undefined;
     const { data: surveys } = useSurveysForLead(leadId);
     const { data: currentUser } = useCurrentUser();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -141,6 +144,8 @@ export default function OcularInspectionTab({
 
                 <StatusBar
                     survey={active}
+                    lead={lead}
+                    property={property}
                     canSchedule={canSchedule}
                     isOffice={isOffice}
                     editable={editable}
@@ -261,8 +266,7 @@ export default function OcularInspectionTab({
                                 </div>
                                 <p className="text-xs text-muted-foreground">
                                     {survey.surveyorName}
-                                    {" · "}
-                                    {summarise(survey)}
+                                    {progressOf(survey) && ` · ${progressOf(survey)}`}
                                 </p>
                             </div>
                             <ChevronRight className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
@@ -277,14 +281,15 @@ export default function OcularInspectionTab({
 }
 
 /**
- * What the row says about a report's progress.
+ * What the row says about a report's progress, or null when the status badge
+ * has already said everything there is to say.
  *
- * "Not started" is the useful signal on a list of reports filled over days —
+ * "Not started" is the useful signal on a list of reports filled over days;
  * a percentage would be false precision when most of the ~40 fields are
  * optional on any given site.
  */
-function summarise(survey: SurveyForLead): string {
-    if (survey.status === "cancelled") return "Cancelled";
+function progressOf(survey: SurveyForLead): string | null {
+    if (survey.status === "cancelled") return null;
 
     const started =
         survey.inspectionDate ||
@@ -311,12 +316,16 @@ function summarise(survey: SurveyForLead): string {
 
 function StatusBar({
     survey,
+    lead,
+    property,
     canSchedule,
     isOffice,
     editable,
     onCancelled,
 }: {
     survey: SurveyForLead;
+    lead: Lead;
+    property: Property | undefined;
     canSchedule: boolean;
     isOffice: boolean;
     editable: boolean;
@@ -375,6 +384,7 @@ function StatusBar({
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
+                        <DownloadReportButton survey={survey} lead={lead} property={property} />
                         {survey.status === "scheduled" && editable && (
                             <ConfirmButton
                                 label="Submit for approval"
