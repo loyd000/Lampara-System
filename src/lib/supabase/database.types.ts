@@ -64,7 +64,14 @@ export type SurveyPhotoCategory =
     | "ac_conduit"
     | "other";
 export type RoofType = "asphalt_shingle" | "metal" | "tile" | "flat" | "other";
-export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "superseded";
+export type QuoteStatus =
+    | "in_progress"
+    | "approved"
+    | "draft"
+    | "sent"
+    | "accepted"
+    | "rejected"
+    | "superseded";
 export type FinancingOption = "cash" | "loan" | "lease" | "ppa";
 export type ContractStatus = "pending_signature" | "signed" | "cancelled";
 export type PermitType =
@@ -79,6 +86,31 @@ export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 export type TicketPriority = "low" | "medium" | "high";
 
 export type ChecklistItem = { item: string; checked: boolean };
+
+// ─── Packages (Phase 5) ───────────────────────────────────────────────────
+
+export type PackageRow = Timestamps & {
+    id: string;
+    name: string;
+    description: string | null;
+    system_size_kw: number | string | null;
+    base_price_php: number | string;
+    is_active: boolean;
+    sort_order: number;
+    created_by: string | null;
+};
+
+export type PackageItemRow = {
+    id: string;
+    package_id: string;
+    name?: string | null;
+    description: string;
+    qty: number | string;
+    unit: string;
+    unit_price_php: number | string;
+    sort_order: number;
+    created_at: string;
+};
 
 type Timestamps = {
     created_at: string;
@@ -214,16 +246,31 @@ export type QuoteRow = Timestamps & {
     lead_id: string;
     version: number;
     status: QuoteStatus;
-    panel_count: number;
-    panel_model: string;
-    inverter_type: string;
-    system_size_kw: number;
-    total_price_usd: number | string;
-    financing_option: FinancingOption;
+    total_php: number | string;
+    quotation_no: string;
+    prepared_by_id: string | null;
+    panel_count?: number | null;
+    panel_model?: string | null;
+    inverter_type?: string | null;
+    system_size_kw?: number | null;
+    total_price_usd?: number | string | null;
+    financing_option?: FinancingOption | null;
     valid_until: string | null;
     notes: string | null;
     created_by: string;
     sent_at: string | null;
+};
+
+export type QuoteItemRow = Timestamps & {
+    id: string;
+    quote_id: string;
+    description: string;
+    qty: number | string;
+    unit: string;
+    unit_price_php: number | string;
+    line_total_php: number | string;
+    source_package_id: string | null;
+    sort_order: number;
 };
 
 export type ContractRow = Timestamps & {
@@ -332,10 +379,13 @@ export type Database = {
             lead_notes: TableDef<LeadNoteRow>;
             lead_files: TableDef<LeadFileRow>;
             quotes: TableDef<QuoteRow>;
+            quote_items: TableDef<QuoteItemRow>;
             contracts: TableDef<ContractRow>;
             permits: TableDef<PermitRow>;
             installations: TableDef<InstallationRow>;
             service_tickets: TableDef<ServiceTicketRow>;
+            packages: TableDef<PackageRow>;
+            package_items: TableDef<PackageItemRow>;
             activity_log: TableDef<ActivityLogRow>;
         };
         Views: Record<never, never>;

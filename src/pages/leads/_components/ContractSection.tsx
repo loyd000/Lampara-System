@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     useAttachContractDocument,
     useContractForLead,
+    useDeleteContract,
     useMarkContractCancelled,
     useMarkContractSigned,
 } from "@/lib/supabase/hooks.ts";
@@ -11,7 +13,29 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
-    FileBadge2, CheckCircle2, XCircle, Upload, FileText, ExternalLink,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog.tsx";
+import {
+    FileBadge2,
+    CheckCircle2,
+    XCircle,
+    Upload,
+    FileText,
+    ExternalLink,
+    ArrowRight,
+    Clock,
+    FileCheck,
+    AlertCircle,
+    RotateCcw,
+    Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -23,9 +47,12 @@ type Props = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-    pending_signature: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    signed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    cancelled: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+    pending_signature:
+        "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-300 dark:border-amber-700",
+    signed:
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
+    cancelled:
+        "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-300 dark:border-slate-700",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -34,23 +61,35 @@ const STATUS_LABEL: Record<string, string> = {
     cancelled: "Cancelled",
 };
 
-export default function ContractSection({ leadId, stage, canEdit }: Props) {
-    const { data: contract } = useContractForLead(leadId);
-    const { mutateAsync: markSigned } = useMarkContractSigned();
-    const { mutateAsync: markCancelled } = useMarkContractCancelled();
+export default function ContractSection({ leadId, canEdit }: Props) {
+    const { data: contract, isLoading, error, refetch } = useContractForLead(leadId);
+    const { mutateAsync: markSigned, isPending: isSigning } = useMarkContractSigned();
+    const { mutateAsync: markCancelled, isPending: isCancelling } = useMarkContractCancelled();
+    const { mutateAsync: deleteContract, isPending: isDeleting } = useDeleteContract();
     const { mutateAsync: attachDocument } = useAttachContractDocument();
+    const [, setSearchParams] = useSearchParams();
+
     const [uploading, setUploading] = useState(false);
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Contract section is unlocked once a contract is created (contract_signed stage +)
-    const isUnlocked = !["lead", "survey_scheduled", "survey_completed", "proposal_sent"].includes(stage);
+    function goToQuotes() {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("tab", "quotes");
+            return next;
+        });
+    }
 
     async function handleSign() {
         if (!contract) return;
         try {
             await markSigned({ contractId: contract._id });
-            toast.success("Contract marked as signed");
-        } catch { toast.error("Failed to update contract"); }
+            toast.success("Contract marked as signed — lead converted");
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to update contract");
+        }
     }
 
     async function handleCancel() {
@@ -58,7 +97,21 @@ export default function ContractSection({ leadId, stage, canEdit }: Props) {
         try {
             await markCancelled({ contractId: contract._id });
             toast.success("Contract cancelled");
-        } catch { toast.error("Failed to cancel contract"); }
+            setCancelDialogOpen(false);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to cancel contract");
+        }
+    }
+
+    async function handleDelete() {
+        if (!contract) return;
+        try {
+            await deleteContract({ contractId: contract._id });
+            toast.success("Contract deleted");
+            setDeleteDialogOpen(false);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to delete contract");
+        }
     }
 
     async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -69,99 +122,328 @@ export default function ContractSection({ leadId, stage, canEdit }: Props) {
         setUploading(true);
         try {
             await attachDocument({ contractId: contract._id, file });
-            toast.success("Document uploaded");
+            toast.success("Contract document uploaded");
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to upload document");
-        } finally { setUploading(false); }
+        } finally {
+            setUploading(false);
+        }
     }
 
     return (
-        <Card className={cn(!isUnlocked && "opacity-60")}>
-            <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                    <FileBadge2 className="w-4 h-4 text-muted-foreground" />Contract
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                {!isUnlocked ? (
-                    <p className="text-xs text-muted-foreground">Contract is created after a quote is accepted.</p>
-                ) : contract === undefined ? (
-                    <Skeleton className="h-16 w-full" />
-                ) : contract === null ? (
-                    <p className="text-xs text-muted-foreground">No contract yet. Accept a quote above to create one.</p>
-                ) : (
-                    <div className="space-y-3">
-                        {/* Status row */}
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                                <Badge className={cn(STATUS_BADGE[contract.status], "text-[10px]")}>
-                                    {STATUS_LABEL[contract.status]}
-                                </Badge>
-                                {contract.quoteVersion && (
-                                    <span className="text-xs text-muted-foreground">Quote v{contract.quoteVersion}</span>
+        <div className="space-y-4">
+            <Card>
+                <CardHeader className="pb-3 border-b">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <FileBadge2 className="w-4 h-4 text-primary" />
+                            Customer Contract
+                        </CardTitle>
+                        {contract && (
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    STATUS_BADGE[contract.status],
+                                    "text-xs font-semibold px-2.5 py-0.5",
                                 )}
-                            </div>
-                            {contract.signedAt && (
-                                <span className="text-xs text-muted-foreground">
-                                    Signed {new Date(contract.signedAt).toLocaleDateString()}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Document */}
-                        {contract.documentUrl ? (
-                            <a
-                                href={contract.documentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors text-sm"
                             >
-                                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                                <span className="flex-1 text-xs">View Contract Document</span>
-                                <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                            </a>
-                        ) : canEdit && (
-                            <>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".pdf,.doc,.docx"
-                                    className="hidden"
-                                    onChange={handleFileUpload}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploading}
-                                    className="w-full border-2 border-dashed border-border rounded-lg py-3 flex items-center justify-center gap-1.5 hover:border-primary/40 hover:bg-muted/20 transition-colors cursor-pointer text-xs text-muted-foreground disabled:opacity-50"
-                                >
-                                    <Upload className="w-3.5 h-3.5" />
-                                    {uploading ? "Uploading…" : "Upload signed document"}
-                                </button>
-                            </>
-                        )}
-
-                        {/* Notes */}
-                        {contract.notes && (
-                            <p className="text-xs text-muted-foreground">{contract.notes}</p>
-                        )}
-
-                        {/* Actions */}
-                        {canEdit && contract.status === "pending_signature" && (
-                            <div className="flex gap-2 pt-1">
-                                <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
-                                    onClick={handleSign}>
-                                    <CheckCircle2 className="w-3 h-3 mr-1" />Mark Signed
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive"
-                                    onClick={handleCancel}>
-                                    <XCircle className="w-3 h-3 mr-1" />Cancel
-                                </Button>
-                            </div>
+                                {contract.status === "signed" ? (
+                                    <CheckCircle2 className="w-3 h-3 mr-1 inline" />
+                                ) : contract.status === "pending_signature" ? (
+                                    <Clock className="w-3 h-3 mr-1 inline" />
+                                ) : (
+                                    <XCircle className="w-3 h-3 mr-1 inline" />
+                                )}
+                                {STATUS_LABEL[contract.status] || contract.status}
+                            </Badge>
                         )}
                     </div>
-                )}
-            </CardContent>
-        </Card>
+                </CardHeader>
+
+                <CardContent className="p-5">
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            <Skeleton className="h-6 w-48" />
+                            <Skeleton className="h-20 w-full rounded-lg" />
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-10 px-4">
+                            <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-3">
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-semibold text-foreground">
+                                Failed to Load Contract
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
+                                {error instanceof Error ? error.message : "An error occurred while retrieving the contract record."}
+                            </p>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => refetch()}
+                                className="mt-4 text-xs h-8"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                                Retry
+                            </Button>
+                        </div>
+                    ) : !contract ? (
+                        /* Empty state when no contract exists yet */
+                        <div className="text-center py-10 px-4">
+                            <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
+                                <FileBadge2 className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-semibold text-foreground">
+                                No Contract Created Yet
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
+                                Contracts are created from approved solar proposals. Go to the
+                                Quotes tab, approve a quote, and click <strong>"Create Contract"</strong> to
+                                initiate this lead's legal agreement.
+                            </p>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={goToQuotes}
+                                className="mt-4 text-xs h-8"
+                            >
+                                Go to Quotes
+                                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                            </Button>
+                        </div>
+                    ) : (
+                        /* Active contract details */
+                        <div className="space-y-5">
+                            {/* Meta Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/20 border text-xs">
+                                <div>
+                                    <span className="text-muted-foreground font-medium block">
+                                        Associated Proposal
+                                    </span>
+                                    <span className="font-semibold text-foreground text-sm mt-0.5 block">
+                                        {contract.quoteVersion
+                                            ? `Quotation v${contract.quoteVersion}`
+                                            : "Quotation Reference"}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <span className="text-muted-foreground font-medium block">
+                                        Created On
+                                    </span>
+                                    <span className="text-foreground text-sm mt-0.5 block">
+                                        {new Date(contract._creationTime).toLocaleDateString(undefined, {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric",
+                                        })}
+                                    </span>
+                                </div>
+
+                                {contract.signedAt && (
+                                    <div className="sm:col-span-2 pt-2 border-t">
+                                        <span className="text-muted-foreground font-medium block">
+                                            Signed Date
+                                        </span>
+                                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm mt-0.5 block">
+                                            {new Date(contract.signedAt).toLocaleString(undefined, {
+                                                year: "numeric",
+                                                month: "short",
+                                                day: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {contract.notes && (
+                                    <div className="sm:col-span-2 pt-2 border-t">
+                                        <span className="text-muted-foreground font-medium block">
+                                            Contract Notes
+                                        </span>
+                                        <p className="text-foreground text-xs mt-1 whitespace-pre-wrap">
+                                            {contract.notes}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Document Section */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-foreground block">
+                                    Contract Document
+                                </label>
+
+                                {contract.documentUrl ? (
+                                    <div className="flex items-center justify-between p-3.5 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                                <FileCheck className="w-4 h-4" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="font-medium text-xs text-foreground block truncate">
+                                                    Signed Contract Attachment
+                                                </span>
+                                                <span className="text-[11px] text-muted-foreground">
+                                                    Stored securely in Lampara CRM documents
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <a
+                                                href={contract.documentUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                                            >
+                                                View Document
+                                                <ExternalLink className="w-3 h-3" />
+                                            </a>
+
+                                            {canEdit && contract.status === "pending_signature" && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 text-xs text-muted-foreground"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={uploading}
+                                                >
+                                                    {uploading ? "Uploading…" : "Replace"}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : canEdit ? (
+                                    <div>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".pdf,.doc,.docx"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploading}
+                                            className="w-full border-2 border-dashed border-border rounded-lg p-5 flex flex-col items-center justify-center gap-1.5 hover:border-primary/50 hover:bg-muted/20 transition-all cursor-pointer text-muted-foreground disabled:opacity-50"
+                                        >
+                                            <div className="size-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-1">
+                                                <Upload className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-xs font-medium text-foreground">
+                                                {uploading
+                                                    ? "Uploading signed document…"
+                                                    : "Upload Signed Contract Document"}
+                                            </span>
+                                            <span className="text-[11px] text-muted-foreground">
+                                                PDF, DOC, or DOCX (max 10 MB)
+                                            </span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground italic">
+                                        No document attached.
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Actions Bar */}
+                            {canEdit && (
+                                <div className="flex items-center justify-between gap-3 pt-3 border-t flex-wrap">
+                                    <div>
+                                        {contract.status === "pending_signature" && (
+                                            <Button
+                                                size="sm"
+                                                onClick={handleSign}
+                                                disabled={isSigning}
+                                                className="h-8 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            >
+                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                {isSigning ? "Updating…" : "Mark Contract as Signed"}
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        {contract.status === "pending_signature" && (
+                                            <AlertDialog
+                                                open={cancelDialogOpen}
+                                                onOpenChange={setCancelDialogOpen}
+                                            >
+                                                <AlertDialogTrigger asChild>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                                                        Cancel Contract
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Cancel this contract?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This marks the contract as cancelled. The quote will remain approved, but the lead will not proceed to permit processing until a valid contract is active.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Keep Contract</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={handleCancel}
+                                                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                                                            disabled={isCancelling}
+                                                        >
+                                                            {isCancelling ? "Cancelling…" : "Yes, Cancel Contract"}
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+
+                                        <AlertDialog
+                                            open={deleteDialogOpen}
+                                            onOpenChange={setDeleteDialogOpen}
+                                        >
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                                    Delete Contract
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete this contract?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This will permanently delete the contract record and attached document for this lead. You will be able to generate a new contract from an approved proposal afterwards.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Keep Contract</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={handleDelete}
+                                                        className="bg-destructive hover:bg-destructive/90 text-white"
+                                                        disabled={isDeleting}
+                                                    >
+                                                        {isDeleting ? "Deleting…" : "Yes, Delete Contract"}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import {
     useCurrentUser,
+    useContractForLead,
     useDeleteLead,
     useInstallationForLead,
     useLead,
@@ -66,7 +67,7 @@ import EditLeadDialog from "../../_components/EditLeadDialog.tsx";
 import LeadFiles from "../_components/LeadFiles.tsx";
 import LeadNotes from "../_components/LeadNotes.tsx";
 import OcularInspectionTab from "../_components/ocular/OcularInspectionTab.tsx";
-import QuotesSection from "../_components/QuotesSection.tsx";
+import QuotesTab from "../_components/quotes/QuotesTab.tsx";
 import ContractSection from "../_components/ContractSection.tsx";
 import PermitsSection from "../_components/PermitsSection.tsx";
 import InstallationSection from "../_components/InstallationSection.tsx";
@@ -84,6 +85,7 @@ const TABS = [
     { value: "overview", label: "Overview" },
     { value: "ocular", label: INSPECTION_LABEL_SHORT },
     { value: "quotes", label: "Quotes" },
+    { value: "contracts", label: "Contract" },
     { value: "permits", label: "Permits" },
     { value: "installation", label: "Installation" },
     { value: "maintenance", label: "Maintenance" },
@@ -147,6 +149,7 @@ export default function LeadDetailPage() {
     // here costs nothing extra and lets the tab strip carry counts.
     const { data: surveys } = useSurveysForLead(id as Id<"leads">);
     const { data: quotes } = useQuotesForLead(id as Id<"leads">);
+    const { data: contract } = useContractForLead(id as Id<"leads">);
     const { data: permits } = usePermitsForLead(id as Id<"leads">);
     const { data: installation } = useInstallationForLead(id as Id<"leads">);
     const { data: tickets } = useTicketsForLead(id as Id<"leads">);
@@ -221,6 +224,7 @@ export default function LeadDetailPage() {
     const counts: Record<string, number | undefined> = {
         ocular: surveys?.length,
         quotes: quotes?.length,
+        contracts: contract ? 1 : undefined,
         permits: permits?.length,
         installation: installation ? 1 : 0,
         maintenance: openTickets.length,
@@ -494,10 +498,14 @@ export default function LeadDetailPage() {
                     <OcularInspectionTab lead={lead} property={prop} canSchedule={canEdit} />
                 </TabsContent>
 
-                {/* Quotes & Contract */}
+                {/* Quotes */}
                 <TabsContent value="quotes" className="mt-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                        <QuotesSection leadId={lead._id} stage={lead.stage} canEdit={canEdit} />
+                    <QuotesTab lead={lead} property={prop} canEdit={canEdit} />
+                </TabsContent>
+
+                {/* Contract */}
+                <TabsContent value="contracts" className="mt-4">
+                    <div className="max-w-3xl">
                         <ContractSection leadId={lead._id} stage={lead.stage} canEdit={canEdit} />
                     </div>
                 </TabsContent>

@@ -1,136 +1,382 @@
 /** Replaces convex/quotes.ts. */
 
 import { supabase, toAppError, unwrap } from "../client.ts";
-import type { FinancingOption, QuoteRow, QuoteStatus } from "../database.types.ts";
-import { displayName, toQuote, type Id, type QuoteWithCreator } from "../types.ts";
+import type { QuoteItemRow, QuoteRow, QuoteStatus } from "../database.types.ts";
+import {
+    displayName,
+    toQuote,
+    toQuoteItem,
+    type Id,
+    type QuoteItem,
+    type QuoteWithItems,
+} from "../types.ts";
 import { advanceLeadStage, logActivity } from "./leads.ts";
 
 type NameOnly = { name: string | null; email: string | null } | null;
 
+type QuoteWithRelations = QuoteRow & {
+    creator: NameOnly;
+    preparer: NameOnly;
+    quote_items: QuoteItemRow[] | null;
+};
+
 export async function listQuotesForLead(
     leadId: Id<"leads">,
-): Promise<QuoteWithCreator[]> {
+): Promise<QuoteWithItems[]> {
     const rows = unwrap(
         await supabase
             .from("quotes")
-            .select("*, creator:users!quotes_created_by_fkey(name, email)")
+            .select(
+                "*, creator:users!quotes_created_by_fkey(name, email), " +
+                    "preparer:users!quotes_prepared_by_id_fkey(name, email), " +
+                    "quote_items(*)",
+            )
             .eq("lead_id", leadId)
             .order("version", { ascending: false })
-            .returns<(QuoteRow & { creator: NameOnly })[]>(),
+            .returns<QuoteWithRelations[]>(),
         "Failed to load quotes",
     );
 
-    return rows.map((row) => ({
+    return rows.map((row) => {
+        const items = (row.quote_items ?? [])
+            .map(toQuoteItem)
+            .sort((a, b) => a.sortOrder - b.sortOrder);
+        return {
+            ...toQuote(row),
+            items,
+            preparerName: displayName(row.preparer),
+            createdByName: displayName(row.creator),
+        };
+    });
+}
+
+export async function getQuoteWithItems(
+    quoteId: Id<"quotes">,
+): Promise<QuoteWithItems> {
+    const row = unwrap(
+        await supabase
+            .from("quotes")
+            .select(
+                "*, creator:users!quotes_created_by_fkey(name, email), " +
+                    "preparer:users!quotes_prepared_by_id_fkey(name, email), " +
+                    "quote_items(*)",
+            )
+            .eq("id", quoteId)
+            .single()
+            .returns<QuoteWithRelations>(),
+        "Quote not found",
+    );
+
+    const items = (row.quote_items ?? [])
+        .map(toQuoteItem)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    return {
         ...toQuote(row),
+        items,
+        preparerName: displayName(row.preparer),
         createdByName: displayName(row.creator),
-    }));
+    };
 }
 
 export type CreateQuoteArgs = {
     leadId: Id<"leads">;
-    panelCount: number;
-    panelModel: string;
-    inverterType: string;
-    systemSizeKw: number;
-    totalPriceUsd: number;
-    financingOption: FinancingOption;
+    preparedById?: string;
     validUntil?: string;
     notes?: string;
 };
 
 /**
- * Version allocation, the insert and the audit entry happen in one transaction,
- * serialised per lead by an advisory lock — so two reps quoting the same lead at
- * the same time get v1 and v2 rather than one of them hitting the
- * `unique (lead_id, version)` constraint.
+ * Creates an empty in_progress quote with allocated version and next quotation number.
  */
 export async function createQuote(args: CreateQuoteArgs): Promise<Id<"quotes">> {
-    const { data, error } = await supabase.rpc("create_quote", {
-        p_lead_id: args.leadId,
-        p_panel_count: args.panelCount,
-        p_panel_model: args.panelModel,
-        p_inverter_type: args.inverterType,
-        p_system_size_kw: args.systemSizeKw,
-        p_total_price_usd: args.totalPriceUsd,
-        p_financing_option: args.financingOption,
-        p_valid_until: args.validUntil || null,
-        p_notes: args.notes || null,
-    });
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Authentication required to create a quote");
+
+    // Get the next version for this lead
+    const { data: siblings, error: sibError } = await supabase
+        .from("quotes")
+        .select("version")
+        .eq("lead_id", args.leadId)
+        .order("version", { ascending: false })
+        .limit(1);
+
+    if (sibError) throw toAppError(sibError, "Failed to inspect quote versions");
+    const nextVersion = (siblings?.[0]?.version ?? 0) + 1;
+
+    const { data: newQuote, error } = await supabase
+        .from("quotes")
+        .insert({
+            lead_id: args.leadId,
+            version: nextVersion,
+            status: "in_progress",
+            total_php: 0,
+            prepared_by_id: args.preparedById ?? user.id,
+            created_by: user.id,
+            valid_until: args.validUntil || null,
+            notes: args.notes ? args.notes.trim() : null,
+        })
+        .select("id, quotation_no")
+        .single();
 
     if (error) throw toAppError(error, "Failed to create quote");
-    return data as string;
+
+    await logActivity({
+        leadId: args.leadId,
+        action: `Quote v${nextVersion} created`,
+        details: newQuote.quotation_no ?? `Version ${nextVersion}`,
+        entityType: "quote",
+        entityId: newQuote.id,
+    });
+
+    return newQuote.id as string;
 }
 
-export async function updateQuoteStatus(args: {
+export type QuoteItemInput = {
+    description: string;
+    qty: number;
+    unit: string;
+    unitPricePhp: number;
+    sourcePackageId?: string;
+    sortOrder?: number;
+};
+
+export type SaveQuoteArgs = {
     quoteId: Id<"quotes">;
-    status: QuoteStatus;
-}): Promise<void> {
-    const quote = unwrap(
+    notes?: string | null;
+    validUntil?: string | null;
+    preparedById?: string | null;
+    items: QuoteItemInput[];
+};
+
+/**
+ * Saves quote metadata and synchronises line items, recomputing total_php.
+ */
+export async function saveQuote(args: SaveQuoteArgs): Promise<void> {
+    const current = unwrap(
         await supabase
             .from("quotes")
-            .select("lead_id, version, sent_at")
+            .select("id, lead_id, version, status")
             .eq("id", args.quoteId)
             .single(),
         "Quote not found",
-    ) as { lead_id: string; version: number; sent_at: string | null };
+    ) as { id: string; lead_id: string; version: number; status: QuoteStatus };
 
-    const { error } = await supabase
+    if (current.status === "approved") {
+        throw new Error(
+            "Approved quotes are locked. Unlock the quote to make changes.",
+        );
+    }
+
+    const items = args.items.map((item, idx) => {
+        const qty = Math.max(0.01, item.qty);
+        const unitPrice = Math.max(0, item.unitPricePhp);
+        const lineTotal = Math.round(qty * unitPrice * 100) / 100;
+        return {
+            quote_id: args.quoteId,
+            description: item.description.trim() || "Item",
+            qty,
+            unit: item.unit.trim() || "pc",
+            unit_price_php: unitPrice,
+            line_total_php: lineTotal,
+            source_package_id: item.sourcePackageId || null,
+            sort_order: item.sortOrder ?? idx,
+        };
+    });
+
+    const grandTotal = items.reduce((acc, item) => acc + item.line_total_php, 0);
+
+    // Update quote header
+    const { error: quoteErr } = await supabase
         .from("quotes")
         .update({
-            status: args.status,
-            ...(args.status === "sent" && !quote.sent_at
-                ? { sent_at: new Date().toISOString() }
-                : {}),
+            total_php: grandTotal,
+            notes: args.notes ?? null,
+            valid_until: args.validUntil ?? null,
+            prepared_by_id: args.preparedById ?? null,
         })
         .eq("id", args.quoteId);
 
-    if (error) throw toAppError(error, "Failed to update quote");
+    if (quoteErr) throw toAppError(quoteErr, "Failed to update quote header");
 
-    // Sending a proposal advances the lead, but only from survey_completed —
-    // re-sending a quote later must not drag a further-along lead backwards.
-    if (args.status === "sent") {
-        await advanceLeadStage(quote.lead_id, "proposal_sent", ["survey_completed"]);
+    // Replace line items: delete old items, insert updated list
+    const { error: delErr } = await supabase
+        .from("quote_items")
+        .delete()
+        .eq("quote_id", args.quoteId);
+
+    if (delErr) throw toAppError(delErr, "Failed to clear previous quote items");
+
+    if (items.length > 0) {
+        const { error: insErr } = await supabase.from("quote_items").insert(items);
+        if (insErr) throw toAppError(insErr, "Failed to save quote items");
     }
+
+    await supabase
+        .from("leads")
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq("id", current.lead_id);
+}
+
+/**
+ * Locks the quote to 'approved' and advances the lead stage to proposal_sent.
+ */
+export async function approveQuote(args: { quoteId: Id<"quotes"> }): Promise<void> {
+    const quote = unwrap(
+        await supabase
+            .from("quotes")
+            .select("lead_id, version, total_php, quotation_no")
+            .eq("id", args.quoteId)
+            .single(),
+        "Quote not found",
+    ) as {
+        lead_id: string;
+        version: number;
+        total_php: number;
+        quotation_no: string;
+    };
+
+    const { error } = await supabase
+        .from("quotes")
+        .update({ status: "approved" })
+        .eq("id", args.quoteId);
+
+    if (error) throw toAppError(error, "Failed to approve quote");
+
+    await advanceLeadStage(quote.lead_id, "proposal_sent", ["survey_completed"]);
 
     await logActivity({
         leadId: quote.lead_id,
-        action: `Quote v${quote.version} marked ${args.status}`,
+        action: `Quote v${quote.version} approved`,
+        details: `${quote.quotation_no} · ₱${Number(quote.total_php).toLocaleString()}`,
         entityType: "quote",
         entityId: args.quoteId,
     });
 }
 
 /**
- * Supersedes the current quote and clones it as the next draft version.
- *
- * Both halves are in one transaction: the previous version marked the old quote
- * superseded first, so a failed clone left the lead with no live quote at all.
+ * Reopens an approved quote back to in_progress with an audit trail.
+ */
+export async function reopenQuote(args: {
+    quoteId: Id<"quotes">;
+    reason?: string;
+}): Promise<void> {
+    const quote = unwrap(
+        await supabase
+            .from("quotes")
+            .select("lead_id, version, status, quotation_no")
+            .eq("id", args.quoteId)
+            .single(),
+        "Quote not found",
+    ) as {
+        lead_id: string;
+        version: number;
+        status: QuoteStatus;
+        quotation_no: string;
+    };
+
+    const { error } = await supabase
+        .from("quotes")
+        .update({ status: "in_progress" })
+        .eq("id", args.quoteId);
+
+    if (error) throw toAppError(error, "Failed to reopen quote");
+
+    await logActivity({
+        leadId: quote.lead_id,
+        action: `Quote v${quote.version} unlocked for editing`,
+        details: args.reason ? `Reason: ${args.reason}` : "Status returned to in_progress",
+        entityType: "quote",
+        entityId: args.quoteId,
+    });
+}
+
+/**
+ * Clones an existing quote and its line items into a new version.
  */
 export async function reviseQuote(args: {
     quoteId: Id<"quotes">;
 }): Promise<Id<"quotes">> {
-    const { data, error } = await supabase.rpc("revise_quote", {
-        p_quote_id: args.quoteId,
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Authentication required to revise quote");
+
+    const prev = await getQuoteWithItems(args.quoteId);
+
+    const { data: siblings, error: sibErr } = await supabase
+        .from("quotes")
+        .select("version")
+        .eq("lead_id", prev.leadId)
+        .order("version", { ascending: false })
+        .limit(1);
+
+    if (sibErr) throw toAppError(sibErr, "Failed to inspect quote versions");
+    const nextVersion = (siblings?.[0]?.version ?? prev.version) + 1;
+
+    const { data: newQuote, error: insQuoteErr } = await supabase
+        .from("quotes")
+        .insert({
+            lead_id: prev.leadId,
+            version: nextVersion,
+            status: "in_progress",
+            total_php: prev.totalPhp,
+            notes: prev.notes || null,
+            valid_until: prev.validUntil || null,
+            prepared_by_id: prev.preparedById || user.id,
+            created_by: user.id,
+        })
+        .select("id, quotation_no")
+        .single();
+
+    if (insQuoteErr) throw toAppError(insQuoteErr, "Failed to clone quote");
+
+    if (prev.items.length > 0) {
+        const clonedItems = prev.items.map((item, idx) => ({
+            quote_id: newQuote.id,
+            description: item.description,
+            qty: item.qty,
+            unit: item.unit,
+            unit_price_php: item.unitPricePhp,
+            line_total_php: item.lineTotalPhp,
+            source_package_id: item.sourcePackageId || null,
+            sort_order: item.sortOrder ?? idx,
+        }));
+
+        const { error: insItemsErr } = await supabase
+            .from("quote_items")
+            .insert(clonedItems);
+
+        if (insItemsErr) throw toAppError(insItemsErr, "Failed to copy quote items");
+    }
+
+    await logActivity({
+        leadId: prev.leadId,
+        action: `Quote revised to v${nextVersion}`,
+        details: `Based on v${prev.version} · ${newQuote.quotation_no}`,
+        entityType: "quote",
+        entityId: newQuote.id,
     });
 
-    if (error) throw toAppError(error, "Failed to revise quote");
-    return data as string;
+    return newQuote.id as string;
 }
 
-/** Drafts only — enforced by the `quotes_delete` policy, checked here for a clearer message. */
 export async function deleteQuote(args: { quoteId: Id<"quotes"> }): Promise<void> {
     const quote = unwrap(
         await supabase
             .from("quotes")
-            .select("lead_id, version, status")
+            .select("lead_id, version, status, quotation_no")
             .eq("id", args.quoteId)
             .single(),
         "Quote not found",
-    ) as { lead_id: string; version: number; status: QuoteStatus };
-
-    if (quote.status !== "draft") {
-        throw new Error("Only draft quotes can be deleted");
-    }
+    ) as {
+        lead_id: string;
+        version: number;
+        status: QuoteStatus;
+        quotation_no: string;
+    };
 
     const { error } = await supabase.from("quotes").delete().eq("id", args.quoteId);
     if (error) throw toAppError(error, "Failed to delete quote");
@@ -138,6 +384,36 @@ export async function deleteQuote(args: { quoteId: Id<"quotes"> }): Promise<void
     await logActivity({
         leadId: quote.lead_id,
         action: `Quote v${quote.version} deleted`,
+        details: quote.quotation_no,
         entityType: "quote",
     });
+}
+
+export async function deleteQuotes(args: { quoteIds: Id<"quotes">[] }): Promise<void> {
+    if (!args.quoteIds.length) return;
+
+    const quotes = unwrap(
+        await supabase
+            .from("quotes")
+            .select("id, lead_id, version, quotation_no")
+            .in("id", args.quoteIds),
+        "Failed to find quotes for deletion",
+    ) as Array<{
+        id: string;
+        lead_id: string;
+        version: number;
+        quotation_no: string;
+    }>;
+
+    const { error } = await supabase.from("quotes").delete().in("id", args.quoteIds);
+    if (error) throw toAppError(error, "Failed to delete quotes");
+
+    if (quotes.length > 0) {
+        await logActivity({
+            leadId: quotes[0].lead_id,
+            action: `${quotes.length} quotes deleted`,
+            details: quotes.map((q) => q.quotation_no || `v${q.version}`).join(", "),
+            entityType: "quote",
+        });
+    }
 }

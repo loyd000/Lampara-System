@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,6 +36,8 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [, setSearchParams] = useSearchParams();
+
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: { notes: "" },
@@ -64,6 +67,14 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
             form.reset();
             setDocFile(null);
             onClose();
+
+            // Switch to the Contracts tab so the user sees the new contract immediately!
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("tab", "contracts");
+                next.delete("quote");
+                return next;
+            });
         } catch (e) {
             const msg = e instanceof Error ? e.message : "Failed to create contract";
             toast.error(msg);

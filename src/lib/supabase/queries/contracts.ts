@@ -13,11 +13,38 @@ export async function getContractForLead(
 ): Promise<ContractDetail | null> {
     const { data, error } = await supabase
         .from("contracts")
-        .select("*, quotes(version)")
+        .select("*, quotes!contracts_quote_id_fkey(version)")
         .eq("lead_id", leadId)
         .maybeSingle<ContractRow & { quotes: { version: number } | null }>();
 
-    if (error) throw toAppError(error, "Failed to load contract");
+    if (error) {
+        // Fallback: if relationship embedding fails, query contracts plain and fetch quote separately
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from("contracts")
+            .select("*")
+            .eq("lead_id", leadId)
+            .maybeSingle<ContractRow>();
+
+        if (fallbackError) throw toAppError(fallbackError, "Failed to load contract");
+        if (!fallbackData) return null;
+
+        let quoteVersion: number | null = null;
+        if (fallbackData.quote_id) {
+            const { data: quoteData } = await supabase
+                .from("quotes")
+                .select("version")
+                .eq("id", fallbackData.quote_id)
+                .maybeSingle<{ version: number }>();
+            quoteVersion = quoteData?.version ?? null;
+        }
+
+        return {
+            ...toContract(fallbackData),
+            documentUrl: await signedUrl("documents", fallbackData.document_path),
+            quoteVersion,
+        };
+    }
+
     if (!data) return null;
 
     return {
@@ -146,3 +173,34 @@ export async function updateContractNotes(args: {
         .eq("id", args.contractId);
     if (error) throw toAppError(error, "Failed to update notes");
 }
+
+export async function deleteContract(args: {
+    contractId: Id<"contracts">;
+}): Promise<void> {
+    const contract = unwrap(
+        await supabase
+            .from("contracts")
+            .select("lead_id, document_path")
+            .eq("id", args.contractId)
+            .single(),
+        "Contract not found",
+    ) as { lead_id: string; document_path: string | null };
+
+    const { error } = await supabase
+        .from("contracts")
+        .delete()
+        .eq("id", args.contractId);
+    if (error) throw toAppError(error, "Failed to delete contract");
+
+    if (contract.document_path) {
+        await removeFiles("documents", [contract.document_path]);
+    }
+
+    await logActivity({
+        leadId: contract.lead_id,
+        action: "Contract deleted",
+        entityType: "contract",
+        entityId: args.contractId,
+    });
+}
+

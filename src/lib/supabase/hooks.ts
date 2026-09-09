@@ -37,6 +37,7 @@ import * as installationsApi from "./queries/installations.ts";
 import * as leadFilesApi from "./queries/lead-files.ts";
 import * as leadNotesApi from "./queries/lead-notes.ts";
 import * as leadsApi from "./queries/leads.ts";
+import * as packagesApi from "./queries/packages.ts";
 import * as permitsApi from "./queries/permits.ts";
 import * as quotesApi from "./queries/quotes.ts";
 import * as reportsApi from "./queries/reports.ts";
@@ -72,6 +73,7 @@ export const queryKeys = {
 
     quotes: ["quotes"] as const,
     quotesForLead: (leadId: string) => ["quotes", "lead", leadId] as const,
+    quoteWithItems: (quoteId: string) => ["quotes", "detail", quoteId] as const,
 
     contracts: ["contracts"] as const,
     contractForLead: (leadId: string) => ["contracts", "lead", leadId] as const,
@@ -88,6 +90,9 @@ export const queryKeys = {
     allTickets: ["serviceTickets", "all"] as const,
 
     reports: ["reports"] as const,
+
+    packages: ["packages"] as const,
+    activePackages: ["packages", "active"] as const,
 } as const;
 
 /**
@@ -446,6 +451,14 @@ export function useQuotesForLead(leadId: Id<"leads"> | undefined) {
     });
 }
 
+export function useQuoteWithItems(quoteId: Id<"quotes"> | undefined) {
+    return useQuery({
+        queryKey: queryKeys.quoteWithItems(quoteId ?? ""),
+        queryFn: () => quotesApi.getQuoteWithItems(quoteId!),
+        enabled: !!quoteId,
+    });
+}
+
 export function useCreateQuote() {
     const client = useQueryClient();
     return useMutation({
@@ -458,13 +471,46 @@ export function useCreateQuote() {
     });
 }
 
-export function useUpdateQuoteStatus() {
+export function useSaveQuote() {
     const client = useQueryClient();
     return useMutation({
-        mutationFn: quotesApi.updateQuoteStatus,
-        onSuccess: () =>
+        mutationFn: quotesApi.saveQuote,
+        onSuccess: (_data, variables) =>
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                client.invalidateQueries({
+                    queryKey: queryKeys.quoteWithItems(variables.quoteId),
+                }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useApproveQuote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.approveQuote,
+        onSuccess: (_data, variables) =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                client.invalidateQueries({
+                    queryKey: queryKeys.quoteWithItems(variables.quoteId),
+                }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useReopenQuote() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.reopenQuote,
+        onSuccess: (_data, variables) =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                client.invalidateQueries({
+                    queryKey: queryKeys.quoteWithItems(variables.quoteId),
+                }),
                 invalidatePipeline(client),
             ]),
     });
@@ -494,6 +540,18 @@ export function useDeleteQuote() {
     });
 }
 
+export function useDeleteQuotes() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: quotesApi.deleteQuotes,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
 // ─── Contracts ────────────────────────────────────────────────────────────
 
 export function useContractForLead(leadId: Id<"leads"> | undefined) {
@@ -512,6 +570,7 @@ export function useCreateContract() {
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.contracts }),
                 client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
                 invalidatePipeline(client),
             ]),
     });
@@ -524,6 +583,7 @@ export function useMarkContractSigned() {
         onSuccess: () =>
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
                 invalidatePipeline(client),
             ]),
     });
@@ -536,6 +596,7 @@ export function useMarkContractCancelled() {
         onSuccess: () =>
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
                 invalidatePipeline(client),
             ]),
     });
@@ -548,6 +609,7 @@ export function useAttachContractDocument() {
         onSuccess: () =>
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
                 invalidatePipeline(client),
             ]),
     });
@@ -558,6 +620,20 @@ export function useUpdateContractNotes() {
     return useMutation({
         mutationFn: contractsApi.updateContractNotes,
         onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.contracts }),
+    });
+}
+
+export function useDeleteContract() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: contractsApi.deleteContract,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.contracts }),
+                client.invalidateQueries({ queryKey: queryKeys.quotes }),
+                client.invalidateQueries({ queryKey: queryKeys.leads }),
+                invalidatePipeline(client),
+            ]),
     });
 }
 
@@ -754,6 +830,54 @@ export function useDeleteTicket() {
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────
+
+// ─── Packages ─────────────────────────────────────────────────────────────
+
+export function usePackages() {
+    return useQuery({
+        queryKey: queryKeys.packages,
+        queryFn: packagesApi.listPackages,
+    });
+}
+
+export function useActivePackages() {
+    return useQuery({
+        queryKey: queryKeys.activePackages,
+        queryFn: packagesApi.listActivePackages,
+    });
+}
+
+export function useCreatePackage() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: packagesApi.createPackage,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packages }),
+    });
+}
+
+export function useUpdatePackage() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: packagesApi.updatePackage,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packages }),
+    });
+}
+
+export function useTogglePackageActive() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: packagesApi.togglePackageActive,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packages }),
+    });
+}
+
+export function useReorderPackages() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: packagesApi.reorderPackages,
+        onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packages }),
+    });
+}
 
 export function usePipelineSummary() {
     return useQuery({ queryKey: ["reports", "pipeline"], queryFn: reportsApi.pipelineSummary });

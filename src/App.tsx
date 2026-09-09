@@ -20,6 +20,7 @@ const LeadDetailPage = lazy(() => import("./pages/leads/[id]/page.tsx"));
 const PipelinePage = lazy(() => import("./pages/pipeline/page.tsx"));
 const TeamPage = lazy(() => import("./pages/team/page.tsx"));
 const ReportsPage = lazy(() => import("./pages/reports/page.tsx"));
+const PackagesPage = lazy(() => import("./pages/packages/page.tsx"));
 
 function RouteFallback() {
     return (
@@ -50,6 +51,7 @@ export default function App() {
                                     <Route path="/leads" element={<LeadsPage />} />
                                     <Route path="/leads/:id" element={<LeadDetailPage />} />
                                     <Route path="/reports" element={<ReportsPage />} />
+                                    <Route path="/packages" element={<PackagesPage />} />
                                     <Route path="/team" element={<TeamPage />} />
                                 </Route>
                                 <Route path="*" element={<NotFound />} />

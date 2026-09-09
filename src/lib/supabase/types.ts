@@ -27,6 +27,8 @@ import type {
     LeadRow,
     LeadSource,
     LeadStage,
+    PackageItemRow,
+    PackageRow,
     PermitRow,
     PermitStatus,
     MeterForm,
@@ -38,6 +40,7 @@ import type {
     PermitType,
     PropertyRow,
     PropertyType,
+    QuoteItemRow,
     QuoteRow,
     QuoteStatus,
     RoofAccess,
@@ -96,13 +99,16 @@ export type TableNames =
     | "properties"
     | "surveys"
     | "quotes"
+    | "quoteItems"
     | "contracts"
     | "permits"
     | "installations"
     | "serviceTickets"
     | "activityLog"
     | "leadNotes"
-    | "leadFiles";
+    | "leadFiles"
+    | "packages"
+    | "packageItems";
 
 /**
  * A row identifier.
@@ -254,16 +260,38 @@ export type Quote = Base & {
     leadId: string;
     version: number;
     status: QuoteStatus;
-    panelCount: number;
-    panelModel: string;
-    inverterType: string;
-    systemSizeKw: number;
-    totalPriceUsd: number;
-    financingOption: FinancingOption;
+    totalPhp: number;
+    quotationNo: string;
+    preparedById?: string;
+    panelCount?: number;
+    panelModel?: string;
+    inverterType?: string;
+    systemSizeKw?: number;
+    totalPriceUsd?: number;
+    financingOption?: FinancingOption;
     validUntil?: string;
     notes?: string;
     createdBy: string;
     sentAt?: string;
+};
+
+export type QuoteItem = {
+    _id: string;
+    _creationTime: number;
+    quoteId: string;
+    description: string;
+    qty: number;
+    unit: string;
+    unitPricePhp: number;
+    lineTotalPhp: number;
+    sourcePackageId?: string;
+    sortOrder: number;
+};
+
+export type QuoteWithItems = Quote & {
+    items: QuoteItem[];
+    preparerName?: string;
+    createdByName: string;
 };
 
 export type Contract = Base & {
@@ -347,6 +375,35 @@ export type ActivityLogEntry = Base & {
     entityId?: string;
 };
 
+// ─── Packages (Phase 5) ────────────────────────────────────────────────────────────
+
+export type Package = Base & {
+    name: string;
+    description?: string;
+    systemSizeKw?: number;
+    basePricePhp: number;
+    isActive: boolean;
+    sortOrder: number;
+    createdById?: string;
+};
+
+export type PackageItem = {
+    _id: string;
+    packageId: string;
+    name?: string;
+    description: string;
+    qty: number;
+    unit: string;
+    unitPricePhp: number;
+    sortOrder: number;
+    _creationTime: number;
+};
+
+export type PackageWithItems = Package & {
+    items: PackageItem[];
+    createdByName: string | null;
+};
+
 /** Convex-compatible document lookup: `Doc<"leads">`, `Doc<"users">`, … */
 export type Doc<T extends TableNames> = T extends "users"
     ? User
@@ -360,7 +417,9 @@ export type Doc<T extends TableNames> = T extends "users"
             ? Quote
             : T extends "contracts"
               ? Contract
-              : T extends "permits"
+              : T extends "quoteItems"
+                ? QuoteItem
+                : T extends "permits"
                 ? Permit
                 : T extends "installations"
                   ? Installation
@@ -372,7 +431,11 @@ export type Doc<T extends TableNames> = T extends "users"
                         ? LeadNote
                         : T extends "leadFiles"
                           ? LeadFile
-                          : never;
+                          : T extends "packages"
+                            ? Package
+                            : T extends "packageItems"
+                              ? PackageItem
+                              : never;
 
 // ─── Enriched shapes returned by the query layer ──────────────────────────
 
@@ -615,17 +678,34 @@ export function toQuote(row: QuoteRow): Quote {
         leadId: row.lead_id,
         version: row.version,
         status: row.status,
-        panelCount: row.panel_count,
-        panelModel: row.panel_model,
-        inverterType: row.inverter_type,
-        systemSizeKw: Number(row.system_size_kw),
-        // numeric(12,2) can arrive as a string depending on the PostgREST build.
-        totalPriceUsd: Number(row.total_price_usd),
-        financingOption: row.financing_option,
+        totalPhp: Number(row.total_php ?? row.total_price_usd ?? 0),
+        quotationNo: row.quotation_no ?? `PV System Quotation-${row.version}`,
+        preparedById: opt(row.prepared_by_id),
+        panelCount: num(row.panel_count),
+        panelModel: opt(row.panel_model),
+        inverterType: opt(row.inverter_type),
+        systemSizeKw: num(row.system_size_kw),
+        totalPriceUsd: num(row.total_price_usd),
+        financingOption: row.financing_option ?? undefined,
         validUntil: opt(row.valid_until),
         notes: opt(row.notes),
         createdBy: row.created_by,
         sentAt: opt(row.sent_at),
+    };
+}
+
+export function toQuoteItem(row: QuoteItemRow): QuoteItem {
+    return {
+        _id: row.id,
+        _creationTime: Date.parse(row.created_at),
+        quoteId: row.quote_id,
+        description: row.description,
+        qty: Number(row.qty),
+        unit: row.unit,
+        unitPricePhp: Number(row.unit_price_php),
+        lineTotalPhp: Number(row.line_total_php),
+        sourcePackageId: opt(row.source_package_id),
+        sortOrder: row.sort_order,
     };
 }
 
@@ -720,6 +800,33 @@ export function toActivityLogEntry(row: ActivityLogRow): ActivityLogEntry {
         details: opt(row.details),
         entityType: opt(row.entity_type),
         entityId: opt(row.entity_id),
+    };
+}
+
+export function toPackage(row: PackageRow): Package {
+    return {
+        ...base(row),
+        name: row.name,
+        description: opt(row.description),
+        systemSizeKw: num(row.system_size_kw),
+        basePricePhp: Number(row.base_price_php),
+        isActive: row.is_active,
+        sortOrder: row.sort_order,
+        createdById: opt(row.created_by),
+    };
+}
+
+export function toPackageItem(row: PackageItemRow): PackageItem {
+    return {
+        _id: row.id,
+        _creationTime: Date.parse(row.created_at),
+        packageId: row.package_id,
+        name: opt(row.name),
+        description: row.description,
+        qty: Number(row.qty),
+        unit: row.unit,
+        unitPricePhp: Number(row.unit_price_php || 0),
+        sortOrder: row.sort_order,
     };
 }
 

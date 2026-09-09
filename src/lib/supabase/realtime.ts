@@ -39,11 +39,14 @@ const WATCHED_TABLES = [
     "surveys",
     "survey_photos",
     "quotes",
+    "quote_items",
     "contracts",
     "permits",
     "installations",
     "service_tickets",
     "users",
+    "packages",
+    "package_items",
 ] as const;
 
 type Row = Record<string, unknown>;
@@ -114,6 +117,7 @@ export function keysFor(
         case "survey_photos":
             return [queryKeys.surveys, queryKeys.leadFiles];
         case "quotes":
+        case "quote_items":
             return [
                 ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),
                 queryKeys.reports,
@@ -141,6 +145,9 @@ export function keysFor(
             ];
         case "users":
             return [queryKeys.users, queryKeys.currentUser];
+        case "packages":
+        case "package_items":
+            return [queryKeys.packages];
         default:
             return [];
     }
