@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { FileDown, Loader2 } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
 import { Button } from "@/components/ui/button.tsx";
+import { leadDocumentName, printPdf } from "@/lib/pdf/print-pdf.ts";
 
 /**
- * Renders one inspection as the printed Site Ocular Report and saves it.
+ * Renders one inspection as the printed Site Ocular Report and opens it in the
+ * browser's print preview, so whoever saves it picks the filename and folder.
  *
  * `@react-pdf/renderer` is about a megabyte, and most visits to this page never
  * print anything — so it is imported on the click, not with the page. The first
- * download therefore costs a chunk fetch; every later one is instant.
+ * print therefore costs a chunk fetch; every later one is instant.
  */
 export default function DownloadReportButton({
     survey,
@@ -27,27 +29,28 @@ export default function DownloadReportButton({
         setBusy(true);
         const toastId = toast.loading("Building the report…");
         try {
-            const [{ pdf }, { OcularReport }, { buildReportData, reportFileName }] =
+            const [{ pdf }, { OcularReport }, { buildReportData }] =
                 await Promise.all([
                     import("@react-pdf/renderer"),
                     import("@/lib/pdf/OcularReport.tsx"),
                     import("@/lib/pdf/ocular-data.ts"),
                 ]);
 
+            const name = leadDocumentName(
+                lead.firstName,
+                lead.lastName,
+                "Ocular Inspection Report",
+            );
             const data = await buildReportData(survey, lead, property);
-            const blob = await pdf(<OcularReport data={data} />).toBlob();
+            const blob = await pdf(
+                <OcularReport data={data} docTitle={name} />,
+            ).toBlob();
 
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = reportFileName(survey, lead);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            // Give the browser a moment to start the save before revoking.
-            setTimeout(() => URL.revokeObjectURL(url), 10_000);
-
-            toast.success("Report downloaded", { id: toastId });
+            const how = await printPdf(blob, `${name}.pdf`);
+            toast.success(
+                how === "printed" ? "Report ready to save" : "Report downloaded",
+                { id: toastId },
+            );
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not build the report", {
                 id: toastId,
@@ -68,9 +71,9 @@ export default function DownloadReportButton({
             {busy ? (
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
             ) : (
-                <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
             )}
-            {busy ? "Building…" : "Download PDF"}
+            {busy ? "Building…" : "Print / Save"}
         </Button>
     );
 }

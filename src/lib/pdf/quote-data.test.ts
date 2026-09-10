@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Lead, Property, QuoteWithItems } from "@/lib/supabase/types.ts";
-import { buildQuotePdfData, formatPhp, quotePdfFileName } from "./quote-data.ts";
+import { buildQuotePdfData, formatPhp } from "./quote-data.ts";
 
 describe("quote-data", () => {
     const mockLead: Lead = {
@@ -56,11 +56,6 @@ describe("quote-data", () => {
         expect(formatPhp(366500)).toBe("PHP 366,500.00");
         expect(formatPhp(0)).toBe("PHP 0.00");
         expect(formatPhp(12345.67)).toBe("PHP 12,345.67");
-    });
-
-    it("generates a clean sanitised PDF download filename", () => {
-        const filename = quotePdfFileName(mockQuote, mockLead);
-        expect(filename).toBe("PV-System-Quotation-294-Ervin-Pacheco.pdf");
     });
 
     it("builds flat quote PDF data matching document layout", async () => {

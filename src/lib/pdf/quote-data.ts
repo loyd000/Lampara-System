@@ -149,13 +149,3 @@ export async function buildQuotePdfData(
         roofPanelPhoto,
     };
 }
-
-export function quotePdfFileName(quote: QuoteWithItems, lead: Lead): string {
-    const quoteNo = (quote.quotationNo || `Quotation-${quote.version}`)
-        .replace(/[^a-zA-Z0-9_-]/g, "-")
-        .replace(/-+/g, "-");
-    const name = `${lead.firstName}-${lead.lastName}`
-        .replace(/[^a-zA-Z0-9_-]/g, "-")
-        .replace(/-+/g, "-");
-    return `${quoteNo}-${name}.pdf`;
-}

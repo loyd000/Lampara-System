@@ -181,10 +181,3 @@ export async function buildReportData(
     };
 }
 
-/** A filename someone can find again in a downloads folder. */
-export function reportFileName(survey: SurveyForLead, lead: Lead): string {
-    const who = `${lead.firstName}-${lead.lastName}`.replace(/[^a-zA-Z0-9-]/g, "");
-    const when = (survey.inspectionDate ?? survey.scheduledAt).slice(0, 10);
-    return `Site-Ocular-Report_${who}_${when}.pdf`;
-}
-

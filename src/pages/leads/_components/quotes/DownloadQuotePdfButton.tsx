@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { FileDown, Loader2 } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import { useSurveysForLead } from "@/lib/supabase/hooks.ts";
 import type { Id, Lead, Property, QuoteWithItems } from "@/lib/supabase/types.ts";
 import { Button } from "@/components/ui/button.tsx";
+import { leadDocumentName, printPdf } from "@/lib/pdf/print-pdf.ts";
 
 /**
- * Downloads the itemised Quote PDF, built with `@react-pdf/renderer`.
+ * Opens the itemised Quote PDF in the browser's print preview, so whoever
+ * saves it chooses the filename and folder.
  *
  * Lazy-loads the heavy PDF renderer only on click so lead page loads stay instantaneous.
  */
@@ -35,26 +37,21 @@ export default function DownloadQuotePdfButton({
         const toastId = toast.loading("Generating Quote PDF…");
 
         try {
-            const [{ pdf }, { QuotePdf }, { buildQuotePdfData, quotePdfFileName }] =
-                await Promise.all([
-                    import("@react-pdf/renderer"),
-                    import("@/lib/pdf/QuotePdf.tsx"),
-                    import("@/lib/pdf/quote-data.ts"),
-                ]);
+            const [{ pdf }, { QuotePdf }, { buildQuotePdfData }] = await Promise.all([
+                import("@react-pdf/renderer"),
+                import("@/lib/pdf/QuotePdf.tsx"),
+                import("@/lib/pdf/quote-data.ts"),
+            ]);
 
+            const name = leadDocumentName(lead.firstName, lead.lastName, "Quotation");
             const data = await buildQuotePdfData(quote, lead, property, surveys);
-            const blob = await pdf(<QuotePdf data={data} />).toBlob();
+            const blob = await pdf(<QuotePdf data={data} docTitle={name} />).toBlob();
 
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = quotePdfFileName(quote, lead);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-
-            setTimeout(() => URL.revokeObjectURL(url), 10_000);
-            toast.success("Quote PDF downloaded", { id: toastId });
+            const how = await printPdf(blob, `${name}.pdf`);
+            toast.success(
+                how === "printed" ? "Quote ready to save" : "Quote PDF downloaded",
+                { id: toastId },
+            );
         } catch (e) {
             toast.error(
                 e instanceof Error ? e.message : "Failed to generate Quote PDF",
@@ -76,9 +73,9 @@ export default function DownloadQuotePdfButton({
             {busy ? (
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
             ) : (
-                <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
             )}
-            {busy ? "Generating…" : "Download PDF"}
+            {busy ? "Generating…" : "Print / Save"}
         </Button>
     );
 }

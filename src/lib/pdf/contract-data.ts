@@ -70,8 +70,3 @@ export function buildContractPdfData(details: ContractDetailsInput): ContractPdf
             .toUpperCase(),
     };
 }
-
-export function contractPdfFileName(firstName: string, lastName: string): string {
-    const name = `${firstName}-${lastName}`.replace(/[^a-zA-Z0-9_-]/g, "-").replace(/-+/g, "-");
-    return `Contract-${name}.pdf`;
-}
