@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import {
     FileBadge2,
     FileText,
-    Loader2,
     Lock,
     Plus,
     Trash2,
@@ -14,14 +13,12 @@ import {
     useContractForLead,
     useCreateQuote,
     useDeleteQuote,
-    useDeleteQuotes,
     useQuotesForLead,
 } from "@/lib/supabase/hooks.ts";
 import type { Id, Lead, Property } from "@/lib/supabase/types.ts";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
     Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
@@ -57,13 +54,10 @@ export default function QuotesTab({
     const { data: contract } = useContractForLead(leadId);
     const { mutateAsync: createQuote, isPending: creating } = useCreateQuote();
     const { mutateAsync: deleteQuote, isPending: deletingSingle } = useDeleteQuote();
-    const { mutateAsync: deleteQuotes, isPending: deletingBatch } = useDeleteQuotes();
 
     const [searchParams, setSearchParams] = useSearchParams();
     const [contractQuoteId, setContractQuoteId] = useState<Id<"quotes"> | null>(null);
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
-    const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
 
     function openQuote(id: string | null) {
         setSearchParams(
@@ -94,50 +88,13 @@ export default function QuotesTab({
         }
     }
 
-    function toggleSelect(id: string, e?: React.MouseEvent) {
-        if (e) e.stopPropagation();
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    }
-
-    function toggleSelectAll() {
-        if (!quotes) return;
-        if (selectedIds.size === quotes.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(quotes.map((q) => q._id)));
-        }
-    }
-
     async function handleDeleteSingle(quoteId: string) {
         try {
             await deleteQuote({ quoteId: quoteId as Id<"quotes"> });
             toast.success("Quote deleted");
-            setSelectedIds((prev) => {
-                const next = new Set(prev);
-                next.delete(quoteId);
-                return next;
-            });
             setQuoteToDelete(null);
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to delete quote");
-        }
-    }
-
-    async function handleDeleteBatch() {
-        if (selectedIds.size === 0) return;
-        const ids = Array.from(selectedIds) as Id<"quotes">[];
-        try {
-            await deleteQuotes({ quoteIds: ids });
-            toast.success(`${ids.length} quote${ids.length > 1 ? "s" : ""} deleted`);
-            setSelectedIds(new Set());
-            setBatchDeleteOpen(false);
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed to delete quotes");
         }
     }
 
@@ -154,11 +111,6 @@ export default function QuotesTab({
             />
         );
     }
-
-    const allSelected = Boolean(
-        quotes && quotes.length > 0 && selectedIds.size === quotes.length,
-    );
-    const someSelected = selectedIds.size > 0 && !allSelected;
 
     // ── Quotes List View ──────────────────────────────────────────────────
     return (
@@ -178,93 +130,18 @@ export default function QuotesTab({
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            {/* Bulk Delete Button */}
-                            {selectedIds.size > 0 && canEdit && (
-                                <AlertDialog
-                                    open={batchDeleteOpen}
-                                    onOpenChange={setBatchDeleteOpen}
-                                >
-                                    <AlertDialogTrigger asChild>
-                                        <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            className="h-8 text-xs font-medium"
-                                            disabled={deletingBatch}
-                                        >
-                                            {deletingBatch ? (
-                                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                            ) : (
-                                                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                            )}
-                                            Delete Selected ({selectedIds.size})
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>
-                                                Delete {selectedIds.size} quote
-                                                {selectedIds.size > 1 ? "s" : ""}?
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This action cannot be undone. The selected quotes and all
-                                                their line items will be permanently removed.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={handleDeleteBatch}
-                                                className="bg-destructive hover:bg-destructive/90 text-white"
-                                            >
-                                                Delete {selectedIds.size} Quotes
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-
-                            {canEdit && (
-                                <Button
-                                    size="sm"
-                                    onClick={handleNewQuote}
-                                    disabled={creating}
-                                    className="h-8 text-xs font-medium"
-                                >
-                                    <Plus className="w-3.5 h-3.5 mr-1" />
-                                    {creating ? "Creating…" : "New Quote"}
-                                </Button>
-                            )}
-                        </div>
+                        {canEdit && (
+                            <Button
+                                size="sm"
+                                onClick={handleNewQuote}
+                                disabled={creating}
+                                className="h-8 text-xs font-medium"
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                {creating ? "Creating…" : "New Quote"}
+                            </Button>
+                        )}
                     </div>
-
-                    {/* Selection Sub-Header — only worth its row once there is
-                        more than one thing to select. */}
-                    {quotes && quotes.length > 1 && canEdit && (
-                        <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground border-t mt-3">
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <Checkbox
-                                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                                    onCheckedChange={toggleSelectAll}
-                                />
-                                <span>
-                                    {selectedIds.size > 0
-                                        ? `${selectedIds.size} of ${quotes.length} selected`
-                                        : "Select all"}
-                                </span>
-                            </label>
-
-                            {selectedIds.size > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedIds(new Set())}
-                                    className="underline hover:text-foreground transition-colors"
-                                >
-                                    Clear selection
-                                </button>
-                            )}
-                        </div>
-                    )}
                 </CardHeader>
 
                 <CardContent className="p-4 space-y-3">
@@ -301,8 +178,6 @@ export default function QuotesTab({
                     ) : (
                         quotes.map((q, idx) => {
                             const isApproved = q.status === "approved";
-                            const isChecked = selectedIds.has(q._id);
-                            const itemCount = q.items?.length ?? 0;
                             return (
                                 // Rows on one panel, separated by a hairline —
                                 // not a bordered card inside a bordered card.
@@ -313,76 +188,48 @@ export default function QuotesTab({
                                         "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
                                         "hover:bg-muted/40",
                                         idx > 0 && "border-t border-border",
-                                        isChecked && "bg-primary/5",
                                     )}
                                 >
-                                    <div className="flex items-start gap-3 min-w-0">
-                                        {/* Multi-Select Checkbox */}
-                                        {canEdit && (
-                                            <div
-                                                className="pt-0.5 shrink-0"
-                                                onClick={(e) => toggleSelect(q._id, e)}
-                                            >
-                                                <Checkbox
-                                                    checked={isChecked}
-                                                    onCheckedChange={() => toggleSelect(q._id)}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="min-w-0 flex-1 space-y-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                {/* Version reads as part of the name, as
-                                                    it does in the builder. */}
-                                                <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                                                    {q.quotationNo || "Quotation"}
-                                                    <span className="ml-1.5 font-medium text-muted-foreground">
-                                                        v{q.version}
-                                                    </span>
+                                    <div className="min-w-0 space-y-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {/* Version reads as part of the name, as it
+                                                does in the builder. */}
+                                            <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                                                {q.quotationNo || "Quotation"}
+                                                <span className="ml-1.5 font-medium text-muted-foreground">
+                                                    v{q.version}
                                                 </span>
-                                                {isApproved ? (
-                                                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
-                                                        <Lock className="w-2.5 h-2.5" />
-                                                        Approved
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
-                                                        In Progress
-                                                    </Badge>
-                                                )}
-                                            </div>
-
-                                            {/* Separators travel with the text they follow.
-                                                As standalone spans in a wrapping row they
-                                                stranded a "·" at the end of a line whenever
-                                                the next item wrapped. */}
-                                            <p className="text-xs text-muted-foreground">
-                                                <span className="font-bold font-mono text-foreground text-sm">
-                                                    {formatPhp(q.totalPhp)}
-                                                </span>
-                                                <span className="ml-2">
-                                                    {itemCount} {itemCount === 1 ? "item" : "items"}
-                                                </span>
-                                            </p>
-
-                                            <p className="text-xs text-muted-foreground truncate">
-                                                Prepared by {q.preparerName || q.createdByName}
-                                            </p>
-
-                                            {itemCount > 0 && (
-                                                <p className="text-[11px] text-muted-foreground/70 truncate">
-                                                    {q.items.map((it) => it.description).join(" · ")}
-                                                </p>
+                                            </span>
+                                            {isApproved ? (
+                                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
+                                                    <Lock className="w-2.5 h-2.5" />
+                                                    Approved
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
+                                                    In Progress
+                                                </Badge>
                                             )}
                                         </div>
+
+                                        {/* Price and preparer only. The item count and
+                                            the line-item summary are both a tap away in
+                                            the quote itself. */}
+                                        <p className="font-bold font-mono text-foreground text-sm">
+                                            {formatPhp(q.totalPhp)}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            Prepared by {q.preparerName || q.createdByName}
+                                        </p>
                                     </div>
 
                                     {/* One row of actions: the labelled ones together on
-                                        the left, delete alone on the right. The chevron
-                                        that used to sit here did exactly what clicking
-                                        the row does. */}
+                                        the left, delete alone on the right. `min-w-0`
+                                        plus `shrink-0` on the trash is what stops the
+                                        labelled buttons squeezing it off the edge when
+                                        both are present. */}
                                     <div
-                                        className="flex items-center gap-2 mt-3 pl-8"
+                                        className="flex items-center gap-2 mt-3 min-w-0"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <DownloadQuotePdfButton
@@ -444,7 +291,7 @@ export default function QuotesTab({
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="size-8 ml-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="size-8 ml-auto shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Delete quote"
                                                 onClick={() => setQuoteToDelete(q._id)}
                                             >

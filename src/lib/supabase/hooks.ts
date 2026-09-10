@@ -581,18 +581,6 @@ export function useDeleteQuote() {
     });
 }
 
-export function useDeleteQuotes() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: quotesApi.deleteQuotes,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.quotes }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
 // ─── Contracts ────────────────────────────────────────────────────────────
 
 export function useContractForLead(leadId: Id<"leads"> | undefined) {
