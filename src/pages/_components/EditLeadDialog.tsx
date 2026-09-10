@@ -31,7 +31,6 @@ const schema = z.object({
     lastName: z.string().min(1, "Required"),
     phone: z.string().min(7, "Valid phone required"),
     email: z.string().email().optional().or(z.literal("")),
-    source: z.enum(["referral", "facebook_ad", "website_form", "walk_in", "other"]),
     referredBy: z.string().optional(),
     notes: z.string().optional(),
     assignedSalesRepId: z.string().optional(),
@@ -78,7 +77,6 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             lastName: lead.lastName,
             phone: lead.phone,
             email: lead.email ?? "",
-            source: lead.source,
             referredBy: lead.referredBy ?? "",
             notes: lead.notes ?? "",
             assignedSalesRepId: lead.assignedSalesRepId ?? "",
@@ -99,7 +97,6 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             lastName: lead.lastName,
             phone: lead.phone,
             email: lead.email ?? "",
-            source: lead.source,
             referredBy: lead.referredBy ?? "",
             notes: lead.notes ?? "",
             assignedSalesRepId: lead.assignedSalesRepId ?? "",
@@ -126,7 +123,6 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                 lastName: values.lastName,
                 phone: values.phone,
                 email: values.email || null,
-                source: values.source,
                 referredBy: values.referredBy || null,
                 notes: values.notes || null,
                 assignedSalesRepId: (values.assignedSalesRepId && values.assignedSalesRepId !== "none")
@@ -190,25 +186,9 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                         <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <FormField control={form.control} name="source" render={({ field }) => (
-                                        <FormItem><FormLabel>Source</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="website_form">Website Form</SelectItem>
-                                                    <SelectItem value="referral">Referral</SelectItem>
-                                                    <SelectItem value="facebook_ad">Facebook Ad</SelectItem>
-                                                    <SelectItem value="walk_in">Walk-in</SelectItem>
-                                                    <SelectItem value="other">Other</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="referredBy" render={({ field }) => (
-                                        <FormItem><FormLabel>Referred By</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                </div>
+                                <FormField control={form.control} name="referredBy" render={({ field }) => (
+                                    <FormItem><FormLabel>Referred By</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
                                 <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
                                     <FormItem><FormLabel>Assigned To</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value ?? ""}>

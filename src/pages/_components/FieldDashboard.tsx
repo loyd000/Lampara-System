@@ -21,6 +21,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import {
+    Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
+} from "@/components/ui/empty.tsx";
 import { cn } from "@/lib/utils.ts";
 import { QueryError } from "@/components/query-error.tsx";
 
@@ -249,15 +252,17 @@ export default function FieldDashboard({ user }: Props) {
 
             {/* Nothing assigned */}
             {jobs.filter(isOpen).length === 0 && (
-                <Card>
-                    <CardContent className="py-10 px-6 flex flex-col items-center gap-2 text-muted-foreground">
-                        <Wrench className="w-8 h-8 opacity-30" />
-                        <p className="text-sm">No jobs assigned to you yet</p>
-                        <p className="text-xs text-muted-foreground/70">
+                <Empty>
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <Wrench className="size-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No jobs assigned to you yet</EmptyTitle>
+                        <EmptyDescription>
                             Inspections and installations scheduled for you will appear here.
-                        </p>
-                    </CardContent>
-                </Card>
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
             )}
 
             {/* Recently completed */}

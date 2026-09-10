@@ -100,15 +100,6 @@ export function groupOf(stage: Stage): StageGroup {
   return STAGE_TO_GROUP[stage];
 }
 
-// ─── Lead Sources ─────────────────────────────────────────────────────────
-export const SOURCE_LABELS: Record<string, string> = {
-  referral: "Referral",
-  facebook_ad: "Facebook Ad",
-  website_form: "Website Form",
-  walk_in: "Walk-in",
-  other: "Other",
-};
-
 // ─── User Roles ───────────────────────────────────────────────────────────
 // `field` replaces the old surveyor/installer pair — one person does both the
 // site ocular inspection and the installation (0008_field_role.sql). `sales`

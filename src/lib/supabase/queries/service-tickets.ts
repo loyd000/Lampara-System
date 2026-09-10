@@ -55,6 +55,35 @@ export async function listAllTickets(): Promise<ServiceTicketWithCustomer[]> {
     }));
 }
 
+/** Case-insensitive match across title and description, for global search. */
+export async function searchTickets(q: string): Promise<ServiceTicketWithCustomer[]> {
+    const term = q.trim();
+    if (term.length < 2) return [];
+
+    const pattern = `%${term.replace(/[%_,()]/g, "")}%`;
+    const rows = unwrap(
+        await supabase
+            .from("service_tickets")
+            .select("*, leads(first_name, last_name)")
+            .or(`title.ilike.${pattern},description.ilike.${pattern}`)
+            .order("created_at", { ascending: false })
+            .limit(8)
+            .returns<
+                (ServiceTicketRow & {
+                    leads: Pick<LeadRow, "first_name" | "last_name"> | null;
+                })[]
+            >(),
+        "Failed to search service tickets",
+    );
+
+    return rows.map((row) => ({
+        ...toServiceTicket(row),
+        customerName: row.leads
+            ? `${row.leads.first_name} ${row.leads.last_name}`
+            : "Unknown",
+    }));
+}
+
 export async function createTicket(args: {
     leadId: Id<"leads">;
     installationId: Id<"installations">;

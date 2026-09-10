@@ -103,7 +103,10 @@ export function keysFor(
         }
         case "properties":
             return [
+                // Search results carry the property too (location is one of the
+                // things searched), so an address edit has to reach them as well.
                 ["leads", "enriched"],
+                ["leads", "search"],
                 ["surveys", "mine"],
                 queryKeys.myInstallations,
                 ...(leadId ? [queryKeys.leadProperties(leadId)] : [queryKeys.leads]),
@@ -124,11 +127,17 @@ export function keysFor(
         // Overview file lists with them, since those read report photos too.
         case "survey_photos":
             return [queryKeys.surveys, queryKeys.leadFiles];
+        // Both quote cases also refresh the lead lists: those derive a lead's
+        // design type from whichever quote is approved, so approving one — or
+        // changing which packages its line items came from — changes what the
+        // Leads list and search results should be showing.
         case "quotes": {
             const id = rowIdOf(payload);
             return [
                 ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),
                 ...(id ? [queryKeys.quoteWithItems(id)] : []),
+                ["leads", "enriched"],
+                ["leads", "search"],
                 queryKeys.reports,
             ];
         }
@@ -137,6 +146,8 @@ export function keysFor(
             return [
                 ...(leadId ? [queryKeys.quotesForLead(leadId)] : [queryKeys.quotes]),
                 ...(quoteId ? [queryKeys.quoteWithItems(quoteId)] : []),
+                ["leads", "enriched"],
+                ["leads", "search"],
                 queryKeys.reports,
             ];
         }

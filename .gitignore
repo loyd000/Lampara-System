@@ -33,3 +33,6 @@ tsconfig.tsbuildinfo
 
 # Local output of scripts/preview-ocular-pdf.tsx
 ocular-report-preview.pdf
+
+# Supabase CLI scratch, written by `supabase link` — machine-local, not shared
+supabase/.temp/

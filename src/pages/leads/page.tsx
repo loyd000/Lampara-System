@@ -6,41 +6,52 @@ import { Input } from "@/components/ui/input.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
-    STAGE_LABELS, STAGE_COLORS, SOURCE_LABELS, STAGE_GROUPS, STAGE_GROUP_LABELS,
-    type Stage, type StageGroup,
+    Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
+} from "@/components/ui/empty.tsx";
+import {
+    STAGE_LABELS, STAGE_COLORS, STAGE_GROUP_LABELS,
+    PROPERTY_TYPE_LABELS, DESIGN_TYPE_LABELS,
+    groupOf, type StageGroup,
 } from "@/lib/constants.ts";
 import { Plus, Search, SlidersHorizontal, AlertTriangle, User } from "lucide-react";
 import {
-    Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator,
-    SelectTrigger, SelectValue,
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
 import CreateLeadDialog from "./_components/CreateLeadDialog.tsx";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useNow } from "@/hooks/use-now.ts";
 import { cn } from "@/lib/utils.ts";
-import type { Doc, EnrichedLead } from "@/lib/supabase/types.ts";
+import type { PackageDesignType } from "@/lib/supabase/types.ts";
 
 export default function LeadsPage() {
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [stageFilter, setStageFilter] = useState<string>("all");
-    const [sourceFilter, setSourceFilter] = useState<string>("all");
+    const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
+    const [designTypeFilter, setDesignTypeFilter] = useState<string>("all");
     const [createOpen, setCreateOpen] = useState(false);
     const [debouncedSearch] = useDebounce(search, 300);
     const now = useNow();
 
-    const { data: page } = useEnrichedLeads({
-        ...(stageFilter !== "all" ? { stage: stageFilter as Stage } : {}),
-        ...(sourceFilter !== "all" ? { source: sourceFilter as Doc<"leads">["source"] } : {}),
-    });
+    const { data: page } = useEnrichedLeads();
     const { data: searchResults } = useLeadSearch(debouncedSearch);
 
-    // Search returns bare leads; the table only reads the enriched fields when
-    // they are present, so widening is enough.
     const isSearching = debouncedSearch.trim().length > 1;
     const rawLeads = isSearching ? (searchResults ?? []) : (page?.leads ?? []);
-    const leads = rawLeads as EnrichedLead[];
     const isLoading = isSearching ? searchResults === undefined : page === undefined;
+
+    // All three of these filter the fetched page client-side rather than
+    // round-tripping to the server: stage is filtered by *main* status, not
+    // the ten individual substages, which is a client-side grouping over the
+    // same `stage` column rather than a distinct server filter; property
+    // type and design type are already in hand for the table's own columns.
+    const leads = rawLeads.filter((l) =>
+        (stageFilter === "all" || groupOf(l.stage) === stageFilter) &&
+        (propertyTypeFilter === "all" || l.property?.propertyType === propertyTypeFilter) &&
+        (designTypeFilter === "all" || l.designTypes.includes(designTypeFilter as PackageDesignType)),
+    );
+    const hasActiveFilters =
+        stageFilter !== "all" || propertyTypeFilter !== "all" || designTypeFilter !== "all" || !!search;
 
     const staleCount = (page?.leads ?? []).filter((l) => {
         const days = (now - new Date(l.lastActivityAt).getTime()) / 86400000;
@@ -56,8 +67,8 @@ export default function LeadsPage() {
                     <p className="text-sm text-muted-foreground mt-1.5">
                         {isLoading
                             ? "Loading…"
-                            : !isSearching && page?.truncated
-                                ? `Showing ${leads.length} of ${page.total.toLocaleString()} — narrow with search or filters`
+                            : !isSearching && !hasActiveFilters && page?.truncated
+                                ? `Showing ${rawLeads.length} of ${page.total.toLocaleString()} — narrow with search or filters`
                                 : `${leads.length} record${leads.length !== 1 ? "s" : ""}`}
                         {staleCount > 0 && (
                             <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground font-medium">
@@ -85,38 +96,48 @@ export default function LeadsPage() {
                 <Select value={stageFilter} onValueChange={setStageFilter}>
                     <SelectTrigger className="w-44 bg-card">
                         <SlidersHorizontal className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-                        <SelectValue placeholder="All stages" />
+                        <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All stages</SelectItem>
-                        {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group) => (
-                            <SelectGroup key={group}>
-                                <SelectSeparator />
-                                <SelectLabel>{STAGE_GROUP_LABELS[group]}</SelectLabel>
-                                {STAGE_GROUPS[group].map((s) => (
-                                    <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
-                                ))}
-                            </SelectGroup>
+                        <SelectItem value="all">All statuses</SelectItem>
+                        {(Object.keys(STAGE_GROUP_LABELS) as StageGroup[]).map((group) => (
+                            <SelectItem key={group} value={group}>{STAGE_GROUP_LABELS[group]}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
-                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
                     <SelectTrigger className="w-40 bg-card">
-                        <SelectValue placeholder="All sources" />
+                        <SelectValue placeholder="All property types" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All sources</SelectItem>
-                        {Object.entries(SOURCE_LABELS).map(([val, label]) => (
+                        <SelectItem value="all">All property types</SelectItem>
+                        {Object.entries(PROPERTY_TYPE_LABELS).map(([val, label]) => (
                             <SelectItem key={val} value={val}>{label}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
-                {(stageFilter !== "all" || sourceFilter !== "all" || search) && (
+                <Select value={designTypeFilter} onValueChange={setDesignTypeFilter}>
+                    <SelectTrigger className="w-40 bg-card">
+                        <SelectValue placeholder="All design types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All design types</SelectItem>
+                        {Object.entries(DESIGN_TYPE_LABELS).map(([val, label]) => (
+                            <SelectItem key={val} value={val}>{label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {hasActiveFilters && (
                     <Button
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground"
-                        onClick={() => { setStageFilter("all"); setSourceFilter("all"); setSearch(""); }}
+                        onClick={() => {
+                            setStageFilter("all");
+                            setPropertyTypeFilter("all");
+                            setDesignTypeFilter("all");
+                            setSearch("");
+                        }}
                     >
                         Clear filters
                     </Button>
@@ -129,12 +150,12 @@ export default function LeadsPage() {
                     <thead>
                         <tr className="border-b border-border">
                             <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Name</th>
-                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">Contact</th>
-                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">Location</th>
-                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">Source</th>
+                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">Location</th>
+                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">Date Added</th>
+                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">Property Type</th>
+                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">Design Type</th>
                             <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Stage</th>
-                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">Assigned To</th>
-                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">Last Activity</th>
+                            <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">Last Activity</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -150,18 +171,27 @@ export default function LeadsPage() {
                             ))
                         ) : leads.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-4 py-14 text-center">
-                                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                        <User className="w-8 h-8 opacity-30" />
-                                        <p className="font-medium">
-                                            {search ? "No leads match your search." : "No leads yet."}
-                                        </p>
-                                        {!search && (
+                                <td colSpan={7} className="p-0">
+                                    <Empty className="border-none py-14">
+                                        <EmptyHeader>
+                                            <EmptyMedia variant="icon">
+                                                <User className="size-6" />
+                                            </EmptyMedia>
+                                            <EmptyTitle>
+                                                {hasActiveFilters ? "No leads match your filters" : "No leads yet"}
+                                            </EmptyTitle>
+                                            <EmptyDescription>
+                                                {hasActiveFilters
+                                                    ? "Try a different search, or clear a filter."
+                                                    : "New leads you add will show up here, ready to move through the pipeline."}
+                                            </EmptyDescription>
+                                        </EmptyHeader>
+                                        {!hasActiveFilters && (
                                             <Button size="sm" onClick={() => setCreateOpen(true)}>
                                                 <Plus className="w-3.5 h-3.5 mr-1" />Create your first lead
                                             </Button>
                                         )}
-                                    </div>
+                                    </Empty>
                                 </td>
                             </tr>
                         ) : (
@@ -178,51 +208,38 @@ export default function LeadsPage() {
                                         onClick={() => navigate(`/leads/${lead._id}`)}
                                     >
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
-                                                    {lead.firstName.charAt(0)}{lead.lastName.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-foreground">{lead.firstName} {lead.lastName}</p>
-                                                    {isStale && (
-                                                        <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
-                                                            <AlertTriangle className="w-2.5 h-2.5" />No activity {daysOld}d
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
+                                            <p className="font-semibold text-foreground">{lead.firstName} {lead.lastName}</p>
+                                            {isStale && (
+                                                <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                                                    <AlertTriangle className="w-2.5 h-2.5" />No activity {daysOld}d
+                                                </span>
+                                            )}
                                         </td>
-                                        <td className="px-4 py-3 hidden sm:table-cell">
-                                            <p className="text-foreground">{lead.phone}</p>
-                                            {lead.email && <p className="text-xs text-muted-foreground truncate max-w-[160px]">{lead.email}</p>}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">
+                                        <td className="px-4 py-3 text-muted-foreground text-xs hidden sm:table-cell">
                                             {lead.property ? `${lead.property.city}, ${lead.property.state}` : "—"}
                                         </td>
-                                        <td className="px-4 py-3 hidden md:table-cell">
-                                            <span className="text-xs text-muted-foreground">
-                                                {SOURCE_LABELS[lead.source] ?? lead.source}
-                                            </span>
+                                        <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell tabular-nums">
+                                            {new Date(lead._creationTime).toLocaleDateString(undefined, {
+                                                month: "short", day: "numeric", year: "numeric",
+                                            })}
+                                        </td>
+                                        <td className="px-4 py-3 text-muted-foreground text-xs hidden md:table-cell">
+                                            {lead.property
+                                                ? (PROPERTY_TYPE_LABELS[lead.property.propertyType] ?? lead.property.propertyType)
+                                                : "—"}
+                                        </td>
+                                        <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">
+                                            {(lead.designTypes ?? []).length > 0
+                                                ? lead.designTypes.map((dt) => DESIGN_TYPE_LABELS[dt] ?? dt).join(", ")
+                                                : "—"}
                                         </td>
                                         <td className="px-4 py-3">
                                             <Badge className={cn(STAGE_COLORS[lead.stage], "text-[11px] font-semibold")}>
                                                 {STAGE_LABELS[lead.stage]}
                                             </Badge>
                                         </td>
-                                        <td className="px-4 py-3 hidden md:table-cell">
-                                            {lead.assignedRepName ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center text-[9px] font-bold text-primary">
-                                                        {lead.assignedRepName.charAt(0)}
-                                                    </div>
-                                                    <span className="text-xs text-muted-foreground">{lead.assignedRepName}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground/50">Unassigned</span>
-                                            )}
-                                        </td>
                                         <td className={cn(
-                                            "px-4 py-3 text-xs hidden lg:table-cell",
+                                            "px-4 py-3 text-xs hidden md:table-cell",
                                             isStale ? "text-amber-600 font-medium" : "text-muted-foreground",
                                         )}>
                                             {daysOld === 0 ? "Today" : daysOld === 1 ? "Yesterday" : `${daysOld}d ago`}

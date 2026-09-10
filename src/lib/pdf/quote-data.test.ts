@@ -11,7 +11,6 @@ describe("quote-data", () => {
         lastName: "Pacheco",
         phone: "09171234567",
         email: "ervin@example.com",
-        source: "referral",
         stage: "proposal_sent",
         lastActivityAt: "2026-09-04T08:00:00Z",
     };

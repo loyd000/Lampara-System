@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
     Archive,
@@ -13,7 +12,6 @@ import {
 } from "lucide-react";
 
 import {
-    useCurrentUser,
     usePackages,
     useTogglePackageActive,
 } from "@/lib/supabase/hooks.ts";
@@ -47,8 +45,9 @@ function formatPhp(value: number): string {
     });
 }
 
+// Superadmin-only; the gate is on the route (see App.tsx) so this page's
+// queries never fire for anyone else.
 export default function PackagesPage() {
-    const { data: currentUser } = useCurrentUser();
     const { data: packages, isError, refetch } = usePackages();
     const { mutateAsync: toggleActive } = useTogglePackageActive();
 
@@ -56,11 +55,6 @@ export default function PackagesPage() {
     const [editing, setEditing] = useState<PackageWithItems | undefined>();
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [busyId, setBusyId] = useState<string | null>(null);
-
-    // ── Role guard ────────────────────────────────────────────────────
-    if (currentUser && currentUser.role !== "superadmin") {
-        return <Navigate to="/" replace />;
-    }
 
     // ── Loading / error ───────────────────────────────────────────────
     if (isError) {

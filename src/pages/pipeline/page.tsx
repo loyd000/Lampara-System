@@ -3,9 +3,7 @@ import { useCurrentUser, useEnrichedLeads, useUpdateStage } from "@/lib/supabase
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select.tsx";
+import StageSelect from "@/components/stage-select.tsx";
 import { useNavigate } from "react-router-dom";
 import {
     STAGES, STAGE_LABELS, STAGE_COLORS, STAGE_GROUPS, STAGE_GROUP_LABELS,
@@ -14,6 +12,7 @@ import {
 import type { EnrichedLead } from "@/lib/supabase/types.ts";
 import { Plus, Users, AlertTriangle } from "lucide-react";
 import CreateLeadDialog from "../leads/_components/CreateLeadDialog.tsx";
+import CancelLeadDialog from "@/components/cancel-lead-dialog.tsx";
 import { useNow } from "@/hooks/use-now.ts";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -27,6 +26,8 @@ export default function PipelinePage() {
     const { mutateAsync: updateStage } = useUpdateStage();
     const [dragging, setDragging] = useState<string | null>(null);
     const [dragOver, setDragOver] = useState<Stage | null>(null);
+    /** Set when a move lands on `cancelled`, held until the reason is given. */
+    const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
     // Matches the leads_update RLS policy (superadmin/admin only) — without this
     // a field user could drag a card and get nothing but a silent "failed to
@@ -43,15 +44,30 @@ export default function PipelinePage() {
         if (byStage[l.stage]) byStage[l.stage].push(l);
     });
 
-    async function moveLead(leadId: string, stage: Stage) {
-        const lead = leads?.find((l) => l._id === leadId);
-        if (!lead || lead.stage === stage) return;
+    async function applyMove(leadId: string, stage: Stage, cancelledReason?: string) {
         try {
-            await updateStage({ id: lead._id, stage });
-            toast.success(`Moved to ${STAGE_LABELS[stage]}`);
+            await updateStage({ id: leadId, stage, cancelledReason });
+            toast.success(
+                stage === "cancelled" ? "Lead cancelled" : `Moved to ${STAGE_LABELS[stage]}`,
+            );
         } catch {
             toast.error("Failed to move lead");
         }
+    }
+
+    /**
+     * Every move on this board funnels through here — the drag-and-drop path
+     * and the per-card stage picker both — so cancelling asks for its reason
+     * either way, the same as it does on the lead detail page.
+     */
+    async function moveLead(leadId: string, stage: Stage) {
+        const lead = leads?.find((l) => l._id === leadId);
+        if (!lead || lead.stage === stage) return;
+        if (stage === "cancelled") {
+            setPendingCancelId(leadId);
+            return;
+        }
+        await applyMove(leadId, stage);
     }
 
     async function handleDrop(stage: Stage) {
@@ -67,6 +83,13 @@ export default function PipelinePage() {
     const totalActive = leads?.filter(
         (l) => !["active_customer", "installation_complete", "cancelled"].includes(l.stage),
     ).length ?? 0;
+
+    const cancellingLead = pendingCancelId
+        ? leads?.find((l) => l._id === pendingCancelId)
+        : undefined;
+    const cancellingLeadName = cancellingLead
+        ? `${cancellingLead.firstName} ${cancellingLead.lastName}`
+        : undefined;
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
@@ -184,6 +207,16 @@ export default function PipelinePage() {
             )}
 
             <CreateLeadDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
+            <CancelLeadDialog
+                open={pendingCancelId !== null}
+                onOpenChange={(next) => { if (!next) setPendingCancelId(null); }}
+                onConfirm={(reason) => {
+                    if (pendingCancelId) void applyMove(pendingCancelId, "cancelled", reason);
+                    setPendingCancelId(null);
+                }}
+                leadName={cancellingLeadName}
+            />
         </div>
     );
 }
@@ -272,18 +305,7 @@ function PipelineCard({
                 it is also just a faster path than a drag on desktop. */}
             {canMoveStage && (
                 <div className="mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-                    <Select value={lead.stage} onValueChange={(v) => onMoveTo(v as Stage)}>
-                        <SelectTrigger className="h-8 text-[11px] w-full" aria-label="Move to stage">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {STAGES.map((s) => (
-                                <SelectItem key={s} value={s} className="text-xs">
-                                    {STAGE_LABELS[s]}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <StageSelect value={lead.stage} onChange={onMoveTo} size="sm" />
                 </div>
             )}
         </div>

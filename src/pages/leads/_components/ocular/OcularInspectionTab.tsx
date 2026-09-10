@@ -23,6 +23,9 @@ import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
+    Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
+} from "@/components/ui/empty.tsx";
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -174,26 +177,30 @@ export default function OcularInspectionTab({
     if (surveys.length === 0) {
         return (
             <>
-                <div className="rounded-lg border border-dashed px-6 py-14 flex flex-col items-center gap-2 text-center">
-                    <ClipboardCheck className="w-8 h-8 text-muted-foreground/30" />
-                    <p className="font-medium text-foreground">No reports yet</p>
-                    <p className="text-sm text-muted-foreground max-w-sm">
-                        A {INSPECTION_LABEL.toLowerCase()} records the roof, the electrical
-                        setup and the photos the quote is built from.
-                    </p>
+                <Empty>
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <ClipboardCheck className="size-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No reports yet</EmptyTitle>
+                        <EmptyDescription>
+                            A {INSPECTION_LABEL.toLowerCase()} records the roof, the electrical
+                            setup and the photos the quote is built from.
+                        </EmptyDescription>
+                    </EmptyHeader>
                     {canSchedule && propertyId && (
-                        <Button size="sm" className="mt-3" onClick={() => setCreateOpen(true)}>
+                        <Button size="sm" onClick={() => setCreateOpen(true)}>
                             <Plus className="w-3.5 h-3.5 mr-1.5" />
                             Make ocular report
                         </Button>
                     )}
                     {canSchedule && !propertyId && (
-                        <p className="text-xs text-muted-foreground mt-2">
+                        <p className="text-xs text-muted-foreground">
                             Add a property to this lead first — a report is written against a
                             site.
                         </p>
                     )}
-                </div>
+                </Empty>
                 {createDialog}
             </>
         );

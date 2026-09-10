@@ -1,4 +1,5 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { motion, useReducedMotion } from "motion/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "@/components/auth-guard.tsx";
 import { AccountGate } from "@/components/account-gate.tsx";
 import { useAuth } from "@/components/providers/auth-context.ts";
@@ -11,12 +12,15 @@ import { SignOutButton } from "@/components/sign-out-button.tsx";
 import AppSidebar from "./_components/AppSidebar.tsx";
 import MobileNav from "./_components/MobileNavbar.tsx";
 import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
+import GlobalSearch from "@/components/global-search.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
 import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles } from "lucide-react";
 
 export default function AppLayout() {
     const { isAuthenticated } = useAuth();
     const { data: currentUser } = useCurrentUser();
+    const location = useLocation();
+    const reducedMotion = useReducedMotion();
 
     // Convex refreshed every subscriber on write; with React Query this one
     // channel does the same job by invalidating caches on Postgres changes.
@@ -76,11 +80,19 @@ export default function AppLayout() {
                               Worst on the ocular report, which has ~40 of them.
                             */}
                             <main className="relative flex-1 overflow-auto pb-24 md:pb-0">
-                                <Outlet />
+                                <motion.div
+                                    key={location.pathname}
+                                    initial={reducedMotion ? false : { opacity: 0, y: 4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.15, ease: "easeOut" }}
+                                >
+                                    <Outlet />
+                                </motion.div>
                             </main>
                         </div>
                         <MobileNav />
                         <IosInstallPrompt />
+                        <GlobalSearch />
                     </div>
                 </AccountGate>
             </Authenticated>

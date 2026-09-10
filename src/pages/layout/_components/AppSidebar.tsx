@@ -9,6 +9,7 @@ import {
     BarChart3,
     Package,
     CalendarDays,
+    Search,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { SignOutButton } from "@/components/sign-out-button.tsx";
@@ -20,6 +21,8 @@ type NavItem = {
     icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
     roles?: string[];
 };
+
+const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.userAgent);
 
 const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
@@ -55,8 +58,23 @@ export default function AppSidebar() {
                 <ThemeToggle />
             </div>
 
+            {/* Search */}
+            <div className="px-3 pt-3">
+                <button
+                    type="button"
+                    onClick={() => document.dispatchEvent(new CustomEvent("lampara:open-search"))}
+                    className="flex w-full items-center gap-2 rounded-lg bg-sidebar-accent/60 hover:bg-sidebar-accent px-3 py-2 text-[13px] text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+                >
+                    <Search className="w-3.5 h-3.5" />
+                    <span className="flex-1 text-left">Search</span>
+                    <kbd className="text-[10px] font-medium border border-sidebar-border rounded px-1 py-0.5">
+                        {isMac ? "⌘K" : "Ctrl K"}
+                    </kbd>
+                </button>
+            </div>
+
             {/* Navigation */}
-            <nav className="flex-1 px-3 py-4 space-y-0.5">
+            <nav className="flex-1 px-3 pb-4 pt-3 space-y-0.5">
                 {visibleNav.map((item) => (
                     <NavLink key={item.to} to={item.to} end={item.to === "/"}>
                         {({ isActive }) => (

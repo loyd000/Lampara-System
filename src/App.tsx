@@ -5,6 +5,7 @@ import { PasswordRecoveryGate } from "./components/password-recovery-gate.tsx";
 import { useServiceWorker } from "@/hooks/use-service-worker.ts";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { ErrorBoundary } from "@/components/error-boundary.tsx";
+import { RequireRole } from "@/components/require-role.tsx";
 import { MissingConfigScreen } from "@/components/missing-config.tsx";
 import { isSupabaseConfigured } from "@/lib/supabase/client.ts";
 import AppLayout from "./pages/layout/AppLayout.tsx";
@@ -53,8 +54,22 @@ export default function App() {
                                     <Route path="/calendar" element={<CalendarPage />} />
                                     <Route path="/leads" element={<LeadsPage />} />
                                     <Route path="/leads/:id" element={<LeadDetailPage />} />
-                                    <Route path="/reports" element={<ReportsPage />} />
-                                    <Route path="/packages" element={<PackagesPage />} />
+                                    <Route
+                                        path="/reports"
+                                        element={
+                                            <RequireRole roles={["superadmin", "admin"]}>
+                                                <ReportsPage />
+                                            </RequireRole>
+                                        }
+                                    />
+                                    <Route
+                                        path="/packages"
+                                        element={
+                                            <RequireRole roles={["superadmin"]}>
+                                                <PackagesPage />
+                                            </RequireRole>
+                                        }
+                                    />
                                     <Route path="/team" element={<TeamPage />} />
                                     <Route path="/profile" element={<ProfilePage />} />
                                 </Route>

@@ -6,8 +6,9 @@ import { notifyEvent } from "./notifications.ts";
 import type {
     ActivityLogRow,
     LeadRow,
-    LeadSource,
     LeadStage,
+    PackageDesignType,
+    PackageRow,
     PropertyRow,
     PropertyType,
 } from "../database.types.ts";
@@ -136,21 +137,75 @@ export async function listLeads(
 }
 
 type EnrichedRow = LeadRow & {
-    properties: Pick<PropertyRow, "address" | "city" | "state">[] | null;
+    properties: Pick<PropertyRow, "address" | "city" | "state" | "property_type">[] | null;
     assignedRep: NameOnly;
+    // Only the approved quote's items carry a design type onto the list —
+    // draft/sent/rejected quotes don't count, same rule the lead detail page
+    // Overview tab uses.
+    quotes: {
+        status: string;
+        quote_items: { packages: Pick<PackageRow, "design_type"> | null }[] | null;
+    }[] | null;
 };
 
 /**
- * Leads with their first property and the assigned rep's name.
+ * The property/rep/design-type embed shared by every list of leads that
+ * shows more than a bare name — the leads list and search results both need
+ * it, so it isn't just the leads list's own shape.
+ */
+const ENRICHED_LEAD_SELECT =
+    "*, properties(address, city, state, property_type), " +
+    "assignedRep:users!leads_assigned_sales_rep_id_fkey(name, email), " +
+    "quotes(status, quote_items(packages(design_type)))";
+
+/**
+ * Same embed, but `properties!inner` — needed only for the location branch of
+ * `searchLeads`: a plain (non-inner) embed lets PostgREST filter *which
+ * property rows* come back per lead, but does not restrict *which leads*
+ * come back. `!inner` is what turns "search the joined table" into "only
+ * return leads that have a matching property".
+ */
+const ENRICHED_LEAD_SELECT_INNER_PROPERTY =
+    "*, properties!inner(address, city, state, property_type), " +
+    "assignedRep:users!leads_assigned_sales_rep_id_fkey(name, email), " +
+    "quotes(status, quote_items(packages(design_type)))";
+
+function toEnrichedLead(row: EnrichedRow): EnrichedLead {
+    const property = row.properties?.[0] ?? null;
+    const approvedQuote = (row.quotes ?? []).find((q) => q.status === "approved");
+    const designTypes = [
+        ...new Set(
+            (approvedQuote?.quote_items ?? [])
+                .map((it) => it.packages?.design_type)
+                .filter((dt): dt is PackageDesignType => Boolean(dt)),
+        ),
+    ];
+    return {
+        ...toLead(row),
+        assignedRepName: row.assignedRep ? displayName(row.assignedRep) : null,
+        property: property
+            ? {
+                  address: property.address,
+                  city: property.city,
+                  state: property.state,
+                  propertyType: property.property_type,
+              }
+            : null,
+        designTypes,
+    };
+}
+
+/**
+ * Leads with their first property, the assigned rep's name, and the design
+ * type(s) of any approved quote.
  *
- * The Convex version issued one query per lead for each; PostgREST resolves both
- * as embedded resources in a single request.
+ * The Convex version issued one query per lead for each; PostgREST resolves all
+ * of it as embedded resources in a single request.
  */
 export async function listEnrichedLeads(
     filters: {
         stage?: LeadStage;
         assignedSalesRepId?: Id<"users">;
-        source?: LeadSource;
         limit?: number;
     } = {},
 ): Promise<PagedLeads<EnrichedLead>> {
@@ -159,15 +214,13 @@ export async function listEnrichedLeads(
     let query = supabase
         .from("leads")
         .select(
-            "*, properties(address, city, state), " +
-                "assignedRep:users!leads_assigned_sales_rep_id_fkey(name, email)",
+            ENRICHED_LEAD_SELECT,
             // Exact count of the filtered set, so the caller can tell whether
             // the limit actually cut anything off.
             { count: "exact" },
         );
 
     if (filters.stage) query = query.eq("stage", filters.stage);
-    if (filters.source) query = query.eq("source", filters.source);
     if (filters.assignedSalesRepId) {
         query = query.eq("assigned_sales_rep_id", filters.assignedSalesRepId);
     }
@@ -181,11 +234,7 @@ export async function listEnrichedLeads(
     const total = result.count ?? rows.length;
 
     return {
-        leads: rows.map((row) => ({
-            ...toLead(row),
-            assignedRepName: row.assignedRep ? displayName(row.assignedRep) : null,
-            property: row.properties?.[0] ?? null,
-        })),
+        leads: rows.map(toEnrichedLead),
         total,
         truncated: total > rows.length,
     };
@@ -238,25 +287,52 @@ export async function getActivity(leadId: Id<"leads">): Promise<ActivityEntry[]>
     }));
 }
 
-/** Case-insensitive match across name, email and phone. Capped like Convex's. */
-export async function searchLeads(q: string): Promise<Lead[]> {
+/**
+ * Case-insensitive match across name, email, phone — and location (a
+ * property's city or province/state). Capped like Convex's.
+ *
+ * Two separate queries rather than one: PostgREST's `.or()` can filter the
+ * parent table's own columns, or (with `!inner`) restrict parents to those
+ * with a matching *embedded* row, but not both combined in a single filter
+ * expression. Run in parallel and merge, so "Malabon" and "Ervin" both work
+ * from the same search box without either query paying for the other's join.
+ */
+export async function searchLeads(q: string): Promise<EnrichedLead[]> {
     const term = q.trim();
     if (term.length < 2) return [];
 
     const pattern = `%${term.replace(/[%_,()]/g, "")}%`;
-    const rows = unwrap(
-        await supabase
+
+    const [byFieldsResult, byLocationResult] = await Promise.all([
+        supabase
             .from("leads")
-            .select(LEAD_COLUMNS)
+            .select(ENRICHED_LEAD_SELECT)
             .or(
                 `first_name.ilike.${pattern},last_name.ilike.${pattern},` +
                     `email.ilike.${pattern},phone.ilike.${pattern}`,
             )
             .order("last_activity_at", { ascending: false })
-            .limit(20),
-        "Search failed",
-    );
-    return (rows as LeadRow[]).map(toLead);
+            .limit(20)
+            .returns<EnrichedRow[]>(),
+        supabase
+            .from("leads")
+            .select(ENRICHED_LEAD_SELECT_INNER_PROPERTY)
+            .or(`city.ilike.${pattern},state.ilike.${pattern}`, { referencedTable: "properties" })
+            .order("last_activity_at", { ascending: false })
+            .limit(20)
+            .returns<EnrichedRow[]>(),
+    ]);
+
+    const byFields = unwrap(byFieldsResult, "Search failed");
+    const byLocation = unwrap(byLocationResult, "Search failed");
+
+    const merged = new Map<string, EnrichedRow>();
+    for (const row of [...byFields, ...byLocation]) merged.set(row.id, row);
+
+    return [...merged.values()]
+        .sort((a, b) => b.last_activity_at.localeCompare(a.last_activity_at))
+        .slice(0, 20)
+        .map(toEnrichedLead);
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────
@@ -266,7 +342,6 @@ export type CreateLeadArgs = {
     lastName: string;
     phone: string;
     email?: string;
-    source: LeadSource;
     referredBy?: string;
     notes?: string;
     assignedSalesRepId?: Id<"users">;
@@ -301,7 +376,6 @@ export async function createLead(args: CreateLeadArgs): Promise<Id<"leads">> {
         p_first_name: args.firstName,
         p_last_name: args.lastName,
         p_phone: args.phone,
-        p_source: args.source,
         p_address: args.address,
         p_city: args.city,
         p_state: args.state,
@@ -341,7 +415,6 @@ export async function updateLead(args: {
     lastName?: string;
     phone?: string;
     email?: string | null;
-    source?: LeadSource;
     referredBy?: string | null;
     notes?: string | null;
     assignedSalesRepId?: Id<"users"> | null;
@@ -367,7 +440,6 @@ export async function updateLead(args: {
             ...(fields.lastName !== undefined && { last_name: fields.lastName }),
             ...(fields.phone !== undefined && { phone: fields.phone }),
             ...(fields.email !== undefined && { email: fields.email || null }),
-            ...(fields.source !== undefined && { source: fields.source }),
             ...(fields.referredBy !== undefined && { referred_by: fields.referredBy || null }),
             ...(fields.notes !== undefined && { notes: fields.notes || null }),
             ...(fields.assignedSalesRepId !== undefined && {

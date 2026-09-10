@@ -25,7 +25,6 @@ import type {
     LeadFileRow,
     LeadNoteRow,
     LeadRow,
-    LeadSource,
     LeadStage,
     PackageDesignType,
     PackageItemRow,
@@ -69,7 +68,6 @@ export type {
     FinancingOption,
     InstallationStatus,
     LeadFileKind,
-    LeadSource,
     LeadStage,
     MeterForm,
     MeterKind,
@@ -143,7 +141,6 @@ export type Lead = Base & {
     lastName: string;
     phone: string;
     email?: string;
-    source: LeadSource;
     referredBy?: string;
     stage: LeadStage;
     assignedSalesRepId?: string;
@@ -463,7 +460,14 @@ export type Doc<T extends TableNames> = T extends "users"
 
 export type EnrichedLead = Lead & {
     assignedRepName: string | null;
-    property: { address: string; city: string; state: string } | null;
+    property: { address: string; city: string; state: string; propertyType: PropertyType } | null;
+    /**
+     * Design type(s) of the packages behind the lead's approved quote, if any
+     * — same "unlocked once a quote is approved" fact the lead detail page's
+     * Overview tab shows, just computed for a whole list at once instead of
+     * one lead.
+     */
+    designTypes: PackageDesignType[];
 };
 
 export type LeadDetail = Lead & { assignedRepName: string | null };
@@ -586,7 +590,6 @@ export function toLead(row: LeadRow): Lead {
         lastName: row.last_name,
         phone: row.phone,
         email: opt(row.email),
-        source: row.source,
         referredBy: opt(row.referred_by),
         stage: row.stage,
         assignedSalesRepId: opt(row.assigned_sales_rep_id),

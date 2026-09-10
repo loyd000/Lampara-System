@@ -18,7 +18,6 @@ import type {
     FinancingOption,
     InstallationStatus,
     LeadFileKind,
-    LeadSource,
     LeadStage,
     PermitStatus,
     PermitType,
@@ -61,6 +60,7 @@ export const queryKeys = {
     leadProperties: (id: string) => ["leads", "properties", id] as const,
     leadActivity: (id: string) => ["leads", "activity", id] as const,
     leadSearch: (q: string) => ["leads", "search", q] as const,
+    ticketSearch: (q: string) => ["service_tickets", "search", q] as const,
 
     leadNotes: ["leadNotes"] as const,
     leadNotesForLead: (leadId: string) => ["leadNotes", "lead", leadId] as const,
@@ -196,7 +196,6 @@ export function useEnrichedLeads(
     filters: {
         stage?: LeadStage;
         assignedSalesRepId?: Id<"users">;
-        source?: LeadSource;
         limit?: number;
     } = {},
 ) {
@@ -236,6 +235,16 @@ export function useLeadSearch(q: string) {
     return useQuery({
         queryKey: queryKeys.leadSearch(term),
         queryFn: () => leadsApi.searchLeads(term),
+        enabled: term.length > 1,
+    });
+}
+
+/** Same shape as `useLeadSearch` — enabled once there's something to say. */
+export function useTicketSearch(q: string) {
+    const term = q.trim();
+    return useQuery({
+        queryKey: queryKeys.ticketSearch(term),
+        queryFn: () => ticketsApi.searchTickets(term),
         enabled: term.length > 1,
     });
 }
@@ -961,7 +970,6 @@ export type {
     FinancingOption,
     InstallationStatus,
     LeadFileKind,
-    LeadSource,
     LeadStage,
     PermitStatus,
     PermitType,

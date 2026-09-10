@@ -500,10 +500,10 @@ export default function QuoteBuilder({
 
                     <div>
                         <span className="text-muted-foreground block mb-0.5 font-medium">
-                            Stage & Origin
+                            Stage
                         </span>
                         <span className="text-foreground capitalize">
-                            {lead.stage.replace(/_/g, " ")} · Source: {lead.source}
+                            {lead.stage.replace(/_/g, " ")}
                         </span>
                     </div>
                 </CardContent>

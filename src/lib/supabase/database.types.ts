@@ -24,13 +24,6 @@ export type LeadStage =
     | "active_customer"
     | "cancelled";
 
-export type LeadSource =
-    | "referral"
-    | "facebook_ad"
-    | "website_form"
-    | "walk_in"
-    | "other";
-
 export type PropertyType = "residential" | "commercial" | "industrial";
 export type SurveyStatus = "scheduled" | "submitted" | "approved" | "cancelled";
 
@@ -139,7 +132,6 @@ export type LeadRow = Timestamps & {
     last_name: string;
     phone: string;
     email: string | null;
-    source: LeadSource;
     referred_by: string | null;
     stage: LeadStage;
     assigned_sales_rep_id: string | null;
@@ -452,7 +444,6 @@ export type Database = {
                     p_first_name: string;
                     p_last_name: string;
                     p_phone: string;
-                    p_source: LeadSource;
                     p_address: string;
                     p_city: string;
                     p_state: string;

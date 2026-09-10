@@ -24,36 +24,15 @@ import {
     DESIGN_TYPE_LABELS,
     INSPECTION_LABEL_SHORT,
     PROPERTY_TYPE_LABELS,
-    SOURCE_LABELS,
-    STAGE_GROUPS,
-    STAGE_GROUP_LABELS,
     STAGE_LABELS,
     type Stage,
-    type StageGroup,
 } from "@/lib/constants.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectSeparator,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select.tsx";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog.tsx";
+import StageSelect from "@/components/stage-select.tsx";
+import CancelLeadDialog from "@/components/cancel-lead-dialog.tsx";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -164,7 +143,6 @@ export default function LeadDetailPage() {
 
     const [editOpen, setEditOpen] = useState(false);
     const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
-    const [cancelReason, setCancelReason] = useState("");
     const now = useNow();
 
     const requested = searchParams.get("tab");
@@ -268,18 +246,12 @@ export default function LeadDetailPage() {
 
     // Cancelling is the one stage change that needs a reason on record — every
     // other move is self-explanatory from the stage name alone.
-    function handleStageChange(stage: string) {
+    function handleStageChange(stage: Stage) {
         if (stage === "cancelled") {
-            setCancelReason("");
             setCancelPromptOpen(true);
             return;
         }
-        void applyStageChange(stage as Stage);
-    }
-
-    async function confirmCancel() {
-        await applyStageChange("cancelled", cancelReason.trim() || undefined);
-        setCancelPromptOpen(false);
+        void applyStageChange(stage);
     }
 
     async function handleDelete() {
@@ -315,8 +287,7 @@ export default function LeadDetailPage() {
                         thing here the page does not say twice, so it keeps a
                         little colour and nothing else does. */}
                     <p className="text-muted-foreground text-sm mt-1">
-                        {SOURCE_LABELS[lead.source] ?? lead.source}
-                        {lead.assignedRepName && ` · ${lead.assignedRepName}`}
+                        {lead.assignedRepName ?? "Unassigned"}
                         {isStale && (
                             <span className="text-amber-800 dark:text-amber-500 font-medium">
                                 {" · "}
@@ -365,24 +336,7 @@ export default function LeadDetailPage() {
                             </AlertDialogContent>
                         </AlertDialog>
                     )}
-                    <Select value={lead.stage} onValueChange={handleStageChange}>
-                        <SelectTrigger className="w-full sm:w-52">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group, i) => (
-                                <SelectGroup key={group}>
-                                    {i > 0 && <SelectSeparator />}
-                                    <SelectLabel>{STAGE_GROUP_LABELS[group]}</SelectLabel>
-                                    {STAGE_GROUPS[group].map((s) => (
-                                        <SelectItem key={s} value={s}>
-                                            {STAGE_LABELS[s]}
-                                        </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <StageSelect value={lead.stage} onChange={handleStageChange} />
                 </div>
             </div>
 
@@ -460,15 +414,11 @@ export default function LeadDetailPage() {
                                 </DetailRow>
                             )}
 
-                            <DetailRow label="Source">
-                                {SOURCE_LABELS[lead.source] ?? lead.source}
-                                {lead.referredBy && (
-                                    <span className="text-muted-foreground">
-                                        {" "}
-                                        · referred by {lead.referredBy}
-                                    </span>
-                                )}
-                            </DetailRow>
+                            {lead.referredBy && (
+                                <DetailRow label="Referred by">
+                                    {lead.referredBy}
+                                </DetailRow>
+                            )}
 
                             <DetailRow label="Assigned to">
                                 {lead.assignedRepName ?? <NotRecorded label="Unassigned" />}
@@ -638,35 +588,12 @@ export default function LeadDetailPage() {
                 onClose={() => setEditOpen(false)}
             />
 
-            <Dialog open={cancelPromptOpen} onOpenChange={setCancelPromptOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Cancel this lead?</DialogTitle>
-                        <DialogDescription>
-                            {lead.firstName} {lead.lastName} moves to Completed as Cancelled.
-                            Say why — this is the only place that reason lives.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Textarea
-                        autoFocus
-                        placeholder="Reason (optional, but worth leaving one)"
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                        className="min-h-[88px] text-sm"
-                    />
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setCancelPromptOpen(false)}>
-                            Back
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={() => void confirmCancel()}
-                        >
-                            Cancel Lead
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <CancelLeadDialog
+                open={cancelPromptOpen}
+                onOpenChange={setCancelPromptOpen}
+                onConfirm={(reason) => void applyStageChange("cancelled", reason)}
+                leadName={`${lead.firstName} ${lead.lastName}`}
+            />
         </div>
     );
 }

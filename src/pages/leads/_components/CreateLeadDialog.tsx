@@ -30,7 +30,6 @@ const schema = z.object({
     lastName: z.string().min(1, "Required"),
     phone: z.string().min(7, "Valid phone required"),
     email: z.string().email().optional().or(z.literal("")),
-    source: z.enum(["referral", "facebook_ad", "website_form", "walk_in", "other"]),
     referredBy: z.string().optional(),
     notes: z.string().optional(),
     propertyType: z.enum(["residential", "commercial", "industrial"]),
@@ -54,7 +53,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: {
-            firstName: "", lastName: "", phone: "", email: "", source: "website_form",
+            firstName: "", lastName: "", phone: "", email: "",
             propertyType: "residential",
         },
     });
@@ -130,34 +129,18 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                 <FormItem><FormLabel>Email (optional)</FormLabel><FormControl><Input placeholder="jane@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="source" render={({ field }) => (
-                                <FormItem><FormLabel>Lead Source</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="website_form">Website Form</SelectItem>
-                                            <SelectItem value="referral">Referral</SelectItem>
-                                            <SelectItem value="facebook_ad">Facebook Ad</SelectItem>
-                                            <SelectItem value="walk_in">Walk-in</SelectItem>
-                                            <SelectItem value="other">Other</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
-                                <FormItem><FormLabel>Assign To</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {assignableReps.map(u => (
-                                                <SelectItem key={u._id} value={u._id}>{u.name ?? u.email}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage /></FormItem>
-                            )} />
-                        </div>
+                        <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
+                            <FormItem><FormLabel>Assign To</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {assignableReps.map(u => (
+                                            <SelectItem key={u._id} value={u._id}>{u.name ?? u.email}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage /></FormItem>
+                        )} />
 
                         <p className="text-sm font-semibold text-muted-foreground pt-1">Property / Site</p>
                         <PhilippineAddressFields value={phAddress} onChange={setPhAddress} />

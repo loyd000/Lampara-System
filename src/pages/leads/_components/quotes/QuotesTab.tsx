@@ -25,6 +25,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
+    Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
+} from "@/components/ui/empty.tsx";
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -281,27 +284,29 @@ export default function QuotesTab({
                             ))}
                         </div>
                     ) : !quotes || quotes.length === 0 ? (
-                        <div className="text-center py-12">
-                            <FileBadge2 className="w-9 h-9 text-muted-foreground/30 mx-auto mb-2" />
-                            <p className="text-sm font-medium text-foreground">
-                                No quotes yet
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                                Create itemised solar proposals with pre-configured packages or
-                                custom component line items.
-                            </p>
+                        <Empty className="py-8">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <FileBadge2 className="size-6" />
+                                </EmptyMedia>
+                                <EmptyTitle>No quotes yet</EmptyTitle>
+                                <EmptyDescription>
+                                    Create itemised solar proposals with pre-configured packages
+                                    or custom component line items.
+                                </EmptyDescription>
+                            </EmptyHeader>
                             {canEdit && (
                                 <Button
                                     size="sm"
                                     onClick={handleNewQuote}
                                     disabled={creating}
-                                    className="mt-4 text-xs h-8 font-medium"
+                                    className="text-xs h-8 font-medium"
                                 >
                                     <Plus className="w-3.5 h-3.5 mr-1" />
                                     Create first quote
                                 </Button>
                             )}
-                        </div>
+                        </Empty>
                     ) : (
                         quotes.map((q) => {
                             const isApproved = q.status === "approved";
