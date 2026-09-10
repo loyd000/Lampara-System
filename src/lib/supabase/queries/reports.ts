@@ -3,7 +3,7 @@
  *
  * Each report is a single aggregate query in Postgres (see
  * `supabase/migrations/0007_report_functions.sql`) returning one jsonb object.
- * The previous version fetched every lead, permit, quote and installation and
+ * The previous version fetched every lead, quote and installation and
  * counted them in the browser, which did not scale and would have gone quietly
  * wrong if PostgREST's max-rows were ever configured.
  *
@@ -13,7 +13,7 @@
  */
 
 import { supabase, toAppError } from "../client.ts";
-import type { LeadStage, PermitStatus, PermitType } from "../database.types.ts";
+import type { LeadStage } from "../database.types.ts";
 import type { Id } from "../types.ts";
 
 export type PipelineSummary = {
@@ -23,20 +23,6 @@ export type PipelineSummary = {
     activeCustomers: number;
     conversionRate: number;
     staleLeads: { _id: string; name: string; stage: LeadStage; daysStale: number }[];
-};
-
-export type PermitsSummary = {
-    overdue: {
-        _id: string;
-        type: PermitType;
-        status: PermitStatus;
-        dueDate: string;
-        daysOverdue: number;
-        customerName: string;
-        leadId: Id<"leads">;
-    }[];
-    byStatus: Record<string, number>;
-    total: number;
 };
 
 export type RevenueSummary = {
@@ -62,7 +48,6 @@ export type InstallationsSummary = {
 async function callReport<T>(
     fn:
         | "report_pipeline_summary"
-        | "report_permits_summary"
         | "report_revenue_summary"
         | "report_installations_summary",
     failureMessage: string,
@@ -76,13 +61,6 @@ export function pipelineSummary(): Promise<PipelineSummary> {
     return callReport<PipelineSummary>(
         "report_pipeline_summary",
         "Failed to load pipeline report",
-    );
-}
-
-export function permitsSummary(): Promise<PermitsSummary> {
-    return callReport<PermitsSummary>(
-        "report_permits_summary",
-        "Failed to load permits report",
     );
 }
 

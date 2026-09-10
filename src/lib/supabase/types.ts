@@ -29,15 +29,12 @@ import type {
     PackageDesignType,
     PackageItemRow,
     PackageRow,
-    PermitRow,
-    PermitStatus,
     MeterForm,
     MeterKind,
     MeterPhase,
     MountingType,
     PackageType,
     PanelOption,
-    PermitType,
     PropertyRow,
     PropertyType,
     QuoteItemRow,
@@ -76,8 +73,6 @@ export type {
     PackageDesignType,
     PackageType,
     PanelOption,
-    PermitStatus,
-    PermitType,
     PropertyType,
     QuoteStatus,
     RoofAccess,
@@ -101,7 +96,6 @@ export type TableNames =
     | "quotes"
     | "quoteItems"
     | "contracts"
-    | "permits"
     | "installations"
     | "serviceTickets"
     | "activityLog"
@@ -317,19 +311,6 @@ export type Contract = Base & {
     contractDate?: string;
 };
 
-export type Permit = Base & {
-    leadId: string;
-    type: PermitType;
-    status: PermitStatus;
-    submittedAt?: string;
-    approvedAt?: string;
-    rejectedAt?: string;
-    dueDate?: string;
-    documentPath?: string;
-    notes?: string;
-    assignedToId?: string;
-};
-
 export type Installation = Base & {
     leadId: string;
     status: InstallationStatus;
@@ -434,8 +415,6 @@ export type Doc<T extends TableNames> = T extends "users"
               ? Contract
               : T extends "quoteItems"
                 ? QuoteItem
-                : T extends "permits"
-                ? Permit
                 : T extends "installations"
                   ? Installation
                   : T extends "serviceTickets"
@@ -527,11 +506,6 @@ export type QuoteWithCreator = Quote & { createdByName: string };
 export type ContractDetail = Contract & {
     documentUrl: string | null;
     quoteVersion: number | null;
-};
-
-export type PermitDetail = Permit & {
-    documentUrl: string | null;
-    assignedToName: string | null;
 };
 
 export type InstallationDetail = Installation & {
@@ -752,22 +726,6 @@ export function toContract(row: ContractRow): Contract {
         pricePhp: num(row.price_php),
         preparedByName: opt(row.prepared_by_name),
         contractDate: opt(row.contract_date),
-    };
-}
-
-export function toPermit(row: PermitRow): Permit {
-    return {
-        ...base(row),
-        leadId: row.lead_id,
-        type: row.type,
-        status: row.status,
-        submittedAt: opt(row.submitted_at),
-        approvedAt: opt(row.approved_at),
-        rejectedAt: opt(row.rejected_at),
-        dueDate: opt(row.due_date),
-        documentPath: opt(row.document_path),
-        notes: opt(row.notes),
-        assignedToId: opt(row.assigned_to_id),
     };
 }
 

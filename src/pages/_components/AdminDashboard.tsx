@@ -1,4 +1,4 @@
-import { useLeads, usePermitsSummary, usePipelineSummary } from "@/lib/supabase/hooks.ts";
+import { useLeads, usePipelineSummary } from "@/lib/supabase/hooks.ts";
 import type { Doc } from "@/lib/supabase/types.ts";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
 import {
-    Users, TrendingUp, ClipboardList, AlertTriangle, SunMedium, CheckCircle2, ShieldAlert, BarChart3,
+    Users, TrendingUp, ClipboardList, AlertTriangle, SunMedium, CheckCircle2, BarChart3,
 } from "lucide-react";
 import { STAGE_LABELS, STAGE_COLORS } from "@/lib/constants.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -21,16 +21,14 @@ export default function AdminDashboard({ user }: Props) {
     // Counts come from the pipeline report, which aggregates in Postgres — the
     // dashboard no longer pulls every lead into the browser to count them.
     const pipelineQuery = usePipelineSummary();
-    const permitsQuery = usePermitsSummary();
     const leadsQuery = useLeads({ limit: RECENT_LEAD_COUNT });
     const { data: pipeline } = pipelineQuery;
-    const { data: permitsReport } = permitsQuery;
     const { data: recentLeads } = leadsQuery;
     const navigate = useNavigate();
 
-    if (pipelineQuery.isError || permitsQuery.isError || leadsQuery.isError) {
+    if (pipelineQuery.isError || leadsQuery.isError) {
         return <QueryError title="Couldn't load your dashboard" onRetry={() => {
-            void pipelineQuery.refetch(); void permitsQuery.refetch(); void leadsQuery.refetch();
+            void pipelineQuery.refetch(); void leadsQuery.refetch();
         }} />;
     }
 
@@ -54,8 +52,7 @@ export default function AdminDashboard({ user }: Props) {
         : null;
 
     const staleLeads = pipeline?.staleLeads ?? [];
-    const overduePermits = permitsReport?.overdue ?? [];
-    const hasAlerts = staleLeads.length > 0 || overduePermits.length > 0;
+    const hasAlerts = staleLeads.length > 0;
 
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
@@ -126,7 +123,7 @@ export default function AdminDashboard({ user }: Props) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
-                            {pipelineQuery.isPending || permitsQuery.isPending ? (
+                            {pipelineQuery.isPending ? (
                                 <Skeleton className="h-10 mx-6 mb-6" />
                             ) : !hasAlerts ? (
                                 <div className="px-6 pb-6 flex items-center gap-2 text-sm text-emerald-600">
@@ -144,21 +141,6 @@ export default function AdminDashboard({ user }: Props) {
                                             <p className="text-sm font-medium">{lead.name}</p>
                                             <p className="text-xs text-muted-foreground mt-0.5">
                                                 No activity for {lead.daysStale}d · {STAGE_LABELS[lead.stage]}
-                                            </p>
-                                        </li>
-                                    ))}
-                                    {overduePermits.slice(0, 3).map(p => (
-                                        <li
-                                            key={p._id}
-                                            className="px-6 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors"
-                                            onClick={() => navigate(`/leads/${p.leadId}`)}
-                                        >
-                                            <div className="flex items-center gap-1.5">
-                                                <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
-                                                <p className="text-sm font-medium">{p.customerName}</p>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground mt-0.5">
-                                                Permit overdue {p.daysOverdue}d
                                             </p>
                                         </li>
                                     ))}

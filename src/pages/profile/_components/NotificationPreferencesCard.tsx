@@ -36,11 +36,6 @@ const ROWS: Array<{ key: keyof NotificationPreferences; label: string; hint: str
         label: "Contract signed",
         hint: "A contract on one of your leads is signed",
     },
-    {
-        key: "permitOverdue",
-        label: "Permit overdue",
-        hint: "A tracked permit passes its due date",
-    },
 ];
 
 /**

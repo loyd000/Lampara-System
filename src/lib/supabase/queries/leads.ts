@@ -88,7 +88,7 @@ export async function logActivity(args: {
  * their own work.
  *
  * `onlyFrom` makes the move conditional on the lead's current stage, so a
- * re-sent quote or a late permit cannot drag a further-along lead backwards.
+ * re-sent quote cannot drag a further-along lead backwards.
  *
  * Resolves to the previous stage, or null when nothing moved.
  */
@@ -578,7 +578,7 @@ export async function updateProperty(args: {
 }
 
 /**
- * Deletes a lead. Properties, surveys, quotes, contracts, permits,
+ * Deletes a lead. Properties, surveys, quotes, contracts,
  * installations and log rows all cascade.
  *
  * Storage does not cascade, so the object paths are collected first — once the
@@ -586,7 +586,7 @@ export async function updateProperty(args: {
  * buckets forever.
  */
 export async function deleteLead(args: { id: Id<"leads"> }): Promise<void> {
-    const [surveys, surveyPhotos, installations, contracts, permits, leadFiles] =
+    const [surveys, surveyPhotos, installations, contracts, leadFiles] =
         await Promise.all([
             supabase.from("surveys").select("photo_paths").eq("lead_id", args.id),
             // Slotted report photos, which is where every inspection photo has
@@ -601,7 +601,6 @@ export async function deleteLead(args: { id: Id<"leads"> }): Promise<void> {
                 .select("completion_photo_paths")
                 .eq("lead_id", args.id),
             supabase.from("contracts").select("document_path").eq("lead_id", args.id),
-            supabase.from("permits").select("document_path").eq("lead_id", args.id),
             supabase.from("lead_files").select("path, kind").eq("lead_id", args.id),
         ]);
 
@@ -619,10 +618,9 @@ export async function deleteLead(args: { id: Id<"leads"> }): Promise<void> {
     ];
 
     const documentPaths = [
-        ...[
-            ...((contracts.data ?? []) as { document_path: string | null }[]),
-            ...((permits.data ?? []) as { document_path: string | null }[]),
-        ].flatMap((row) => (row.document_path ? [row.document_path] : [])),
+        ...((contracts.data ?? []) as { document_path: string | null }[]).flatMap(
+            (row) => (row.document_path ? [row.document_path] : []),
+        ),
         ...attachments.filter((f) => f.kind === "document").map((f) => f.path),
     ];
 

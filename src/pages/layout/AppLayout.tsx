@@ -14,7 +14,7 @@ import MobileNav from "./_components/MobileNavbar.tsx";
 import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
 import GlobalSearch from "@/components/global-search.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
-import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles } from "lucide-react";
+import { BarChart3, Users, ClipboardCheck, Zap, Sparkles } from "lucide-react";
 
 export default function AppLayout() {
     const { isAuthenticated } = useAuth();
@@ -115,11 +115,6 @@ const features = [
         icon: ClipboardCheck,
         title: "Inspections & Quotes",
         description: "Site ocular inspections, system sizing, and professional proposal generation",
-    },
-    {
-        icon: Shield,
-        title: "Permit Tracking",
-        description: "Track building permits, electrical permits, and HOA approvals",
     },
     {
         icon: Zap,

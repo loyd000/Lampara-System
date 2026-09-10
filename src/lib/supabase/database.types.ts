@@ -18,7 +18,6 @@ export type LeadStage =
     | "survey_completed"
     | "proposal_sent"
     | "contract_signed"
-    | "permitting"
     | "installation_scheduled"
     | "installation_complete"
     | "active_customer"
@@ -80,13 +79,6 @@ export type RoofType = "asphalt_shingle" | "metal" | "tile" | "flat" | "other";
 export type QuoteStatus = "in_progress" | "approved";
 export type FinancingOption = "cash" | "loan" | "lease" | "ppa";
 export type ContractStatus = "pending_signature" | "signed" | "cancelled";
-export type PermitType =
-    | "building_permit"
-    | "electrical_permit"
-    | "hoa_approval"
-    | "utility_interconnection"
-    | "other";
-export type PermitStatus = "not_submitted" | "submitted" | "approved" | "rejected";
 export type InstallationStatus = "scheduled" | "in_progress" | "completed" | "on_hold";
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 export type TicketPriority = "low" | "medium" | "high";
@@ -317,20 +309,6 @@ export type ContractRow = Timestamps & {
     contract_date: string | null;
 };
 
-export type PermitRow = Timestamps & {
-    id: string;
-    lead_id: string;
-    type: PermitType;
-    status: PermitStatus;
-    submitted_at: string | null;
-    approved_at: string | null;
-    rejected_at: string | null;
-    due_date: string | null;
-    document_path: string | null;
-    notes: string | null;
-    assigned_to_id: string | null;
-};
-
 export type InstallationRow = Timestamps & {
     id: string;
     lead_id: string;
@@ -401,7 +379,6 @@ export type NotificationPreferencesRow = {
     lead_assigned: boolean;
     inspection_scheduled: boolean;
     installation_scheduled: boolean;
-    permit_overdue: boolean;
     quote_accepted: boolean;
     contract_signed: boolean;
     updated_at: string;
@@ -412,8 +389,7 @@ export type NotificationEvent =
     | "inspection_scheduled"
     | "installation_scheduled"
     | "quote_accepted"
-    | "contract_signed"
-    | "permit_overdue";
+    | "contract_signed";
 
 export type NotificationStatus = "sent" | "skipped" | "failed";
 
@@ -448,7 +424,6 @@ export type Database = {
             quotes: TableDef<QuoteRow>;
             quote_items: TableDef<QuoteItemRow>;
             contracts: TableDef<ContractRow>;
-            permits: TableDef<PermitRow>;
             installations: TableDef<InstallationRow>;
             service_tickets: TableDef<ServiceTicketRow>;
             packages: TableDef<PackageRow>;
@@ -510,7 +485,6 @@ export type Database = {
             };
             // Each returns one jsonb object; the shape lives in queries/reports.ts.
             report_pipeline_summary: { Args: Record<never, never>; Returns: unknown };
-            report_permits_summary: { Args: Record<never, never>; Returns: unknown };
             report_revenue_summary: { Args: Record<never, never>; Returns: unknown };
             report_installations_summary: { Args: Record<never, never>; Returns: unknown };
             log_lead_activity: {

@@ -1,6 +1,5 @@
 import {
     useInstallationsSummary,
-    usePermitsSummary,
     usePipelineSummary,
     useQuotesRevenueSummary,
 } from "@/lib/supabase/hooks.ts";
@@ -10,19 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useNavigate } from "react-router-dom";
 import {
     BarChart3, TrendingUp, AlertTriangle, Wrench, DollarSign, FileCheck, SunMedium,
-    ShieldAlert,
 } from "lucide-react";
 import { STAGE_LABELS, STAGE_COLORS, STAGES } from "@/lib/constants.ts";
 import { cn } from "@/lib/utils.ts";
 import { QueryError } from "@/components/query-error.tsx";
-
-const PERMIT_TYPE_LABELS: Record<string, string> = {
-    building_permit: "Building Permit",
-    electrical_permit: "Electrical Permit",
-    hoa_approval: "HOA Approval",
-    utility_interconnection: "Utility Interconnection",
-    other: "Other",
-};
 
 const FINANCING_LABELS: Record<string, string> = {
     cash: "Cash", loan: "Loan", lease: "Lease", ppa: "PPA",
@@ -30,23 +20,21 @@ const FINANCING_LABELS: Record<string, string> = {
 
 export default function ReportsPage() {
     const pipelineQuery = usePipelineSummary();
-    const permitsQuery = usePermitsSummary();
     const revenueQuery = useQuotesRevenueSummary();
     const installationsQuery = useInstallationsSummary();
     const { data: pipeline } = pipelineQuery;
-    const { data: permits } = permitsQuery;
     const { data: revenue } = revenueQuery;
     const { data: installations } = installationsQuery;
     const navigate = useNavigate();
 
-    const queries = [pipelineQuery, permitsQuery, revenueQuery, installationsQuery];
+    const queries = [pipelineQuery, revenueQuery, installationsQuery];
     if (queries.some((query) => query.isError)) {
         return <QueryError title="Couldn't load your reports" onRetry={() => {
             queries.forEach((query) => void query.refetch());
         }} />;
     }
 
-    const isLoading = pipeline === undefined || permits === undefined || revenue === undefined || installations === undefined;
+    const isLoading = pipeline === undefined || revenue === undefined || installations === undefined;
 
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -124,66 +112,6 @@ export default function ReportsPage() {
                                                 <div key={k} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-muted">
                                                     <span className="font-medium">{FINANCING_LABELS[k]}</span>
                                                     <span className="text-muted-foreground">{v as number}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* ── Overdue Permits ───────────────────────────── */}
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <ShieldAlert className="w-4 h-4 text-muted-foreground" />
-                            Permit Status
-                            {(permits?.overdue.length ?? 0) > 0 && (
-                                <Badge className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300 text-[10px]">
-                                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
-                                    {permits!.overdue.length} overdue
-                                </Badge>
-                            )}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? <LoadingSkeleton /> : (
-                            <div className="space-y-4">
-                                {/* Status counts */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { key: "not_submitted", label: "Not Submitted", cls: "text-slate-600" },
-                                        { key: "submitted", label: "Submitted", cls: "text-blue-600" },
-                                        { key: "approved", label: "Approved", cls: "text-emerald-600" },
-                                        { key: "rejected", label: "Rejected", cls: "text-red-600" },
-                                    ].map(({ key, label, cls }) => (
-                                        <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40">
-                                            <span className="text-xs text-muted-foreground">{label}</span>
-                                            <span className={cn("text-sm font-bold", cls)}>{permits.byStatus[key] ?? 0}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Overdue list */}
-                                {permits.overdue.length > 0 && (
-                                    <div>
-                                        <p className="text-xs font-medium text-red-500 mb-2">Overdue Permits</p>
-                                        <div className="space-y-2">
-                                            {permits.overdue.slice(0, 5).map((p) => (
-                                                <div
-                                                    key={p._id}
-                                                    className="flex items-center justify-between p-2.5 rounded-lg border border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                                    onClick={() => navigate(`/leads/${p.leadId}`)}
-                                                >
-                                                    <div>
-                                                        <p className="text-xs font-medium">{p.customerName}</p>
-                                                        <p className="text-[10px] text-muted-foreground">{PERMIT_TYPE_LABELS[p.type]}</p>
-                                                    </div>
-                                                    <Badge className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300 text-[10px]">
-                                                        {p.daysOverdue}d overdue
-                                                    </Badge>
                                                 </div>
                                             ))}
                                         </div>

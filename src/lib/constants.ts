@@ -18,7 +18,6 @@ export type Stage =
   | "survey_completed"
   | "proposal_sent"
   | "contract_signed"
-  | "permitting"
   | "installation_scheduled"
   | "installation_complete"
   | "active_customer"
@@ -30,7 +29,6 @@ export const STAGES: Stage[] = [
   "survey_completed",
   "proposal_sent",
   "contract_signed",
-  "permitting",
   "installation_scheduled",
   "installation_complete",
   "active_customer",
@@ -44,7 +42,6 @@ export const STAGE_LABELS: Record<Stage, string> = {
   survey_completed: "Inspection Done",
   proposal_sent: "Proposal Sent",
   contract_signed: "Contract Signed",
-  permitting: "Permitting",
   installation_scheduled: "Install Scheduled",
   installation_complete: "Install Complete",
   active_customer: "Active Customer",
@@ -57,7 +54,6 @@ export const STAGE_COLORS: Record<Stage, string> = {
   survey_completed: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
   proposal_sent: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   contract_signed: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  permitting: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   installation_scheduled: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
   installation_complete: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
   active_customer: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
@@ -83,7 +79,6 @@ export const STAGE_GROUPS: Record<StageGroup, Stage[]> = {
     "survey_completed",
     "proposal_sent",
     "contract_signed",
-    "permitting",
     "installation_scheduled",
     "installation_complete",
   ],
@@ -110,22 +105,6 @@ export const ROLE_LABELS: Record<string, string> = {
   superadmin: "Superadmin",
   admin: "Admin",
   field: "Technician",
-};
-
-// ─── Permit Types ─────────────────────────────────────────────────────────
-export const PERMIT_TYPE_LABELS: Record<string, string> = {
-  building_permit: "Building Permit",
-  electrical_permit: "Electrical Permit",
-  hoa_approval: "HOA Approval",
-  utility_interconnection: "Utility Interconnection",
-  other: "Other",
-};
-
-export const PERMIT_STATUS_LABELS: Record<string, string> = {
-  not_submitted: "Not Submitted",
-  submitted: "Submitted",
-  approved: "Approved",
-  rejected: "Rejected",
 };
 
 // ─── Financing ────────────────────────────────────────────────────────────

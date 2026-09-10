@@ -11,7 +11,7 @@
  * Request body:
  *   {
  *     event: "lead_assigned" | "inspection_scheduled" | "installation_scheduled"
- *          | "quote_accepted" | "contract_signed" | "permit_overdue",
+ *          | "quote_accepted" | "contract_signed",
  *     leadId: string,
  *     recipientUserIds: string[],   // who to notify — never an email address
  *     meta?: Record<string, string> // small bits of context for the template
@@ -29,8 +29,7 @@ type NotificationEvent =
     | "inspection_scheduled"
     | "installation_scheduled"
     | "quote_accepted"
-    | "contract_signed"
-    | "permit_overdue";
+    | "contract_signed";
 
 const PREFERENCE_COLUMN: Record<NotificationEvent, string> = {
     lead_assigned: "lead_assigned",
@@ -38,7 +37,6 @@ const PREFERENCE_COLUMN: Record<NotificationEvent, string> = {
     installation_scheduled: "installation_scheduled",
     quote_accepted: "quote_accepted",
     contract_signed: "contract_signed",
-    permit_overdue: "permit_overdue",
 };
 
 function subjectAndBody(
@@ -72,12 +70,7 @@ function subjectAndBody(
         case "contract_signed":
             return {
                 subject: `Contract signed: ${leadName}`,
-                body: `${leadName}'s contract has been signed. The lead is ready for permitting.`,
-            };
-        case "permit_overdue":
-            return {
-                subject: `Permit overdue: ${leadName}`,
-                body: `A permit for ${leadName} has passed its due date and needs attention.`,
+                body: `${leadName}'s contract has been signed. The lead is ready for installation scheduling.`,
             };
     }
 }

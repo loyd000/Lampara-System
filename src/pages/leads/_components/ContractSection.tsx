@@ -259,401 +259,409 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                         </div>
                     ) : (
                         /* Active contract details */
-                        <div className="space-y-5">
-                            {/* Meta Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/20 border text-xs">
-                                <div>
-                                    <span className="text-muted-foreground font-medium block">
-                                        Associated Proposal
-                                    </span>
-                                    <span className="font-semibold text-foreground text-sm mt-0.5 block">
-                                        {contract.quoteVersion
-                                            ? `Quotation v${contract.quoteVersion}`
-                                            : "Quotation Reference"}
-                                    </span>
-                                </div>
+                        <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6 lg:space-y-0">
+                            {/* The details form is the work; everything else is reference
+                                and one-off actions. On a wide screen they sit beside it
+                                instead of stacking below and leaving half the row empty. */}
+                            <div className="space-y-5 min-w-0">
+                                {/* Contract Details — feeds the generated contract PDF */}
+                                {details && (
+                                    <div className="space-y-3 p-4 rounded-lg border">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-semibold text-foreground block">
+                                                Contract Details
+                                            </label>
+                                            <span className="text-[11px] text-muted-foreground">
+                                                Fills the generated contract document
+                                            </span>
+                                        </div>
 
-                                <div>
-                                    <span className="text-muted-foreground font-medium block">
-                                        Created On
-                                    </span>
-                                    <span className="text-foreground text-sm mt-0.5 block">
-                                        {new Date(contract._creationTime).toLocaleDateString(undefined, {
-                                            year: "numeric",
-                                            month: "short",
-                                            day: "numeric",
-                                        })}
-                                    </span>
-                                </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px]">Homeowner Name</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    value={details.homeownerName}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("homeownerName", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px]">Phone Number</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    value={details.phoneNumber}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("phoneNumber", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <Label className="text-[11px]">Site Address</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    value={details.siteAddress}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("siteAddress", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px]">System Size (kW-DC)</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    step="0.01"
+                                                    value={details.systemSizeKw ?? ""}
+                                                    disabled={!canEdit}
+                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            "systemSizeKw",
+                                                            e.target.value === ""
+                                                                ? null
+                                                                : Number(e.target.value),
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px]">Contract Price (₱)</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    step="0.01"
+                                                    value={details.pricePhp ?? ""}
+                                                    disabled={!canEdit}
+                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            "pricePhp",
+                                                            e.target.value === ""
+                                                                ? null
+                                                                : Number(e.target.value),
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <Label className="text-[11px]">Panel Line</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    placeholder="( 12 PCS )  TIER 1 610-630 WATTS"
+                                                    value={details.panelLine}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("panelLine", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <Label className="text-[11px]">Inverter Line</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    placeholder="( 1 PC/S )  SOLIS S6-EH1P6K L-PRO/PLUS"
+                                                    value={details.inverterLine}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("inverterLine", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <Label className="text-[11px]">Battery Line</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    placeholder="( 1 PC/S )  PYLONTECH 51.2V 314AH"
+                                                    value={details.batteryLine}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("batteryLine", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px]">Prepared By</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    value={details.preparedByName}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("preparedByName", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px]">Contract Date</Label>
+                                                <Input
+                                                    className="h-10 sm:h-9 text-xs"
+                                                    type="date"
+                                                    value={details.contractDate}
+                                                    disabled={!canEdit}
+                                                    onChange={(e) =>
+                                                        updateField("contractDate", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
 
-                                {contract.signedAt && (
-                                    <div className="sm:col-span-2 pt-2 border-t">
+                                        {canEdit && (
+                                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-9 text-xs"
+                                                    onClick={handleSaveDetails}
+                                                    disabled={isSavingDetails}
+                                                >
+                                                    {isSavingDetails ? "Saving…" : "Save Details"}
+                                                </Button>
+                                                <DownloadContractPdfButton
+                                                    details={details}
+                                                    firstName={lead.firstName}
+                                                    lastName={lead.lastName}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                            </div>
+
+                            <div className="space-y-5 min-w-0">
+                                {/* Meta Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 p-4 rounded-lg bg-muted/20 border text-xs">
+                                    <div>
                                         <span className="text-muted-foreground font-medium block">
-                                            Signed Date
+                                            Associated Proposal
                                         </span>
-                                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm mt-0.5 block">
-                                            {new Date(contract.signedAt).toLocaleString(undefined, {
+                                        <span className="font-semibold text-foreground text-sm mt-0.5 block">
+                                            {contract.quoteVersion
+                                                ? `Quotation v${contract.quoteVersion}`
+                                                : "Quotation Reference"}
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <span className="text-muted-foreground font-medium block">
+                                            Created On
+                                        </span>
+                                        <span className="text-foreground text-sm mt-0.5 block">
+                                            {new Date(contract._creationTime).toLocaleDateString(undefined, {
                                                 year: "numeric",
                                                 month: "short",
                                                 day: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
                                             })}
                                         </span>
                                     </div>
-                                )}
 
-                                {contract.notes && (
-                                    <div className="sm:col-span-2 pt-2 border-t">
-                                        <span className="text-muted-foreground font-medium block">
-                                            Contract Notes
-                                        </span>
-                                        <p className="text-foreground text-xs mt-1 whitespace-pre-wrap">
-                                            {contract.notes}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                                    {contract.signedAt && (
+                                        <div className="sm:col-span-2 lg:col-span-1 pt-2 border-t">
+                                            <span className="text-muted-foreground font-medium block">
+                                                Signed Date
+                                            </span>
+                                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm mt-0.5 block">
+                                                {new Date(contract.signedAt).toLocaleString(undefined, {
+                                                    year: "numeric",
+                                                    month: "short",
+                                                    day: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </span>
+                                        </div>
+                                    )}
 
-                            {/* Contract Details — feeds the generated DOCX */}
-                            {details && (
-                                <div className="space-y-3 p-4 rounded-lg border">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-semibold text-foreground block">
-                                            Contract Details
-                                        </label>
-                                        <span className="text-[11px] text-muted-foreground">
-                                            Fills the generated contract document
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Homeowner Name</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                value={details.homeownerName}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("homeownerName", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Phone Number</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                value={details.phoneNumber}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("phoneNumber", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1 sm:col-span-2">
-                                            <Label className="text-[11px]">Site Address</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                value={details.siteAddress}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("siteAddress", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">System Size (kW-DC)</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                type="number"
-                                                inputMode="decimal"
-                                                step="0.01"
-                                                value={details.systemSizeKw ?? ""}
-                                                disabled={!canEdit}
-                                                onWheel={(e) => e.currentTarget.blur()}
-                                                onChange={(e) =>
-                                                    updateField(
-                                                        "systemSizeKw",
-                                                        e.target.value === ""
-                                                            ? null
-                                                            : Number(e.target.value),
-                                                    )
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Contract Price (₱)</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                type="number"
-                                                inputMode="decimal"
-                                                step="0.01"
-                                                value={details.pricePhp ?? ""}
-                                                disabled={!canEdit}
-                                                onWheel={(e) => e.currentTarget.blur()}
-                                                onChange={(e) =>
-                                                    updateField(
-                                                        "pricePhp",
-                                                        e.target.value === ""
-                                                            ? null
-                                                            : Number(e.target.value),
-                                                    )
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1 sm:col-span-2">
-                                            <Label className="text-[11px]">Panel Line</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                placeholder="( 12 PCS )  TIER 1 610-630 WATTS"
-                                                value={details.panelLine}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("panelLine", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1 sm:col-span-2">
-                                            <Label className="text-[11px]">Inverter Line</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                placeholder="( 1 PC/S )  SOLIS S6-EH1P6K L-PRO/PLUS"
-                                                value={details.inverterLine}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("inverterLine", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1 sm:col-span-2">
-                                            <Label className="text-[11px]">Battery Line</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                placeholder="( 1 PC/S )  PYLONTECH 51.2V 314AH"
-                                                value={details.batteryLine}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("batteryLine", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Prepared By</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                value={details.preparedByName}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("preparedByName", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Contract Date</Label>
-                                            <Input
-                                                className="h-10 sm:h-9 text-xs"
-                                                type="date"
-                                                value={details.contractDate}
-                                                disabled={!canEdit}
-                                                onChange={(e) =>
-                                                    updateField("contractDate", e.target.value)
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {canEdit && (
-                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-9 text-xs"
-                                                onClick={handleSaveDetails}
-                                                disabled={isSavingDetails}
-                                            >
-                                                {isSavingDetails ? "Saving…" : "Save Details"}
-                                            </Button>
-                                            <DownloadContractPdfButton
-                                                details={details}
-                                                firstName={lead.firstName}
-                                                lastName={lead.lastName}
-                                            />
+                                    {contract.notes && (
+                                        <div className="sm:col-span-2 lg:col-span-1 pt-2 border-t">
+                                            <span className="text-muted-foreground font-medium block">
+                                                Contract Notes
+                                            </span>
+                                            <p className="text-foreground text-xs mt-1 whitespace-pre-wrap">
+                                                {contract.notes}
+                                            </p>
                                         </div>
                                     )}
                                 </div>
-                            )}
 
-                            {/* Document Section */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-foreground block">
-                                    Contract Document
-                                </label>
+                                {/* Document Section */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-foreground block">
+                                        Contract Document
+                                    </label>
 
-                                {contract.documentUrl ? (
-                                    <div className="flex items-center justify-between p-3.5 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                                <FileCheck className="w-4 h-4" />
+                                    {contract.documentUrl ? (
+                                        <div className="flex items-center justify-between p-3.5 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                                    <FileCheck className="w-4 h-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <span className="font-medium text-xs text-foreground block truncate">
+                                                        Signed Contract Attachment
+                                                    </span>
+                                                    <span className="text-[11px] text-muted-foreground">
+                                                        Stored securely in Lampara CRM documents
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <span className="font-medium text-xs text-foreground block truncate">
-                                                    Signed Contract Attachment
-                                                </span>
-                                                <span className="text-[11px] text-muted-foreground">
-                                                    Stored securely in Lampara CRM documents
-                                                </span>
+
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <a
+                                                    href={contract.documentUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                                                >
+                                                    View Document
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </a>
+
+                                                {canEdit && contract.status === "pending_signature" && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-7 text-xs text-muted-foreground"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={uploading}
+                                                    >
+                                                        {uploading ? "Uploading…" : "Replace"}
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
-
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <a
-                                                href={contract.documentUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                                    ) : canEdit ? (
+                                        <div>
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept=".pdf,.doc,.docx"
+                                                className="hidden"
+                                                onChange={handleFileUpload}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={uploading}
+                                                className="w-full border-2 border-dashed border-border rounded-lg p-5 flex flex-col items-center justify-center gap-1.5 hover:border-primary/50 hover:bg-muted/20 transition-all cursor-pointer text-muted-foreground disabled:opacity-50"
                                             >
-                                                View Document
-                                                <ExternalLink className="w-3 h-3" />
-                                            </a>
+                                                <div className="size-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-1">
+                                                    <Upload className="w-4 h-4" />
+                                                </div>
+                                                <span className="text-xs font-medium text-foreground">
+                                                    {uploading
+                                                        ? "Uploading signed document…"
+                                                        : "Upload Signed Contract Document"}
+                                                </span>
+                                                <span className="text-[11px] text-muted-foreground">
+                                                    PDF, DOC, or DOCX (max 10 MB)
+                                                </span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground italic">
+                                            No document attached.
+                                        </p>
+                                    )}
+                                </div>
 
-                                            {canEdit && contract.status === "pending_signature" && (
+                                {/* Actions Bar */}
+                                {canEdit && (
+                                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t">
+                                        <div>
+                                            {contract.status === "pending_signature" && (
                                                 <Button
                                                     size="sm"
-                                                    variant="ghost"
-                                                    className="h-7 text-xs text-muted-foreground"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    disabled={uploading}
+                                                    onClick={handleSign}
+                                                    disabled={isSigning}
+                                                    className="h-8 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
                                                 >
-                                                    {uploading ? "Uploading…" : "Replace"}
+                                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                    {isSigning ? "Updating…" : "Mark Contract as Signed"}
                                                 </Button>
                                             )}
                                         </div>
-                                    </div>
-                                ) : canEdit ? (
-                                    <div>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept=".pdf,.doc,.docx"
-                                            className="hidden"
-                                            onChange={handleFileUpload}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploading}
-                                            className="w-full border-2 border-dashed border-border rounded-lg p-5 flex flex-col items-center justify-center gap-1.5 hover:border-primary/50 hover:bg-muted/20 transition-all cursor-pointer text-muted-foreground disabled:opacity-50"
-                                        >
-                                            <div className="size-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-1">
-                                                <Upload className="w-4 h-4" />
-                                            </div>
-                                            <span className="text-xs font-medium text-foreground">
-                                                {uploading
-                                                    ? "Uploading signed document…"
-                                                    : "Upload Signed Contract Document"}
-                                            </span>
-                                            <span className="text-[11px] text-muted-foreground">
-                                                PDF, DOC, or DOCX (max 10 MB)
-                                            </span>
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-muted-foreground italic">
-                                        No document attached.
-                                    </p>
-                                )}
-                            </div>
 
-                            {/* Actions Bar */}
-                            {canEdit && (
-                                <div className="flex items-center justify-between gap-3 pt-3 border-t flex-wrap">
-                                    <div>
-                                        {contract.status === "pending_signature" && (
-                                            <Button
-                                                size="sm"
-                                                onClick={handleSign}
-                                                disabled={isSigning}
-                                                className="h-8 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-                                            >
-                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                                                {isSigning ? "Updating…" : "Mark Contract as Signed"}
-                                            </Button>
-                                        )}
-                                    </div>
+                                        <div className="flex items-center gap-2">
+                                            {contract.status === "pending_signature" && (
+                                                <AlertDialog
+                                                    open={cancelDialogOpen}
+                                                    onOpenChange={setCancelDialogOpen}
+                                                >
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                                                            Cancel Contract
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Cancel this contract?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This marks the contract as cancelled. The quote will remain approved, but the lead will not proceed to installation until a valid contract is active.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Keep Contract</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={handleCancel}
+                                                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                                                                disabled={isCancelling}
+                                                            >
+                                                                {isCancelling ? "Cancelling…" : "Yes, Cancel Contract"}
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            )}
 
-                                    <div className="flex items-center gap-2">
-                                        {contract.status === "pending_signature" && (
                                             <AlertDialog
-                                                open={cancelDialogOpen}
-                                                onOpenChange={setCancelDialogOpen}
+                                                open={deleteDialogOpen}
+                                                onOpenChange={setDeleteDialogOpen}
                                             >
                                                 <AlertDialogTrigger asChild>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                        className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                                                     >
-                                                        <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                                                        Cancel Contract
+                                                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                                        Delete Contract
                                                     </Button>
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
-                                                        <AlertDialogTitle>Cancel this contract?</AlertDialogTitle>
+                                                        <AlertDialogTitle>Delete this contract?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            This marks the contract as cancelled. The quote will remain approved, but the lead will not proceed to permit processing until a valid contract is active.
+                                                            This will permanently delete the contract record and attached document for this lead. You will be able to generate a new contract from an approved proposal afterwards.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Keep Contract</AlertDialogCancel>
                                                         <AlertDialogAction
-                                                            onClick={handleCancel}
-                                                            className="bg-amber-600 hover:bg-amber-700 text-white"
-                                                            disabled={isCancelling}
+                                                            onClick={handleDelete}
+                                                            className="bg-destructive hover:bg-destructive/90 text-white"
+                                                            disabled={isDeleting}
                                                         >
-                                                            {isCancelling ? "Cancelling…" : "Yes, Cancel Contract"}
+                                                            {isDeleting ? "Deleting…" : "Yes, Delete Contract"}
                                                         </AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
-                                        )}
-
-                                        <AlertDialog
-                                            open={deleteDialogOpen}
-                                            onOpenChange={setDeleteDialogOpen}
-                                        >
-                                            <AlertDialogTrigger asChild>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                                    Delete Contract
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete this contract?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This will permanently delete the contract record and attached document for this lead. You will be able to generate a new contract from an approved proposal afterwards.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Keep Contract</AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={handleDelete}
-                                                        className="bg-destructive hover:bg-destructive/90 text-white"
-                                                        disabled={isDeleting}
-                                                    >
-                                                        {isDeleting ? "Deleting…" : "Yes, Delete Contract"}
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     )}
                 </CardContent>

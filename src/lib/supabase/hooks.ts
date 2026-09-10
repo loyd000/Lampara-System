@@ -19,8 +19,6 @@ import type {
     InstallationStatus,
     LeadFileKind,
     LeadStage,
-    PermitStatus,
-    PermitType,
     PropertyType,
     QuoteStatus,
     RoofType,
@@ -39,7 +37,6 @@ import * as leadNotesApi from "./queries/lead-notes.ts";
 import * as leadsApi from "./queries/leads.ts";
 import * as notificationsApi from "./queries/notifications.ts";
 import * as packagesApi from "./queries/packages.ts";
-import * as permitsApi from "./queries/permits.ts";
 import * as quotesApi from "./queries/quotes.ts";
 import * as reportsApi from "./queries/reports.ts";
 import * as ticketsApi from "./queries/service-tickets.ts";
@@ -80,8 +77,6 @@ export const queryKeys = {
     contracts: ["contracts"] as const,
     contractForLead: (leadId: string) => ["contracts", "lead", leadId] as const,
 
-    permits: ["permits"] as const,
-    permitsForLead: (leadId: string) => ["permits", "lead", leadId] as const,
 
     installations: ["installations"] as const,
     installationForLead: (leadId: string) => ["installations", "lead", leadId] as const,
@@ -674,64 +669,6 @@ export function useDeleteContract() {
     });
 }
 
-// ─── Permits ──────────────────────────────────────────────────────────────
-
-export function usePermitsForLead(leadId: Id<"leads"> | undefined) {
-    return useQuery({
-        queryKey: queryKeys.permitsForLead(leadId ?? ""),
-        queryFn: () => permitsApi.listPermitsForLead(leadId!),
-        enabled: !!leadId,
-    });
-}
-
-export function useCreatePermit() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: permitsApi.createPermit,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.permits }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
-export function useUpdatePermitStatus() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: permitsApi.updatePermitStatus,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.permits }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
-export function useAttachPermitDocument() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: permitsApi.attachPermitDocument,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.permits }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
-export function useDeletePermit() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: permitsApi.deletePermit,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.permits }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
 // ─── Installations ────────────────────────────────────────────────────────
 
 export function useInstallationForLead(leadId: Id<"leads"> | undefined) {
@@ -920,10 +857,6 @@ export function usePipelineSummary() {
     return useQuery({ queryKey: ["reports", "pipeline"], queryFn: reportsApi.pipelineSummary });
 }
 
-export function usePermitsSummary() {
-    return useQuery({ queryKey: ["reports", "permits"], queryFn: reportsApi.permitsSummary });
-}
-
 export function useQuotesRevenueSummary() {
     return useQuery({
         queryKey: ["reports", "revenue"],
@@ -973,8 +906,6 @@ export type {
     InstallationStatus,
     LeadFileKind,
     LeadStage,
-    PermitStatus,
-    PermitType,
     PropertyType,
     QuoteStatus,
     RoofType,

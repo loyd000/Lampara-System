@@ -12,7 +12,6 @@ import {
     useLeadActivity,
     useLeadProperties,
     usePackages,
-    usePermitsForLead,
     useQuotesForLead,
     useSurveysForLead,
     useTicketsForLead,
@@ -50,14 +49,13 @@ import LeadNotes from "../_components/LeadNotes.tsx";
 import OcularInspectionTab from "../_components/ocular/OcularInspectionTab.tsx";
 import QuotesTab from "../_components/quotes/QuotesTab.tsx";
 import ContractSection from "../_components/ContractSection.tsx";
-import PermitsSection from "../_components/PermitsSection.tsx";
 import InstallationSection from "../_components/InstallationSection.tsx";
 import ServiceTicketsSection from "../_components/ServiceTicketsSection.tsx";
 
 /**
  * One lead, one tab per stage of its life.
  *
- * The tab lives in the URL (`?tab=permits`) so a link can point at the part of
+ * The tab lives in the URL (`?tab=quotes`) so a link can point at the part of
  * the record being discussed — which is what the calendar, the map and the
  * notification emails will all want to do.
  */
@@ -67,7 +65,6 @@ const TABS = [
     { value: "ocular", label: INSPECTION_LABEL_SHORT },
     { value: "quotes", label: "Quotes" },
     { value: "contracts", label: "Contract" },
-    { value: "permits", label: "Permits" },
     { value: "installation", label: "Installation" },
     { value: "maintenance", label: "Maintenance" },
     { value: "activity", label: "Activity History" },
@@ -131,7 +128,6 @@ export default function LeadDetailPage() {
     const { data: surveys } = useSurveysForLead(id as Id<"leads">);
     const { data: quotes } = useQuotesForLead(id as Id<"leads">);
     const { data: contract } = useContractForLead(id as Id<"leads">);
-    const { data: permits } = usePermitsForLead(id as Id<"leads">);
     const { data: installation } = useInstallationForLead(id as Id<"leads">);
     const { data: tickets } = useTicketsForLead(id as Id<"leads">);
     // All packages, not just active ones — an approved quote can reference a
@@ -230,7 +226,6 @@ export default function LeadDetailPage() {
         ocular: surveys?.length,
         quotes: quotes?.length,
         contracts: contract ? 1 : undefined,
-        permits: permits?.length,
         installation: installation ? 1 : undefined,
         maintenance: openTickets.length,
     };
@@ -488,20 +483,12 @@ export default function LeadDetailPage() {
 
                 {/* Contract */}
                 <TabsContent value="contracts" className="mt-4">
-                    <div className="max-w-3xl">
-                        <ContractSection
-                            leadId={lead._id}
-                            lead={lead}
-                            stage={lead.stage}
-                            canEdit={canEdit}
-                        />
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="permits" className="mt-4">
-                    <div className="max-w-2xl">
-                        <PermitsSection leadId={lead._id} stage={lead.stage} canEdit={canEdit} />
-                    </div>
+                    <ContractSection
+                        leadId={lead._id}
+                        lead={lead}
+                        stage={lead.stage}
+                        canEdit={canEdit}
+                    />
                 </TabsContent>
 
                 <TabsContent value="installation" className="mt-4">

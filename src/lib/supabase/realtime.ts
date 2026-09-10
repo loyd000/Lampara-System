@@ -41,7 +41,6 @@ const WATCHED_TABLES = [
     "quotes",
     "quote_items",
     "contracts",
-    "permits",
     "installations",
     "service_tickets",
     "users",
@@ -153,11 +152,6 @@ export function keysFor(
         }
         case "contracts":
             return leadId ? [queryKeys.contractForLead(leadId)] : [queryKeys.contracts];
-        case "permits":
-            return [
-                ...(leadId ? [queryKeys.permitsForLead(leadId)] : [queryKeys.permits]),
-                queryKeys.reports,
-            ];
         case "installations":
             return [
                 ...(leadId

@@ -8,7 +8,6 @@ export type NotificationPreferences = {
     leadAssigned: boolean;
     inspectionScheduled: boolean;
     installationScheduled: boolean;
-    permitOverdue: boolean;
     quoteAccepted: boolean;
     contractSigned: boolean;
 };
@@ -17,7 +16,6 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
     leadAssigned: true,
     inspectionScheduled: true,
     installationScheduled: true,
-    permitOverdue: true,
     quoteAccepted: true,
     contractSigned: true,
 };
@@ -27,7 +25,6 @@ function toPreferences(row: NotificationPreferencesRow): NotificationPreferences
         leadAssigned: row.lead_assigned,
         inspectionScheduled: row.inspection_scheduled,
         installationScheduled: row.installation_scheduled,
-        permitOverdue: row.permit_overdue,
         quoteAccepted: row.quote_accepted,
         contractSigned: row.contract_signed,
     };
@@ -76,7 +73,6 @@ export async function updateMyNotificationPreferences(
             ...(prefs.installationScheduled !== undefined && {
                 installation_scheduled: prefs.installationScheduled,
             }),
-            ...(prefs.permitOverdue !== undefined && { permit_overdue: prefs.permitOverdue }),
             ...(prefs.quoteAccepted !== undefined && { quote_accepted: prefs.quoteAccepted }),
             ...(prefs.contractSigned !== undefined && { contract_signed: prefs.contractSigned }),
         });

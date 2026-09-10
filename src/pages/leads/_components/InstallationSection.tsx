@@ -149,7 +149,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {!isUnlocked ? (
-                        <p className="text-xs text-muted-foreground">Installation is scheduled once permits are in place.</p>
+                        <p className="text-xs text-muted-foreground">Installation is scheduled once the contract is signed.</p>
                     ) : installation === undefined ? (
                         <Skeleton className="h-20 w-full" />
                     ) : installation === null ? (
