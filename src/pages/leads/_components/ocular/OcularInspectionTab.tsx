@@ -4,7 +4,6 @@ import {
     ArrowLeft,
     CalendarDays,
     CheckCircle2,
-    ChevronRight,
     ClipboardCheck,
     Plus,
     RotateCcw,
@@ -21,9 +20,11 @@ import {
 import type { Id, Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
 import {
     INSPECTION_LABEL,
+    INSPECTION_LABEL_PLURAL,
 } from "@/lib/constants.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { Card, CardContent } from "@/components/ui/card.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { QueryError } from "@/components/query-error.tsx";
 import {
@@ -71,8 +72,20 @@ export default function OcularInspectionTab({
     const surveysQuery = useSurveysForLead(leadId);
     const { data: surveys } = surveysQuery;
     const { data: currentUser } = useCurrentUser();
+    const { mutateAsync: deleteSurvey, isPending: deletingReport } = useDeleteSurvey();
     const [searchParams, setSearchParams] = useSearchParams();
     const [createOpen, setCreateOpen] = useState(false);
+    const [reportToDelete, setReportToDelete] = useState<string | null>(null);
+
+    async function handleDeleteReport(surveyId: string) {
+        try {
+            await deleteSurvey({ surveyId: surveyId as Id<"surveys"> });
+            toast.success("Report deleted");
+            setReportToDelete(null);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to delete report");
+        }
+    }
 
     function openReport(id: string | null) {
         setSearchParams(
@@ -227,51 +240,137 @@ export default function OcularInspectionTab({
     }
 
     // ── The list ──────────────────────────────────────────────────────────
+    // Same shape as the quotes list: one panel, hairline-separated rows, the
+    // row itself opens the report, and each carries its own actions.
     return (
-        <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                    {surveys.length} report{surveys.length !== 1 ? "s" : ""}
-                </p>
-                {canSchedule && propertyId && (
-                    <Button size="sm" onClick={() => setCreateOpen(true)}>
-                        <Plus className="w-3.5 h-3.5 mr-1.5" />
-                        Make ocular report
-                    </Button>
-                )}
-            </div>
+        <div className="space-y-4">
+            <Card>
+                <CardHeader className="pb-3 border-b">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <ClipboardCheck className="w-4 h-4 text-primary" />
+                                {INSPECTION_LABEL_PLURAL}
+                            </CardTitle>
+                            <Badge variant="secondary" className="text-xs">
+                                {surveys.length}
+                            </Badge>
+                        </div>
 
-            <ul className="border-y divide-y divide-border">
-                {surveys.map((survey) => (
-                    <li key={survey._id}>
-                        <button
-                            type="button"
-                            onClick={() => openReport(survey._id)}
-                            className="group w-full flex items-start gap-3 px-2 py-4 text-left rounded-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
-                        >
-                            <div className="flex-1 min-w-0 space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-sm font-medium text-foreground">
-                                        {new Date(survey.scheduledAt).toLocaleString(undefined, {
-                                            weekday: "short",
-                                            day: "numeric",
-                                            month: "short",
-                                            year: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        })}
-                                    </span>
+                        {canSchedule && propertyId && (
+                            <Button
+                                size="sm"
+                                onClick={() => setCreateOpen(true)}
+                                className="h-8 text-xs font-medium"
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                Make ocular report
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+
+                <CardContent className="p-4 space-y-3">
+                    {surveys.map((survey, idx) => {
+                        const progress = progressOf(survey);
+                        const isCancelled = survey.status === "cancelled";
+                        return (
+                            <div
+                                key={survey._id}
+                                onClick={() => openReport(survey._id)}
+                                className={cn(
+                                    "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
+                                    "hover:bg-muted/40",
+                                    idx > 0 && "border-t border-border",
+                                )}
+                            >
+                                <div className="min-w-0 space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                                            {new Date(survey.scheduledAt).toLocaleString(undefined, {
+                                                weekday: "short",
+                                                day: "numeric",
+                                                month: "short",
+                                                year: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </span>
+                                        {survey.completedAt ? (
+                                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
+                                                <CheckCircle2 className="w-2.5 h-2.5" />
+                                                Completed
+                                            </Badge>
+                                        ) : isCancelled ? (
+                                            <Badge variant="secondary" className="text-[10px] font-semibold">
+                                                Cancelled
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
+                                                {progress ?? "Scheduled"}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        Inspected by {survey.surveyorName}
+                                    </p>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {survey.surveyorName}
-                                    {progressOf(survey) && ` · ${progressOf(survey)}`}
-                                </p>
+
+                                <div
+                                    className="flex items-center gap-2 mt-3 min-w-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <DownloadReportButton
+                                        survey={survey}
+                                        lead={lead}
+                                        property={property}
+                                    />
+
+                                    {canSchedule && (
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="size-8 ml-auto shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            title="Delete report"
+                                            onClick={() => setReportToDelete(survey._id)}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                            <ChevronRight className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                        </button>
-                    </li>
-                ))}
-            </ul>
+                        );
+                    })}
+                </CardContent>
+            </Card>
+
+            {reportToDelete && (
+                <AlertDialog
+                    open={Boolean(reportToDelete)}
+                    onOpenChange={(v) => !v && setReportToDelete(null)}
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this report?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This permanently removes the report and its photos. This
+                                cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => void handleDeleteReport(reportToDelete)}
+                                className="bg-destructive hover:bg-destructive/90 text-white"
+                                disabled={deletingReport}
+                            >
+                                {deletingReport ? "Deleting…" : "Delete Report"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
 
             {createDialog}
         </div>
