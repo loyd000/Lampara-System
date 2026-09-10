@@ -7,12 +7,10 @@ import {
     ClipboardCheck,
     Plus,
     Trash2,
-    X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-    useCancelSurvey,
     useCurrentUser,
     useDeleteSurvey,
     useSurveysForLead,
@@ -130,8 +128,6 @@ export default function OcularInspectionTab({
                     lead={lead}
                     property={property}
                     canSchedule={canSchedule}
-                    editable={editable}
-                    onCancelled={() => openReport(null)}
                     onDeleted={() => openReport(null)}
                 />
 
@@ -291,21 +287,15 @@ function StatusBar({
     lead,
     property,
     canSchedule,
-    editable,
-    onCancelled,
     onDeleted,
 }: {
     survey: SurveyForLead;
     lead: Lead;
     property: Property | undefined;
     canSchedule: boolean;
-    editable: boolean;
-    /** Cancelling ends the visit, so the view goes back to the list. */
-    onCancelled: () => void;
     /** Deleting removes the report entirely, so the view goes back to the list. */
     onDeleted: () => void;
 }) {
-    const { mutateAsync: cancelSurvey } = useCancelSurvey();
     const { mutateAsync: deleteSurvey } = useDeleteSurvey();
     const [busy, setBusy] = useState(false);
 
@@ -348,22 +338,6 @@ function StatusBar({
 
                     <div className="flex flex-wrap items-center gap-1.5">
                         <DownloadReportButton survey={survey} lead={lead} property={property} />
-                        {survey.status === "scheduled" && canSchedule && (
-                            <ConfirmButton
-                                label="Cancel Visit"
-                                variant="ghost"
-                                icon={<X className="w-3.5 h-3.5 mr-1.5" />}
-                                title="Cancel this visit?"
-                                description="The visit is called off, but the report stays on record with whatever's already filled in — pick this over Delete Report if you just want to note the visit didn't happen."
-                                disabled={busy}
-                                onConfirm={() =>
-                                    run(
-                                        () => cancelSurvey({ surveyId }).then(onCancelled),
-                                        "Inspection cancelled",
-                                    )
-                                }
-                            />
-                        )}
                         {canSchedule && (
                             <ConfirmButton
                                 label="Delete Report"
