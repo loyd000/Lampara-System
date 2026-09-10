@@ -42,7 +42,7 @@ function integerToWords(n: number): string {
 }
 
 /**
- * Spells out a peso amount the way the contract template expects, e.g.
+ * Spells out a peso amount the way the contract's price clause reads it, e.g.
  * `366500` -> "THREE HUNDRED SIXTY SIX THOUSAND FIVE HUNDRED PESOS ONLY",
  * `366500.5` -> "THREE HUNDRED SIXTY SIX THOUSAND FIVE HUNDRED PESOS AND 50/100 ONLY".
  */

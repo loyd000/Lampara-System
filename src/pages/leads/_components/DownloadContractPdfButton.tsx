@@ -2,24 +2,26 @@ import { useState } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import type { ContractDocxData } from "@/lib/docx/contract-data.ts";
+import type { ContractDetailsInput } from "@/lib/pdf/contract-data.ts";
 import { Button } from "@/components/ui/button.tsx";
 
 /**
- * Generates the contract DOCX from `public/Contract Template.docx` and
- * downloads it. Lazy-loads docxtemplater/pizzip only on click, same reasoning
- * as the quote/ocular PDF download buttons — most lead page visits never
- * generate a document.
+ * Generates the Photovoltaic Installation Contract PDF and downloads it.
+ *
+ * Lazy-loads the renderer and the document only on click, same reasoning as the
+ * quote and ocular PDF buttons — most lead page visits never generate one.
  */
-export default function DownloadContractDocxButton({
-    data,
-    fileName,
+export default function DownloadContractPdfButton({
+    details,
+    firstName,
+    lastName,
     size = "sm",
     variant = "outline",
     className,
 }: {
-    data: ContractDocxData;
-    fileName: string;
+    details: ContractDetailsInput;
+    firstName: string;
+    lastName: string;
     size?: "sm" | "default" | "icon";
     variant?: "outline" | "default" | "ghost" | "secondary";
     className?: string;
@@ -32,22 +34,30 @@ export default function DownloadContractDocxButton({
         const toastId = toast.loading("Generating Contract…");
 
         try {
-            const { generateContractDocx } = await import("@/lib/docx/generate-contract.ts");
-            const blob = await generateContractDocx(data);
+            const [{ pdf }, { ContractPdf }, { buildContractPdfData, contractPdfFileName }] =
+                await Promise.all([
+                    import("@react-pdf/renderer"),
+                    import("@/lib/pdf/ContractPdf.tsx"),
+                    import("@/lib/pdf/contract-data.ts"),
+                ]);
+
+            const blob = await pdf(
+                <ContractPdf data={buildContractPdfData(details)} />,
+            ).toBlob();
 
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = fileName;
+            a.download = contractPdfFileName(firstName, lastName);
             document.body.appendChild(a);
             a.click();
             a.remove();
 
             setTimeout(() => URL.revokeObjectURL(url), 10_000);
-            toast.success("Contract document downloaded", { id: toastId });
+            toast.success("Contract PDF downloaded", { id: toastId });
         } catch (e) {
             toast.error(
-                e instanceof Error ? e.message : "Failed to generate the contract document",
+                e instanceof Error ? e.message : "Failed to generate the contract",
                 { id: toastId },
             );
         } finally {
@@ -68,7 +78,7 @@ export default function DownloadContractDocxButton({
             ) : (
                 <FileDown className="w-3.5 h-3.5 mr-1.5" />
             )}
-            {busy ? "Generating…" : "Generate Contract (.docx)"}
+            {busy ? "Generating…" : "Generate Contract PDF"}
         </Button>
     );
 }

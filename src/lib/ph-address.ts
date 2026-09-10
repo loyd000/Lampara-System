@@ -7,7 +7,7 @@
  * country's barangay list from a GitHub Pages host on every keystroke) — but
  * it's still too big to sit in the main bundle for a form nobody opens on
  * most page views, so every call here goes through a dynamic `import()`,
- * same as docxtemplater/pizzip for the contract generator.
+ * same as @react-pdf/renderer for the document generators.
  *
  * Every level after Province is looked up by *code*, not name — 122
  * municipality names repeat across different provinces in this dataset (two

@@ -41,11 +41,12 @@ export function sumLineTotalsPhp(
 /**
  * "₱1,234.00" — the on-screen format.
  *
- * The PDF (`lib/pdf/quote-data.ts`) and the contract DOCX
- * (`lib/docx/contract-data.ts`) deliberately keep their own: the PDF spells out
- * "PHP" because the ₱ glyph is not guaranteed in its embedded font, and the
- * contract prints a bare number because the template supplies the currency
- * word itself. Those are requirements, not drift — don't collapse them here.
+ * The quote PDF (`lib/pdf/quote-data.ts`) and the contract PDF
+ * (`lib/pdf/contract-data.ts`) deliberately keep their own: both spell out
+ * "PHP" because the ₱ glyph is not guaranteed in Helvetica's built-in
+ * encoding, and the contract prints a bare number because the clause supplies
+ * the currency word itself. Those are requirements, not drift — don't collapse
+ * them here.
  */
 export function formatPhp(amount: number): string {
     return (

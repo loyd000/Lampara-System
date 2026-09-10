@@ -188,7 +188,7 @@ export async function updateContractNotes(args: {
     if (error) throw toAppError(error, "Failed to update notes");
 }
 
-/** Fields the DOCX template fills in. Edit before generating. */
+/** Fields the generated contract PDF fills in. Edit before generating. */
 export async function updateContractDetails(args: {
     contractId: Id<"contracts">;
     homeownerName: string;

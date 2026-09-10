@@ -9,9 +9,8 @@ import {
     useUpdateContractDetails,
 } from "@/lib/supabase/hooks.ts";
 import type { Contract, Id, Lead } from "@/lib/supabase/types.ts";
-import type { ContractDetailsInput } from "@/lib/docx/contract-data.ts";
-import { buildContractDocxData, contractDocxFileName } from "@/lib/docx/contract-data.ts";
-import DownloadContractDocxButton from "./DownloadContractDocxButton.tsx";
+import type { ContractDetailsInput } from "@/lib/pdf/contract-data.ts";
+import DownloadContractPdfButton from "./DownloadContractPdfButton.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -474,12 +473,10 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             >
                                                 {isSavingDetails ? "Saving…" : "Save Details"}
                                             </Button>
-                                            <DownloadContractDocxButton
-                                                data={buildContractDocxData(details)}
-                                                fileName={contractDocxFileName(
-                                                    lead.firstName,
-                                                    lead.lastName,
-                                                )}
+                                            <DownloadContractPdfButton
+                                                details={details}
+                                                firstName={lead.firstName}
+                                                lastName={lead.lastName}
                                             />
                                         </div>
                                     )}
