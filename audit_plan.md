@@ -16,13 +16,26 @@ Two things worth saying up front:
 
 ---
 
-> **Status:** Phase A is done — findings 2, 3, 4 and 11 are fixed and verified
-> (`tsc`, `eslint`, 30 tests, `vite build`, impeccable detector all clean).
-> Everything else below is still outstanding.
+> **Status:** Phases A–D done. Findings 1–8, 11, 12 fixed, plus **16, 17 and 18
+> — none of which the read-only scan found**. Migrations `0026`, `0027`, `0028`
+> are **applied**. Only the Phase E cleanup list (9, 10, 13, 14, 15) remains.
+> Test suite 23 → 37.
+>
+> **The most useful thing in this document is that last sentence.** The
+> original scan read 29.6k lines and found real problems, but the three worst
+> — a revenue report stuck at ₱0, two type unions asserting values the database
+> forbids, and inspections that could never be completed — were all invisible
+> to it, because the code was *internally consistent* and only disagreed with
+> the database. They surfaced within minutes of getting live query access
+> (`supabase db query --linked`).
+>
+> Schema drift is the dominant bug class in this codebase, and reading cannot
+> catch it. Anything below still marked outstanding should be checked against
+> the live database, not just the source.
 
 ## P0 — correctness and access
 
-### 1. The lead-search index has never been used ⭐ biggest single win
+### 1. The lead-search index has never been used ⭐ biggest single win ✅ fixed
 
 `0001_initial_schema.sql:145` builds a GIN trigram index over a **concatenated
 expression**:
@@ -62,9 +75,11 @@ create index if not exists leads_search_text_idx
 drop index if exists leads_search_idx;
 ```
 
-then `.ilike("search_text", pattern)` replaces the four-way `.or()`.
-
-*Effort: ~1h including the migration.*
+**Fixed as:** `0026_search_indexes.sql` — the generated column above plus its
+trigram index, and the dead `leads_search_idx` dropped. `searchLeads` now
+filters the single `search_text` column. Verified on live data: the column
+populates (`"asd asd as@gmail.com 09123456789"`) and multi-word terms that span
+the old column boundaries now match.
 
 ### 2. `/reports` has no role guard — a field tech can read company financials ✅ fixed
 
@@ -129,29 +144,111 @@ the prompt as well, not just the stage picker.
 
 ---
 
+### 16. The Reports page reported ₱0 revenue, always ⭐ found only by querying live data ✅ fixed
+
+Not in the original scan — reading the code could not have caught it, and it is
+the most consequential thing in this document.
+
+`report_revenue_summary` was written in `0007` against the original schema and
+never revisited. Two independent drifts:
+
+- **Wrong column.** It summed `total_price_usd`. Quotes have been priced in PHP
+  since `0016` (`total_php`); the USD column is dead and holds `0` in every row.
+- **Wrong statuses.** It filtered `status in ('accepted','sent')` and
+  `status = 'accepted'`. The vocabulary is now `('in_progress','approved')` —
+  the CHECK constraint does not even permit the old values, so those filters
+  could never match a row.
+
+Observed on live data before the fix: one quote at `total_php = 215,000.00`,
+`total_price_usd = 0`, and the function returning a pipeline value of `0`.
+Pipeline Value, Closed Value, Avg Deal Size, Accepted Quotes and Financing Mix
+were **all** reading zero or empty regardless of the real business.
+
+**Fixed as:** `0027`, alongside the role guard. The old statuses map onto the
+new ones directly — `accepted` → `approved` (won), `sent` → `in_progress` (out
+with the customer) — so this restores `0007`'s intent rather than inventing a
+rule. Verified after applying: pipeline ₱215,000, closed ₱215,000, avg deal
+₱215,000, 1 accepted quote.
+
+**Worth drawing the lesson:** a static scan reads what the code *says*. This
+disagreed with what the database *contains*, and only a query could tell. The
+other report functions were checked against the live schema at the same time
+and are fine.
+
+### 17. Two type unions declared values the database forbids ✅ fixed
+
+The root cause of finding 16, and the reason it survived review: `QuoteStatus`
+listed `draft`, `sent`, `accepted`, `rejected`, `superseded` when the CHECK
+constraint permits only `in_progress` and `approved`. Someone wrote a filter
+against `'accepted'`, TypeScript agreed it was a valid status, and the query
+matched nothing forever.
+
+`SurveyStatus` had the same rot — `submitted` and `approved` against a
+constraint permitting only `scheduled`/`cancelled`.
+
+**Fixed as:** both unions narrowed to what the database actually allows. Worth
+noting what happened next: `tsc` immediately failed on
+`FieldDashboard.tsx:115`, `done: s.status === "approved"` — *"This comparison
+appears to be unintentional because the types have no overlap."* The honest
+type found finding 18 by itself, at compile time, in one run.
+
+### 18. A field technician's inspection could never be completed ✅ fixed
+
+`0012` collapsed the submit/approve handoff ("printing is the completion step")
+and narrowed `surveys.status` to `('scheduled','cancelled')` — but left nothing
+that marks an inspection *finished*. Nothing has written `completed_at` since.
+
+The field dashboard never caught up, still computing `done: status ===
+'approved'`. For a technician that means an inspection can never leave the open
+list: once its date passes it sits in **Overdue permanently**, "Done (30d)"
+never counts one, and "Recently Completed" stays empty — on the field role's
+main daily screen.
+
+Latent only because `surveys` is empty today. It would have started
+accumulating with the first real inspection.
+
+**Fixed as:** `0028` adds `complete_survey_report` / `reopen_survey_report`,
+both gated on `can_edit_survey`, so the assigned technician records their own
+visit without waiting on the office. Completion is `completed_at`, not a
+resurrected status. The inspection view gets a "Mark complete" button (and
+"Reopen" to undo a mistap), the list row shows "Completed", and the dashboard
+now reads `done: completedAt != null`.
+
+Also cleaned up: the orphaned `reopen_survey_report` from `0009`, whose body
+required `status in ('submitted','approved')` and therefore raised on every
+call. Nothing referenced it.
+
+---
+
 ## P1 — performance and data
 
-### 5. The Leads list over-fetches every quote of every lead
+### 5. The Leads list over-fetches every quote of every lead ✅ fixed
 
 `ENRICHED_LEAD_SELECT` embeds `quotes(status, quote_items(packages(design_type)))`
 unfiltered, then throws away everything but the *approved* quote client-side. A
 lead with 5 quote versions × 20 line items is 100 embedded rows fetched to render
 one "Hybrid" label — multiplied by up to 500 leads.
 
-**Fix:** filter the embed server-side to the approved quote only. A non-`!inner`
-embedded filter narrows the embedded rows without dropping parent leads:
+**Fixed as:** the quotes embed is gone entirely. Design types now come from a
+separate `fetchApprovedDesignTypes()` query — `quotes?status=eq.approved` with
+its line items — run **in parallel** with the leads query and merged by
+`lead_id`.
 
-```ts
-.eq("quotes.status", "approved")   // or .or("status.eq.approved", { referencedTable: "quotes" })
-```
+The obvious fix was a filtered embed (`.eq("quotes.status","approved")`), and
+it would probably have worked. It was rejected on risk: filtering an embed
+narrows the embedded rows, while `!inner` additionally restricts which
+*parents* return, and getting that distinction wrong would silently hide every
+lead without an approved quote from the main list. RLS meant that could not be
+empirically confirmed as an anonymous caller, and "probably correct" is the
+wrong standard for the primary list view. The parallel query cannot drop a
+lead because it never touches the lead query.
 
-*Unverified* — I could not test the embedded-filter semantics against the live
-database. Confirm the row count drops and that leads without an approved quote
-still appear before shipping.
+Same round-trip latency (parallel, not sequential), and the volume win scales
+with quote versions — on current data, one approved quote of 4 line items, it
+fetches identically. Verified the design types resolve correctly against live
+data (`["hybrid"]`, 4 items).
 
-*Effort: ~45min including verification.*
-
-### 6. Two searches have no supporting index
+### 6. Two searches have no supporting index ✅ fixed
 
 - **Location search** (`properties.city` / `properties.state`, added this
   session) — no trigram index on either column; the `!inner` join scans.
@@ -162,12 +259,11 @@ still appear before shipping.
 Both are seq scans today. Harmless at current data volume, quietly not at 10k
 rows.
 
-**Fix:** one migration adding trigram indexes for both, ideally alongside the
-finding-1 migration.
+**Fixed as:** same migration, same shape — `properties.search_text` (address,
+city, state, zip) and `service_tickets.search_text` (title, description), each
+trigram indexed, each queried as a single `.ilike()`.
 
-*Effort: ~30min, same migration as #1.*
-
-### 7. Client-side filters silently cap at 500 records
+### 7. Client-side filters silently cap at 500 records ✅ fixed (cheap option)
 
 Stage (main status), Property Type and Design Type all filter the *fetched page*
 rather than the database. `LEAD_LIST_LIMIT` is 500, so past that the filters
@@ -176,27 +272,38 @@ suppressed whenever a filter is active, so nothing tells the user.
 
 Fine at current scale, wrong later, and the failure is silent — the worst kind.
 
-**Fix (pick one):**
-- *Cheap:* keep client-side filtering, but keep the "Showing N of M" banner
-  visible when filters are active so the ceiling is never hidden.
-- *Proper:* push all three to the server — stage-group via `.in("stage", …)`,
-  property type via a `properties!inner` filter, design type via the nested
-  approved-quote join from #5.
+**Fixed as (your call — cheap):** the count line no longer hides the cap when
+filters are active. With filters on and the page truncated it now reads
+*"12 records — filtered from the first 500 of 1,234"*, so the ceiling is always
+on screen. Filtering is still client-side.
 
-*Effort: 20min cheap / ~3h proper.*
+**Still open:** pushing all three filters to the server (stage-group via
+`.in("stage", …)`, property type via a `properties` join, design type via the
+approved-quote join from #5) — worth revisiting if lead count approaches 500.
 
-### 8. Money is rounded on write but not on display
+### 8. Money is rounded on write but not on display ✅ fixed
 
 `queries/quotes.ts:177` rounds correctly (`Math.round(qty * unitPrice * 100)/100`)
 before writing to `numeric(12,2)`. `QuoteBuilder.tsx:168` accumulates the on-screen
 subtotal with raw float arithmetic and no rounding. The two can disagree by
 fractions of a centavo, and the displayed subtotal is the one a customer reads.
 
-**Fix:** round in the same place, the same way — ideally one shared
-`lineTotal()` / `subtotal()` helper used by the builder, the PDF and the write
-path.
+**Fixed as:** `src/lib/money.ts` — `lineTotalPhp()` and `sumLineTotalsPhp()`,
+used by both the write path and the builder's live subtotal. Order matters and
+is now explicit: each line is rounded *before* summing, because the stored
+`line_total_php` values are the rounded ones — so the on-screen subtotal equals
+the sum of the numbers printed above it. Covered by 7 tests.
 
-*Effort: ~45min.*
+The PDF turned out to be fine already: it sums the *stored* `lineTotalPhp`
+values rather than recomputing, so it always agreed with the database. Only the
+builder's live preview diverged. All three paths now agree.
+
+**Also consolidated while in there:** `formatPhp` existed in six copies. Four
+were byte-identical UI duplicates and are now one import. The remaining two are
+kept deliberately and documented as such — the PDF spells out "PHP" because the
+₱ glyph isn't guaranteed in its embedded font, and the contract DOCX prints a
+bare number because the template supplies the currency word. Those are
+requirements, not drift.
 
 ---
 
@@ -207,36 +314,52 @@ path.
 | 9 | **27 of 57 shadcn components are unused** — accordion, carousel, chart, drawer, menubar, sidebar, table, resizable, input-otp, slider… | scan of `src/components/ui/*` | 1h |
 | 10 | **Dependencies only those dead components use**: `recharts`, `embla-carousel-react`, `vaul`, `react-resizable-panels`, `input-otp`. Bundle impact is probably small (tree-shaking already drops them) — the real win is install time and supply-chain surface, not KB | `package.json` | 30min |
 | 11 | ~~**`supabase/.temp/` is untracked and not ignored**~~ ✅ fixed — added to `.gitignore` | `git status`, `.gitignore` | done |
-| 12 | **Service worker handles `push` / `notificationclick`, but nothing ever subscribes** — no `pushManager` call anywhere in `src` | `public/sw.js:94`, `:110` | 30min to remove, or wire it up |
+| 12 | ~~**Service worker handles `push` / `notificationclick`, but nothing ever subscribes**~~ ✅ fixed — handlers deleted, with a comment recording what wiring push up would actually require | `public/sw.js` | done |
 | 13 | **`quotes.total_price_usd numeric(12,2)`** still in the schema next to `total_php` — a dead USD column from before the PHP switch | `0001_initial_schema.sql:219` | 15min |
 | 14 | **Every table is hand-rolled `<table>` markup** while `ui/table.tsx` sits unused — 4 pages each re-declaring the same header cell classes | leads / reports / packages / dashboards | 2h |
 | 15 | **No component or integration tests** — 23 tests, all pure functions. Nothing covers global search, the stage control, the filters, or any query builder | `src/**/*.test.ts` | ongoing |
 
 ---
 
-## Open bug I could not diagnose
+## Location search — resolved ✅
 
-**Location search reportedly matches uppercase but not lowercase.**
+**Confirmed working after the Phase B rewrite.** The investigation below is kept
+because its conclusion held: every layer was already case-insensitive, so the
+original report was environmental rather than a defect in the query. Worth
+remembering the next time something "obviously" looks like a data bug.
 
-This shouldn't be possible: `ILIKE` is case-insensitive by definition, and the
-same `%pattern%` syntax already works for the name/phone/email branch. I ran out
-of ways to test it from here without database access.
+**Location search reportedly matched uppercase but not lowercase.**
 
-**Diagnostic before fixing** — run both directly in the SQL editor and compare:
+Phase B had live database access, so this got tested properly rather than
+guessed at. **Every layer checks out, and none of them is case-sensitive.**
 
-```sql
-select id, city, state from public.properties where city ilike '%malabon%';
-select id, city, state from public.properties where city ilike '%MALABON%';
-```
+Against the real row (`state = 'AGUSAN DEL NORTE'`):
 
-- Same rows → the SQL is fine and the bug is in the request layer. Next suspect:
-  PostgREST's raw `or=()` filter string, where `*` is the documented wildcard;
-  try `city.ilike.*term*` instead of `%term%`.
-- Different rows → something is genuinely off with collation or the data, and
-  the hypothesis changes entirely.
+| Query | Result |
+|---|---|
+| `state ilike '%agusan%'` (lowercase) | **1** |
+| `state ilike '%AGUSAN%'` (uppercase) | **1** |
+| `state like '%agusan%'` (plain LIKE) | 0 |
 
-Finding #1's `search_text` rework may make this moot for leads, but the property
-branch would still need it.
+`ILIKE` matches regardless of case; only plain `LIKE` is case-sensitive, which
+confirms both that the data is uppercase and that the operator in use is the
+right one. Then, at the PostgREST layer, all three filter forms — the new
+`or=(search_text.ilike…,id.in…)`, the new `search_text=ilike…`, and even the
+*old* embedded `properties.or=(city.ilike…,state.ilike…)` — returned HTTP 200,
+so none was malformed. And in SQL, the old embedded query's join semantics and
+the new two-step approach return the same single row.
+
+**So the reported case-sensitivity could not be reproduced at any layer.** The
+most likely explanation is environmental — a stale bundle in the browser when it
+was tested, since this was minutes after the location feature first shipped.
+
+**What this means:** the Phase B rewrite is still worth having (the index is now
+actually usable, and multi-word terms spanning fields work), but it should not be
+described as *the fix* for the reported bug, because there was no reproducible
+bug to fix. **Please re-test location search on a hard refresh.** If lowercase
+still fails, the next place to look is the client — React Query's cache key is
+the raw term, so `"agusan"` and `"AGUSAN"` are separate cache entries — and I'd
+want the browser's Network tab for the actual request that comes back empty.
 
 ---
 
@@ -250,39 +373,74 @@ and the cancel-reason inconsistency (including the drag-and-drop path, which
 turned out to bypass the prompt too). Added `realtime.test.ts`; suite is 23 → 30
 tests.
 
-**Phase B — search and indexes, one migration (~2.5h).** Findings 1, 6, and the
-open bug's diagnostic. `0026_search_indexes.sql` adds the generated `search_text`
-column plus trigram indexes for it, `properties.city/state` and
-`service_tickets`; `searchLeads` switches to the single-column predicate. Ship
-the diagnostic query first so the lowercase bug is understood before the rewrite
-lands on top of it.
+**Phase B — search and indexes. ✅ done.** Findings 1 and 6, plus the open bug's
+diagnostic. `0026_search_indexes.sql` adds a `search_text` generated column and
+trigram index to `leads`, `properties` and `service_tickets`, and drops the dead
+`leads_search_idx`; all three searches became a single indexed `.ilike()`.
+Location search no longer goes through an embedded `referencedTable` filter.
+The lowercase bug turned out not to be reproducible — see above.
 
-**Phase C — data volume honesty (~1.5h, or 4h for the proper fix).**
-Findings 5 and 7. Cut the leads-list over-fetch, then decide cheap-banner vs
-server-side filtering.
+One trade-off taken knowingly: `select("*")` now also returns `search_text`,
+which duplicates name/email/phone on every leads-list row. PostgREST has no
+"all except" syntax, so the alternatives were enumerating every column by hand
+(brittle) or accepting a few tens of KB on a 500-row page. Took the bloat.
 
-**Phase D — money consistency (~45min).** Finding 8. Small, isolated, worth doing
-before anyone quotes a real customer.
+**Phase C — data volume honesty. ✅ done.** Findings 5 and 7.
 
-**Phase E — cleanup (~4h, whenever).** Findings 9, 10, 12, 13, 14. Pure
-maintenance; no user-visible change. Good filler work.
+**Phase D — money consistency. ✅ done.** Finding 8, plus consolidating
+`formatPhp` from six copies to three (two of which are deliberate).
 
-Phases A–D are ~7h of focused work and cover everything that can bite a real
-user. Phase E is optional.
+**Phase E — cleanup (~4h, whenever).** Findings 9, 10, 13, 14, 15, plus dropping
+the dead columns the drift sweep turned up. Pure maintenance with no
+user-visible change — the one item carrying real value is the dead columns,
+since each is a future trap of exactly the kind that produced finding 16.
+
+**Phases A–D are complete.** Everything identified that can bite a real user is
+fixed; Phase E is optional.
 
 ---
 
-## Needs your decision
+## Decisions taken
 
-1. **Should a field technician be able to see company financials at all?**
-   Finding 2's UI guard assumes no. If that's right, the *server* should enforce
-   it too — which means either restricting the report RPCs by role, or narrowing
-   `leads_select` so `field` only sees leads they're assigned to. The second is a
-   meaningful behaviour change (it would also narrow their Leads list and
-   Pipeline), so I'd want you to confirm before touching RLS.
+1. **Field techs and financials** → *restrict the report RPCs by role.* All four
+   `report_*` functions now refuse anyone who isn't superadmin/admin
+   (`0027`). Targeted: field technicians keep full Leads/Pipeline visibility,
+   they just can't pull the reports. `leads_select` was deliberately left
+   alone — narrowing it would have shrunk their day-to-day views too.
 
-2. **Client-side or server-side filtering** for finding 7 — 20 minutes of honesty
-   vs 3 hours of correctness. Depends how many leads you expect this year.
+2. **Filter cap** → *cheap option.* Ceiling stays visible; filtering stays
+   client-side. Revisit if lead count nears 500.
 
-3. **Push notifications** (finding 12) — wire up the half-built support, or
-   delete it? Email already covers the same events.
+3. **Push notifications** → *deleted.* Email covers the same six events.
+
+## Drift sweep — every status vocabulary, code vs database
+
+Run once the pattern became clear. Compares each CHECK constraint against the
+type union the client declares.
+
+| Table | Verdict |
+|---|---|
+| `leads.stage` | ✅ all 10 values match |
+| `permits.status` | ✅ matches |
+| `installations.status` | ✅ matches |
+| `service_tickets.status` | ✅ matches |
+| `quotes.status` | ❌ 5 impossible values — finding 17, fixed |
+| `surveys.status` | ❌ 2 impossible values — finding 17/18, fixed |
+
+Columns still on the table but no longer read by anything:
+`quotes.total_price_usd`, and `surveys.prepared_by_id` / `prepared_at` /
+`approved_by_id` / `approved_at` (orphans of the `0012` workflow removal).
+Harmless, but each one is a future trap of exactly the kind that produced
+finding 16. Worth a `0029` that drops them.
+
+## Still open
+
+- **Finding 5** — the Leads list fetches every quote and line item of every lead
+  to render one Design Type label. Needs an embedded filter to the approved
+  quote only, and verification that non-`!inner` embedded filters don't drop
+  parent rows. *(~45min — and this one can now be verified against the live
+  database rather than reasoned about.)*
+- **Finding 8** — quote money rounded on write, not on display. *(~45min)*
+- **P2 list** — findings 9, 10, 13, 14, 15. Pure maintenance.
+- **`quotes.total_price_usd`** (finding 13) is now not just dead but *proven*
+  dead — nothing reads it since `0027`. Safe to drop whenever.
