@@ -291,7 +291,6 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                                 ref={photoInputRef}
                                                 type="file"
                                                 accept="image/*"
-                                                capture="environment"
                                                 multiple
                                                 className="hidden"
                                                 onChange={handlePhotoUpload}
