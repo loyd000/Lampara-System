@@ -286,14 +286,13 @@ export default function OcularInspectionTab({
                             >
                                 <div className="min-w-0 space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
+                                        {/* The date is the report's name, so it stays
+                                            short — no weekday, no clock time. */}
                                         <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                                            {new Date(survey.scheduledAt).toLocaleString(undefined, {
-                                                weekday: "short",
+                                            {new Date(survey.scheduledAt).toLocaleDateString(undefined, {
                                                 day: "numeric",
                                                 month: "short",
                                                 year: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
                                             })}
                                         </span>
                                         {survey.completedAt ? (
@@ -460,10 +459,12 @@ function StatusBar({
                                 {survey.surveyorName}
                             </span>
                         </div>
+                        {/* Keeps the clock time — this is the visit's scheduled
+                            slot, which the technician needs. The weekday goes,
+                            as it does in the list. */}
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                             <CalendarDays className="w-3 h-3" />
                             {new Date(survey.scheduledAt).toLocaleString(undefined, {
-                                weekday: "short",
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
