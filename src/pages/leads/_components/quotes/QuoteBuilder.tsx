@@ -315,12 +315,15 @@ export default function QuoteBuilder({
 
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
+                            {/* Version reads as part of the name rather than its
+                                own pill — two badges beside a title that already
+                                wraps was one too many. */}
                             <h2 className="text-base font-bold text-foreground">
-                                {quote.quotationNo || `Quotation v${quote.version}`}
+                                {quote.quotationNo || "Quotation"}
+                                <span className="ml-1.5 font-medium text-muted-foreground">
+                                    v{quote.version}
+                                </span>
                             </h2>
-                            <Badge variant="outline" className="text-[10px] font-semibold">
-                                v{quote.version}
-                            </Badge>
                             {isApproved ? (
                                 <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
                                     <Lock className="w-2.5 h-2.5" />
@@ -481,21 +484,24 @@ export default function QuoteBuilder({
             </div>
 
             {/* ── Customer Block (Read-only) ──────────────────────── */}
+            {/* No Stage here: the lead header sits directly above this with the
+                status controls in it, so repeating the stage said the same
+                thing twice within one screen. */}
             <Card className="bg-muted/20 border-muted">
-                <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div>
+                <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="min-w-0">
                         <span className="text-muted-foreground block mb-0.5 font-medium">
                             Customer
                         </span>
                         <span className="font-semibold text-foreground text-sm">
                             {lead.firstName} {lead.lastName}
                         </span>
-                        <div className="text-muted-foreground mt-0.5">
+                        <div className="text-muted-foreground mt-0.5 break-words">
                             {lead.phone} {lead.email && `· ${lead.email}`}
                         </div>
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                         <span className="text-muted-foreground block mb-0.5 font-medium">
                             Installation Address
                         </span>
@@ -503,21 +509,16 @@ export default function QuoteBuilder({
                             {customerAddress || "No site address recorded"}
                         </span>
                     </div>
-
-                    <div>
-                        <span className="text-muted-foreground block mb-0.5 font-medium">
-                            Stage
-                        </span>
-                        <span className="text-foreground capitalize">
-                            {lead.stage.replace(/_/g, " ")}
-                        </span>
-                    </div>
                 </CardContent>
             </Card>
 
             {/* ── Quote Parameters ────────────────────────────────── */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
+            {/* `min-w-0` on the cells is load-bearing: grid items default to
+                `min-width: auto`, and a native date input's intrinsic width is
+                wider than a phone's column — which is what pushed Valid Until
+                past the edge of the page. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 min-w-0">
                     <Label htmlFor="prepared-by" className="text-xs font-medium">
                         Prepared By
                     </Label>
@@ -547,7 +548,7 @@ export default function QuoteBuilder({
                     )}
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                     <Label htmlFor="valid-until" className="text-xs font-medium">
                         Valid Until
                     </Label>
@@ -557,34 +558,36 @@ export default function QuoteBuilder({
                         value={validUntil}
                         onChange={(e) => setValidUntil(e.target.value)}
                         disabled={!editable}
-                        className="h-8 text-xs"
+                        className="h-8 w-full min-w-0 text-xs"
                     />
                 </div>
+            </div>
 
-                <div className="space-y-1.5">
-                    <Label htmlFor="quote-notes" className="text-xs font-medium">
-                        Notes / Scope Remarks
-                    </Label>
-                    <Textarea
-                        id="quote-notes"
-                        placeholder="e.g. Inclusive of Meralco Net-Metering application assistance"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        disabled={!editable}
-                        rows={1}
-                        className="h-8 min-h-[32px] text-xs resize-none"
-                    />
-                </div>
+            {/* Scope remarks are prose — full width, and tall enough to read
+                back what you wrote. It was a 32px box that clipped its own
+                placeholder mid-sentence. */}
+            <div className="space-y-1.5">
+                <Label htmlFor="quote-notes" className="text-xs font-medium">
+                    Notes / Scope Remarks
+                </Label>
+                <Textarea
+                    id="quote-notes"
+                    placeholder="e.g. Inclusive of Meralco Net-Metering application assistance"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    disabled={!editable}
+                    rows={3}
+                    className="text-xs resize-y"
+                />
             </div>
 
             {/* ── Itemised Table ──────────────────────────────────── */}
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <div>
+                        {/* The table below states the count — either as rows to
+                            count or as "no line items added yet". */}
                         <h3 className="text-sm font-semibold text-foreground">Line Items</h3>
-                        <p className="text-xs text-muted-foreground">
-                            {items.length} {items.length === 1 ? "item" : "items"} in this quote
-                        </p>
                     </div>
 
                     {editable && (
@@ -758,23 +761,20 @@ export default function QuoteBuilder({
                                     })
                                 )}
                             </tbody>
-                            <tfoot>
-                                <tr className="border-t-2 border-primary/40 bg-muted/30">
-                                    <td
-                                        colSpan={4}
-                                        className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                                    >
-                                        Grand Total
-                                    </td>
-                                    <td
-                                        colSpan={editable ? 3 : 2}
-                                        className="py-3 px-4 text-right text-base font-bold text-foreground font-mono tabular-nums"
-                                    >
-                                        {formatPhp(grandTotal)}
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
+                    </div>
+
+                    {/* Outside the scrolling table on purpose. As a `tfoot` row
+                        the grand total scrolled with everything else, which put
+                        the one number that matters most off the right edge of a
+                        phone. */}
+                    <div className="flex items-center justify-between gap-4 border-t-2 border-primary/40 bg-muted/30 px-4 py-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Grand Total
+                        </span>
+                        <span className="text-base font-bold text-foreground font-mono tabular-nums">
+                            {formatPhp(grandTotal)}
+                        </span>
                     </div>
                 </div>
             </div>
