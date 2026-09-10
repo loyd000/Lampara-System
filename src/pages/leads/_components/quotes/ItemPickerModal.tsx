@@ -17,16 +17,7 @@ import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-
-function formatPhp(amount: number): string {
-    return (
-        "₱" +
-        amount.toLocaleString("en-PH", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        })
-    );
-}
+import { formatPhp } from "@/lib/money.ts";
 
 const COMMON_UNITS = ["pc", "set", "lot", "m", "roll", "pair", "box"];
 

@@ -12,6 +12,7 @@ import {
 } from "../types.ts";
 import { advanceLeadStage, logActivity } from "./leads.ts";
 import { notifyEvent } from "./notifications.ts";
+import { lineTotalPhp } from "@/lib/money.ts";
 
 type NameOnly = { name: string | null; email: string | null } | null;
 
@@ -174,7 +175,7 @@ export async function saveQuote(args: SaveQuoteArgs): Promise<void> {
     const items = args.items.map((item, idx) => {
         const qty = Math.max(0.01, item.qty);
         const unitPrice = Math.max(0, item.unitPricePhp);
-        const lineTotal = Math.round(qty * unitPrice * 100) / 100;
+        const lineTotal = lineTotalPhp(qty, unitPrice);
         return {
             quote_id: args.quoteId,
             description: item.description.trim() || "Item",

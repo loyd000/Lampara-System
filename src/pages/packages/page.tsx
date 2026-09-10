@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { cn } from "@/lib/utils.ts";
+import { formatPhp } from "@/lib/money.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { QueryError } from "@/components/query-error.tsx";
 import {
@@ -36,14 +37,6 @@ import {
     Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
 import PackageDialog from "./_components/PackageDialog.tsx";
-
-function formatPhp(value: number): string {
-    return value.toLocaleString("en-PH", {
-        style: "currency",
-        currency: "PHP",
-        minimumFractionDigits: 2,
-    });
-}
 
 // Superadmin-only; the gate is on the route (see App.tsx) so this page's
 // queries never fire for anyone else.

@@ -42,16 +42,7 @@ import QuoteBuilder from "./QuoteBuilder.tsx";
 import DownloadQuotePdfButton from "./DownloadQuotePdfButton.tsx";
 import CreateContractDialog from "../CreateContractDialog.tsx";
 import { cn } from "@/lib/utils.ts";
-
-function formatPhp(amount: number): string {
-    return (
-        "₱" +
-        amount.toLocaleString("en-PH", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        })
-    );
-}
+import { formatPhp } from "@/lib/money.ts";
 
 export default function QuotesTab({
     lead,

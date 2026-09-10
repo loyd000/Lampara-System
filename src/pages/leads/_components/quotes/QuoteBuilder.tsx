@@ -54,17 +54,8 @@ import {
     SelectValue,
 } from "@/components/ui/select.tsx";
 import ItemPickerModal from "./ItemPickerModal.tsx";
+import { formatPhp, lineTotalPhp, sumLineTotalsPhp } from "@/lib/money.ts";
 import DownloadQuotePdfButton from "./DownloadQuotePdfButton.tsx";
-
-function formatPhp(amount: number): string {
-    return (
-        "₱" +
-        amount.toLocaleString("en-PH", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        })
-    );
-}
 
 type EditableItem = {
     id: string; // client temporary ID or existing DB id
@@ -163,10 +154,10 @@ export default function QuoteBuilder({
         return () => window.removeEventListener("keydown", onKeyDown);
     });
 
-    // Compute grand total live
-    const grandTotal = useMemo(() => {
-        return items.reduce((acc, it) => acc + it.qty * it.unitPricePhp, 0);
-    }, [items]);
+    // Live grand total, rounded per line exactly as the write path and the
+    // database do — otherwise the figure on screen can disagree with the one
+    // that gets stored, and the customer reads the screen.
+    const grandTotal = useMemo(() => sumLineTotalsPhp(items), [items]);
 
     // ── Handlers ──────────────────────────────────────────────────────────
     function handleItemChange(
@@ -633,7 +624,7 @@ export default function QuoteBuilder({
                                     </tr>
                                 ) : (
                                     items.map((item, idx) => {
-                                        const lineTotal = item.qty * item.unitPricePhp;
+                                        const lineTotal = lineTotalPhp(item.qty, item.unitPricePhp);
                                         return (
                                             <tr
                                                 key={item.id}
