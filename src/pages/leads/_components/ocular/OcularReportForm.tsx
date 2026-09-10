@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import UnsavedChangesBar from "@/components/unsaved-changes-bar.tsx";
 import {
     ApplianceField,
     ChoiceField,
@@ -813,28 +814,26 @@ export default function OcularReportForm({
 
             {/* ── Sticky save bar ──────────────────────────────────────── */}
             {editable && formState.isDirty && (
-                <div className="glass-nav sticky bottom-20 md:bottom-0 -mx-1 px-3 py-3 rounded-xl md:rounded-none border border-sidebar-border md:border-x-0 md:border-b-0 flex items-center justify-between gap-3 shadow-lg md:shadow-none">
-                    <p className="text-xs text-muted-foreground">Unsaved changes</p>
-                    <div className="flex gap-2">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => reset(toForm(survey))}
-                            disabled={disabled}
-                        >
-                            Discard
-                        </Button>
-                        <Button type="submit" size="sm" disabled={disabled}>
-                            {saving ? (
-                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                            ) : (
-                                <Save className="w-3.5 h-3.5 mr-1.5" />
-                            )}
-                            {saving ? "Saving…" : "Save report"}
-                        </Button>
-                    </div>
-                </div>
+                <UnsavedChangesBar>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => reset(toForm(survey))}
+                        disabled={disabled}
+                    >
+                        Discard
+                    </Button>
+                    <Button type="submit" size="sm" className="h-8 text-xs" disabled={disabled}>
+                        {saving ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                            <Save className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        {saving ? "Saving…" : "Save report"}
+                    </Button>
+                </UnsavedChangesBar>
             )}
         </form>
     );

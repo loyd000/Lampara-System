@@ -184,9 +184,12 @@ export default function ItemPickerModal({
                                     key={pkg._id}
                                     className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors shadow-sm"
                                 >
-                                    <div className="flex items-start justify-between gap-4">
+                                    {/* Stacked on a phone: side by side, the button's
+                                        ~140px left the package name about a dozen
+                                        characters and it wrapped to three lines. */}
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <h4 className="font-semibold text-sm text-foreground">
                                                     {pkg.name}
                                                 </h4>
@@ -232,7 +235,7 @@ export default function ItemPickerModal({
                                         <Button
                                             size="sm"
                                             onClick={() => handleAddPackage(pkg)}
-                                            className="shrink-0 h-8 text-xs font-medium"
+                                            className="w-full shrink-0 h-8 text-xs font-medium sm:w-auto"
                                         >
                                             <Plus className="w-3.5 h-3.5 mr-1" />
                                             Add Package

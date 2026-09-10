@@ -305,6 +305,25 @@
         background: rgba(28, 28, 30, 0.82);
     }
 
+    /*
+     * Sits a fixed element clear of the floating mobile tab bar.
+     *
+     * That bar is `bottom: max(0.75rem, safe-area)` and roughly 3.5rem tall, so
+     * anything anchored to the viewport bottom on a phone lands underneath it —
+     * which is exactly how the quote builder's save button went missing: it was
+     * rendering at `bottom-4` behind a `z-50` nav the whole time.
+     */
+    .above-mobile-nav {
+        bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4rem);
+    }
+
+    @media (min-width: 768px) {
+        /* No tab bar on desktop — sit at the bottom edge like any toolbar. */
+        .above-mobile-nav {
+            bottom: 1rem;
+        }
+    }
+
     /* Lighter touch — popovers/dropdowns/menus float over local content, not a scrim */
     .glass-popover {
         background: rgba(255, 255, 255, 0.88);

@@ -55,7 +55,18 @@ import {
 } from "@/components/ui/select.tsx";
 import ItemPickerModal from "./ItemPickerModal.tsx";
 import { formatPhp, lineTotalPhp, sumLineTotalsPhp } from "@/lib/money.ts";
+import UnsavedChangesBar from "@/components/unsaved-changes-bar.tsx";
 import DownloadQuotePdfButton from "./DownloadQuotePdfButton.tsx";
+
+/**
+ * Line-item fields read as text and edit in place — no border, no fill, no
+ * shadow. Seven bordered inputs across one table row is what made this
+ * unusable on a phone; the focus ring is the only chrome, and only while
+ * focused.
+ */
+const CELL_INPUT =
+    "h-8 border-0 bg-transparent dark:bg-transparent shadow-none px-1 " +
+    "focus-visible:ring-1 focus-visible:bg-muted/40";
 
 type EditableItem = {
     id: string; // client temporary ID or existing DB id
@@ -281,11 +292,15 @@ export default function QuoteBuilder({
         ? `${property.address}, ${property.city}, ${property.state} ${property.zip}`
         : null;
 
+    // The bottom padding clears the fixed save bar, which would otherwise
+    // cover the last rows of the table on a phone.
     return (
-        <div className="space-y-6 pb-20">
+        <div className="space-y-6 pb-28 md:pb-20">
             {/* ── Top Bar ─────────────────────────────────────────── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
-                <div className="flex items-center gap-3">
+                {/* Back link takes its own line on a phone — inline, it left the
+                    quotation number about 12 characters of width to wrap in. */}
+                <div className="flex flex-col items-start gap-2 min-w-0 sm:flex-row sm:items-center sm:gap-3">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -296,10 +311,10 @@ export default function QuoteBuilder({
                         All quotes
                     </Button>
 
-                    <div className="h-4 w-px bg-border" />
+                    <div className="hidden sm:block h-4 w-px bg-border" />
 
-                    <div>
-                        <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-base font-bold text-foreground">
                                 {quote.quotationNo || `Quotation v${quote.version}`}
                             </h2>
@@ -648,7 +663,7 @@ export default function QuoteBuilder({
                                                                 )
                                                             }
                                                             rows={1}
-                                                            className="min-h-[30px] text-xs py-1 px-2 resize-none"
+                                                            className={cn(CELL_INPUT, "min-h-[32px] py-1.5 text-xs resize-none")}
                                                         />
                                                     ) : (
                                                         <span className="font-medium text-foreground whitespace-pre-wrap">
@@ -672,7 +687,7 @@ export default function QuoteBuilder({
                                                                     parseFloat(e.target.value) || 0,
                                                                 )
                                                             }
-                                                            className="h-9 text-xs py-1 px-2"
+                                                            className={cn(CELL_INPUT, "text-xs")}
                                                         />
                                                     ) : (
                                                         <span className="tabular-nums font-mono">
@@ -691,7 +706,7 @@ export default function QuoteBuilder({
                                                                     e.target.value,
                                                                 )
                                                             }
-                                                            className="h-9 text-xs py-1 px-2"
+                                                            className={cn(CELL_INPUT, "text-xs")}
                                                         />
                                                     ) : (
                                                         <span className="text-muted-foreground">
@@ -715,7 +730,7 @@ export default function QuoteBuilder({
                                                                     parseFloat(e.target.value) || 0,
                                                                 )
                                                             }
-                                                            className="h-9 text-xs py-1 px-2 text-right font-mono"
+                                                            className={cn(CELL_INPUT, "text-xs text-right font-mono tabular-nums")}
                                                         />
                                                     ) : (
                                                         <span className="tabular-nums font-mono">
@@ -764,36 +779,29 @@ export default function QuoteBuilder({
                 </div>
             </div>
 
-            {/* ── Sticky Save Bar ─────────────────────────────────── */}
+            {/* ── Save Bar ────────────────────────────────────────── */}
             {isDirty && editable && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background/95 backdrop-blur-md border shadow-lg rounded-full px-5 py-2.5 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-3 duration-200">
-                    <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        Unsaved changes
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-xs"
-                            onClick={handleDiscard}
-                            disabled={saving}
-                        >
-                            <RotateCcw className="w-3 h-3 mr-1" />
-                            Discard
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="h-7 text-xs font-medium"
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            <Save className="w-3 h-3 mr-1" />
-                            {saving ? "Saving…" : "Save Quote"}
-                        </Button>
-                    </div>
-                </div>
+                <UnsavedChangesBar>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs"
+                        onClick={handleDiscard}
+                        disabled={saving}
+                    >
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                        Discard
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="h-8 text-xs font-medium"
+                        onClick={handleSave}
+                        disabled={saving}
+                    >
+                        <Save className="w-3.5 h-3.5 mr-1" />
+                        {saving ? "Saving…" : "Save Quote"}
+                    </Button>
+                </UnsavedChangesBar>
             )}
 
             {/* Item Picker Modal */}
