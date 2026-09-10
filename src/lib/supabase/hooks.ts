@@ -444,6 +444,20 @@ export function useUpdateSurveyPhotoCaption() {
     });
 }
 
+/** Marks a visit done, or undoes it — also refreshes the field dashboard. */
+export function useSetSurveyCompleted() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: surveysApi.setSurveyCompleted,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.surveys }),
+                client.invalidateQueries({ queryKey: ["surveys", "mine"] }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
 export function useCancelSurvey() {
     const client = useQueryClient();
     return useMutation({

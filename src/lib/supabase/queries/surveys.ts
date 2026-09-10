@@ -405,6 +405,44 @@ export async function updateSurveyPhotoCaption(args: {
     if (error) throw toAppError(error, "Failed to save caption");
 }
 
+/**
+ * Marks the visit done, or undoes that.
+ *
+ * Completion is `completed_at`, not a status — 0012 removed the approve
+ * handoff and left inspections with no terminal state, which is why the field
+ * dashboard could never move one out of its open list. The RPCs (0028) gate on
+ * `can_edit_survey`, so the assigned technician can record their own visit.
+ */
+export async function setSurveyCompleted(args: {
+    surveyId: Id<"surveys">;
+    completed: boolean;
+}): Promise<void> {
+    const survey = unwrap(
+        await supabase.from("surveys").select("lead_id").eq("id", args.surveyId).single(),
+        "Survey not found",
+    ) as { lead_id: string };
+
+    const { error } = await supabase.rpc(
+        args.completed ? "complete_survey_report" : "reopen_survey_report",
+        { p_survey_id: args.surveyId },
+    );
+    if (error) {
+        throw toAppError(
+            error,
+            args.completed ? "Failed to complete inspection" : "Failed to reopen inspection",
+        );
+    }
+
+    await logActivity({
+        leadId: survey.lead_id,
+        action: args.completed
+            ? "Ocular inspection completed"
+            : "Ocular inspection reopened",
+        entityType: "survey",
+        entityId: args.surveyId,
+    });
+}
+
 export async function cancelSurvey(args: {
     surveyId: Id<"surveys">;
     reason?: string;

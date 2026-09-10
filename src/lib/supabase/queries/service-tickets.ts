@@ -55,7 +55,13 @@ export async function listAllTickets(): Promise<ServiceTicketWithCustomer[]> {
     }));
 }
 
-/** Case-insensitive match across title and description, for global search. */
+/**
+ * Case-insensitive match across title and description, for global search.
+ *
+ * One `search_text` column rather than an OR over both (see 0026) — same
+ * reasoning as `searchLeads`: it is what the trigram index can serve, and a
+ * term is allowed to span the two fields.
+ */
 export async function searchTickets(q: string): Promise<ServiceTicketWithCustomer[]> {
     const term = q.trim();
     if (term.length < 2) return [];
@@ -65,7 +71,7 @@ export async function searchTickets(q: string): Promise<ServiceTicketWithCustome
         await supabase
             .from("service_tickets")
             .select("*, leads(first_name, last_name)")
-            .or(`title.ilike.${pattern},description.ilike.${pattern}`)
+            .ilike("search_text", pattern)
             .order("created_at", { ascending: false })
             .limit(8)
             .returns<

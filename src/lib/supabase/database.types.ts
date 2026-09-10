@@ -25,7 +25,18 @@ export type LeadStage =
     | "cancelled";
 
 export type PropertyType = "residential" | "commercial" | "industrial";
-export type SurveyStatus = "scheduled" | "submitted" | "approved" | "cancelled";
+
+/**
+ * Only two states, and it has been that way since 0012 removed the
+ * submit/approve handoff — the CHECK constraint permits nothing else.
+ * "Finished" is `completed_at`, not a status (see 0028).
+ *
+ * This used to also list "submitted" and "approved". A type that claims values
+ * the database rejects is not a harmless leftover: the revenue report was
+ * written against exactly that kind of stale union in `QuoteStatus` below,
+ * filtered on statuses that could never match, and silently reported ₱0 (0027).
+ */
+export type SurveyStatus = "scheduled" | "cancelled";
 
 // ─── Site Ocular Report enumerations ──────────────────────────────────────
 // Every one of these mirrors a tick-box group on the printed form
@@ -57,14 +68,16 @@ export type SurveyPhotoCategory =
     | "ac_conduit"
     | "other";
 export type RoofType = "asphalt_shingle" | "metal" | "tile" | "flat" | "other";
-export type QuoteStatus =
-    | "in_progress"
-    | "approved"
-    | "draft"
-    | "sent"
-    | "accepted"
-    | "rejected"
-    | "superseded";
+/**
+ * Two states only — the CHECK constraint permits nothing else.
+ *
+ * It previously also listed "draft", "sent", "accepted", "rejected" and
+ * "superseded" from the original 0001 schema. That is not cosmetic: the
+ * revenue report filtered on `status in ('accepted','sent')`, which
+ * typechecked cleanly against the stale union while matching zero rows
+ * forever, and the Reports page showed ₱0 until 0027 caught it.
+ */
+export type QuoteStatus = "in_progress" | "approved";
 export type FinancingOption = "cash" | "loan" | "lease" | "ppa";
 export type ContractStatus = "pending_signature" | "signed" | "cancelled";
 export type PermitType =
@@ -140,6 +153,12 @@ export type LeadRow = Timestamps & {
     notes: string | null;
     cancelled_reason: string | null;
     cancelled_at: string | null;
+    /**
+     * Generated column (0026): name + email + phone concatenated, trigram
+     * indexed. Read by `searchLeads`'s filter, never written or mapped onto
+     * the document type — Postgres maintains it.
+     */
+    search_text: string;
 };
 
 export type PropertyRow = Timestamps & {
@@ -161,6 +180,8 @@ export type PropertyRow = Timestamps & {
     city_municipality: string | null;
     province: string | null;
     zip_code: string | null;
+    /** Generated column (0026): the composed address fields, trigram indexed. */
+    search_text: string;
 };
 
 export type SurveyRow = Timestamps & {
@@ -338,6 +359,8 @@ export type ServiceTicketRow = Timestamps & {
     resolved_at: string | null;
     scheduled_visit_at: string | null;
     warranty_related: boolean;
+    /** Generated column (0026): title + description, trigram indexed. */
+    search_text: string;
 };
 
 /** Overview attachments: `photo` lives in the photos bucket, `document` in documents. */
@@ -546,6 +569,14 @@ export type Database = {
             can_edit_survey: {
                 Args: { p_survey_id: string };
                 Returns: boolean;
+            };
+            complete_survey_report: {
+                Args: { p_survey_id: string };
+                Returns: undefined;
+            };
+            reopen_survey_report: {
+                Args: { p_survey_id: string };
+                Returns: undefined;
             };
         };
         Enums: Record<never, never>;

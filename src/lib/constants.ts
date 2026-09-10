@@ -198,18 +198,19 @@ export const ROOF_TYPE_LABELS: Record<string, string> = {
 // are what the form prints, so the on-screen form and the PDF stay in step.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// A survey is only ever `scheduled` or `cancelled` (0012). "completed" is not
+// a stored status — it is `completed_at` being set (0028) — but it is a state
+// the UI shows, so it has an entry here alongside the two real ones.
 export const SURVEY_STATUS_LABELS: Record<string, string> = {
   scheduled: "Scheduled",
-  submitted: "For Approval",
-  approved: "Approved",
   cancelled: "Cancelled",
+  completed: "Completed",
 };
 
 export const SURVEY_STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  submitted: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
   cancelled: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
 };
 
 // ─── Client details ───────────────────────────────────────────────────────

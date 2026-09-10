@@ -38,6 +38,9 @@ const LEAD_COLUMNS = "*";
  */
 export const LEAD_LIST_LIMIT = 500;
 
+/** What one search returns — a picker's worth, not a page's worth. */
+const LEAD_SEARCH_LIMIT = 20;
+
 export type PagedLeads<T> = {
     leads: T[];
     /** Total matching rows, ignoring the limit. */
@@ -139,47 +142,71 @@ export async function listLeads(
 type EnrichedRow = LeadRow & {
     properties: Pick<PropertyRow, "address" | "city" | "state" | "property_type">[] | null;
     assignedRep: NameOnly;
-    // Only the approved quote's items carry a design type onto the list —
-    // draft/sent/rejected quotes don't count, same rule the lead detail page
-    // Overview tab uses.
-    quotes: {
-        status: string;
-        quote_items: { packages: Pick<PackageRow, "design_type"> | null }[] | null;
-    }[] | null;
+};
+
+type ApprovedQuoteRow = {
+    lead_id: string;
+    quote_items: { packages: Pick<PackageRow, "design_type"> | null }[] | null;
 };
 
 /**
- * The property/rep/design-type embed shared by every list of leads that
- * shows more than a bare name — the leads list and search results both need
- * it, so it isn't just the leads list's own shape.
+ * The property and rep embed shared by every list of leads that shows more
+ * than a bare name.
+ *
+ * Note what is *not* embedded here: quotes. This used to carry
+ * `quotes(status, quote_items(packages(design_type)))`, which fetched every
+ * quote version of every lead, with every line item and each item's package,
+ * to render one "Hybrid" label per row — and then discarded all but the
+ * approved one client-side. A lead with 5 quote versions of 20 lines was 100
+ * embedded rows, times up to 500 leads.
  */
 const ENRICHED_LEAD_SELECT =
     "*, properties(address, city, state, property_type), " +
-    "assignedRep:users!leads_assigned_sales_rep_id_fkey(name, email), " +
-    "quotes(status, quote_items(packages(design_type)))";
+    "assignedRep:users!leads_assigned_sales_rep_id_fkey(name, email)";
 
 /**
- * Same embed, but `properties!inner` — needed only for the location branch of
- * `searchLeads`: a plain (non-inner) embed lets PostgREST filter *which
- * property rows* come back per lead, but does not restrict *which leads*
- * come back. `!inner` is what turns "search the joined table" into "only
- * return leads that have a matching property".
+ * Design types per lead, from approved quotes only.
+ *
+ * A separate query rather than a filtered embed. Filtering an embedded
+ * resource narrows the embedded rows, while `!inner` additionally restricts
+ * which *parents* come back — and getting that distinction wrong here would
+ * silently hide every lead without an approved quote from the main list. That
+ * is not a behaviour worth taking on trust, so the leads query is left alone
+ * and this runs alongside it: it cannot drop a lead, because it never touches
+ * the lead query.
+ *
+ * Cheap despite being a second request: it runs in parallel, and approved
+ * quotes are at most one per lead and only for leads that got that far.
  */
-const ENRICHED_LEAD_SELECT_INNER_PROPERTY =
-    "*, properties!inner(address, city, state, property_type), " +
-    "assignedRep:users!leads_assigned_sales_rep_id_fkey(name, email), " +
-    "quotes(status, quote_items(packages(design_type)))";
+async function fetchApprovedDesignTypes(): Promise<Map<string, PackageDesignType[]>> {
+    const rows = unwrap(
+        await supabase
+            .from("quotes")
+            .select("lead_id, quote_items(packages(design_type))")
+            .eq("status", "approved")
+            .returns<ApprovedQuoteRow[]>(),
+        "Failed to load quote design types",
+    );
 
-function toEnrichedLead(row: EnrichedRow): EnrichedLead {
+    const byLead = new Map<string, PackageDesignType[]>();
+    for (const row of rows) {
+        const designTypes = [
+            ...new Set(
+                (row.quote_items ?? [])
+                    .map((item) => item.packages?.design_type)
+                    .filter((dt): dt is PackageDesignType => Boolean(dt)),
+            ),
+        ];
+        if (designTypes.length) byLead.set(row.lead_id, designTypes);
+    }
+    return byLead;
+}
+
+function toEnrichedLead(
+    row: EnrichedRow,
+    designTypesByLead: Map<string, PackageDesignType[]>,
+): EnrichedLead {
     const property = row.properties?.[0] ?? null;
-    const approvedQuote = (row.quotes ?? []).find((q) => q.status === "approved");
-    const designTypes = [
-        ...new Set(
-            (approvedQuote?.quote_items ?? [])
-                .map((it) => it.packages?.design_type)
-                .filter((dt): dt is PackageDesignType => Boolean(dt)),
-        ),
-    ];
     return {
         ...toLead(row),
         assignedRepName: row.assignedRep ? displayName(row.assignedRep) : null,
@@ -191,7 +218,7 @@ function toEnrichedLead(row: EnrichedRow): EnrichedLead {
                   propertyType: property.property_type,
               }
             : null,
-        designTypes,
+        designTypes: designTypesByLead.get(row.id) ?? [],
     };
 }
 
@@ -199,8 +226,9 @@ function toEnrichedLead(row: EnrichedRow): EnrichedLead {
  * Leads with their first property, the assigned rep's name, and the design
  * type(s) of any approved quote.
  *
- * The Convex version issued one query per lead for each; PostgREST resolves all
- * of it as embedded resources in a single request.
+ * Two requests in parallel — the leads themselves, and the design types (see
+ * `fetchApprovedDesignTypes`). Same round-trip latency as one, a fraction of
+ * the rows.
  */
 export async function listEnrichedLeads(
     filters: {
@@ -225,16 +253,19 @@ export async function listEnrichedLeads(
         query = query.eq("assigned_sales_rep_id", filters.assignedSalesRepId);
     }
 
-    const result = await query
-        .order("last_activity_at", { ascending: false })
-        .limit(limit)
-        .returns<EnrichedRow[]>();
+    const [result, designTypesByLead] = await Promise.all([
+        query
+            .order("last_activity_at", { ascending: false })
+            .limit(limit)
+            .returns<EnrichedRow[]>(),
+        fetchApprovedDesignTypes(),
+    ]);
 
     const rows = unwrap(result, "Failed to load leads");
     const total = result.count ?? rows.length;
 
     return {
-        leads: rows.map(toEnrichedLead),
+        leads: rows.map((row) => toEnrichedLead(row, designTypesByLead)),
         total,
         truncated: total > rows.length,
     };
@@ -288,51 +319,58 @@ export async function getActivity(leadId: Id<"leads">): Promise<ActivityEntry[]>
 }
 
 /**
- * Case-insensitive match across name, email, phone — and location (a
- * property's city or province/state). Capped like Convex's.
+ * Case-insensitive match across name, email, phone — and location.
  *
- * Two separate queries rather than one: PostgREST's `.or()` can filter the
- * parent table's own columns, or (with `!inner`) restrict parents to those
- * with a matching *embedded* row, but not both combined in a single filter
- * expression. Run in parallel and merge, so "Malabon" and "Ervin" both work
- * from the same search box without either query paying for the other's join.
+ * Both sides search one `search_text` column (see 0026) rather than OR-ing
+ * several columns together. That is what lets the trigram index actually get
+ * used, and it means a term can span what used to be a column boundary:
+ * "Juan Dela" matches `first_name = 'Juan'` + `last_name = 'Dela Cruz'`, and
+ * "Agusan del Norte" matches across a property's city and province.
+ *
+ * Location can't be part of the leads predicate — it lives on `properties` —
+ * so matching lead ids are resolved first and folded into the same `or()` as
+ * the name match. Two round trips, both plain top-level filters: the previous
+ * version used an embedded `referencedTable` filter for the location half,
+ * which is a far less trodden path in PostgREST and appears never to have
+ * matched anything.
  */
 export async function searchLeads(q: string): Promise<EnrichedLead[]> {
     const term = q.trim();
     if (term.length < 2) return [];
 
+    // `%` and `_` are LIKE wildcards and `,()` are `or()` filter syntax —
+    // strip them so a stray character can neither widen the search nor break
+    // the expression.
     const pattern = `%${term.replace(/[%_,()]/g, "")}%`;
 
-    const [byFieldsResult, byLocationResult] = await Promise.all([
+    const propertyRows = unwrap(
+        await supabase
+            .from("properties")
+            .select("lead_id")
+            .ilike("search_text", pattern)
+            .limit(LEAD_SEARCH_LIMIT)
+            .returns<{ lead_id: string }[]>(),
+        "Search failed",
+    );
+
+    const leadIds = [...new Set(propertyRows.map((row) => row.lead_id))];
+    const filter = leadIds.length
+        ? `search_text.ilike.${pattern},id.in.(${leadIds.join(",")})`
+        : `search_text.ilike.${pattern}`;
+
+    const [result, designTypesByLead] = await Promise.all([
         supabase
             .from("leads")
             .select(ENRICHED_LEAD_SELECT)
-            .or(
-                `first_name.ilike.${pattern},last_name.ilike.${pattern},` +
-                    `email.ilike.${pattern},phone.ilike.${pattern}`,
-            )
+            .or(filter)
             .order("last_activity_at", { ascending: false })
-            .limit(20)
+            .limit(LEAD_SEARCH_LIMIT)
             .returns<EnrichedRow[]>(),
-        supabase
-            .from("leads")
-            .select(ENRICHED_LEAD_SELECT_INNER_PROPERTY)
-            .or(`city.ilike.${pattern},state.ilike.${pattern}`, { referencedTable: "properties" })
-            .order("last_activity_at", { ascending: false })
-            .limit(20)
-            .returns<EnrichedRow[]>(),
+        fetchApprovedDesignTypes(),
     ]);
 
-    const byFields = unwrap(byFieldsResult, "Search failed");
-    const byLocation = unwrap(byLocationResult, "Search failed");
-
-    const merged = new Map<string, EnrichedRow>();
-    for (const row of [...byFields, ...byLocation]) merged.set(row.id, row);
-
-    return [...merged.values()]
-        .sort((a, b) => b.last_activity_at.localeCompare(a.last_activity_at))
-        .slice(0, 20)
-        .map(toEnrichedLead);
+    const rows = unwrap(result, "Search failed");
+    return rows.map((row) => toEnrichedLead(row, designTypesByLead));
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────
