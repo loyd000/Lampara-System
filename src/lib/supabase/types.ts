@@ -509,8 +509,8 @@ export type LeadFileEntry = {
 
 export type SurveyForLead = Survey & {
     surveyorName: string;
-    preparedByName: string | null;
-    approvedByName: string | null;
+    // No preparedByName/approvedByName: the sign-off they came from was
+    // removed in 0012 and its columns dropped in 0029. Nothing read them.
     photos: SurveyPhoto[];
     /** Legacy flat gallery — pre-0009 photos that have no slot. */
     photoUrls: string[];

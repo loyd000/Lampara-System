@@ -36,10 +36,13 @@ export async function listSurveysForLead(
     const rows = unwrap(
         await supabase
             .from("surveys")
+            // No preparer/approver embeds: those joined through
+            // `surveys_prepared_by_id_fkey` / `surveys_approved_by_id_fkey`,
+            // which went with the columns in 0029. PostgREST resolves an embed
+            // by constraint name at request time, so a stale one here is a
+            // runtime 400 that nothing in the build can catch.
             .select(
                 "*, surveyor:users!surveys_assigned_surveyor_id_fkey(name, email), " +
-                    "preparer:users!surveys_prepared_by_id_fkey(name, email), " +
-                    "approver:users!surveys_approved_by_id_fkey(name, email), " +
                     "survey_photos(*)",
             )
             .eq("lead_id", leadId)
@@ -47,8 +50,6 @@ export async function listSurveysForLead(
             .returns<
                 (SurveyRow & {
                     surveyor: NameOnly;
-                    preparer: NameOnly;
-                    approver: NameOnly;
                     survey_photos: SurveyPhotoRow[] | null;
                 })[]
             >(),
@@ -80,8 +81,6 @@ export async function listSurveysForLead(
         return {
             ...toSurvey(row),
             surveyorName: displayName(row.surveyor),
-            preparedByName: row.preparer ? displayName(row.preparer) : null,
-            approvedByName: row.approver ? displayName(row.approver) : null,
             photos,
             photoUrls: (row.photo_paths ?? []).flatMap((path) => {
                 if (slotted.has(path)) return [];

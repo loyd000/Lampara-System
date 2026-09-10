@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { QueryError } from "@/components/query-error.tsx";
 import {
     Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
 } from "@/components/ui/empty.tsx";
@@ -67,7 +68,8 @@ export default function OcularInspectionTab({
 }) {
     const leadId = lead._id as Id<"leads">;
     const propertyId = property?._id as Id<"properties"> | undefined;
-    const { data: surveys } = useSurveysForLead(leadId);
+    const surveysQuery = useSurveysForLead(leadId);
+    const { data: surveys } = surveysQuery;
     const { data: currentUser } = useCurrentUser();
     const [searchParams, setSearchParams] = useSearchParams();
     const [createOpen, setCreateOpen] = useState(false);
@@ -81,6 +83,20 @@ export default function OcularInspectionTab({
                 return next;
             },
             { replace: true },
+        );
+    }
+
+    // Say so when the query fails, rather than sitting on the loading state.
+    // Without this branch `surveys` simply stays undefined on error and the
+    // tab shows skeletons for ever — which is how a stale PostgREST embed
+    // (0029 dropped the FK it named) presented as a blank page rather than an
+    // error anyone could act on.
+    if (surveysQuery.isError) {
+        return (
+            <QueryError
+                title="Couldn't load inspections"
+                onRetry={() => void surveysQuery.refetch()}
+            />
         );
     }
 
