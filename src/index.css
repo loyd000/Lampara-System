@@ -1,7 +1,3 @@
-@import "@fontsource/plus-jakarta-sans/400.css";
-@import "@fontsource/plus-jakarta-sans/500.css";
-@import "@fontsource/plus-jakarta-sans/600.css";
-@import "@fontsource/plus-jakarta-sans/700.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -294,5 +290,29 @@
 
     .dark .glass-nav {
         background: rgba(28, 28, 30, 0.72);
+    }
+
+    /* Same recipe, for overlays that sit above a dimmed scrim (dialog / alert
+       dialog / sheet) rather than above scrolling page content. Slightly less
+       transparent than nav glass since there's no content moving under it. */
+    .glass-modal {
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+    }
+
+    .dark .glass-modal {
+        background: rgba(28, 28, 30, 0.82);
+    }
+
+    /* Lighter touch — popovers/dropdowns/menus float over local content, not a scrim */
+    .glass-popover {
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: saturate(180%) blur(16px);
+        -webkit-backdrop-filter: saturate(180%) blur(16px);
+    }
+
+    .dark .glass-popover {
+        background: rgba(28, 28, 30, 0.88);
     }
 }

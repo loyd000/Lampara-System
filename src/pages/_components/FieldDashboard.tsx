@@ -193,21 +193,23 @@ export default function FieldDashboard({ user }: Props) {
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
                     Good {greeting()}, {user.name?.split(" ")[0] ?? "there"}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1.5">
                     Your inspections and installations at Lampara
                 </p>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={<Clock className="size-4" />} label="Today" value={todayJobs.length} />
-                <StatCard icon={<CalendarDays className="size-4" />} label="Next 7 days" value={thisWeek.length} />
-                <StatCard icon={<Wrench className="size-4" />} label="Open jobs" value={jobs.filter(isOpen).length} />
-                <StatCard icon={<CheckCircle2 className="size-4" />} label="Done (30d)" value={completedRecently.length} />
-            </div>
+            {/* Stats — one unified panel, hairline-separated */}
+            <Card className="py-0">
+                <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x">
+                    <StatCell icon={<Clock className="size-4" />} label="Today" value={todayJobs.length} />
+                    <StatCell icon={<CalendarDays className="size-4" />} label="Next 7 days" value={thisWeek.length} />
+                    <StatCell icon={<Wrench className="size-4" />} label="Open jobs" value={jobs.filter(isOpen).length} />
+                    <StatCell icon={<CheckCircle2 className="size-4" />} label="Done (30d)" value={completedRecently.length} />
+                </div>
+            </Card>
 
             {/* Overdue — anything still open with a date in the past */}
             {overdue.length > 0 && (
@@ -283,25 +285,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     );
 }
 
-function StatCard({ icon, label, value }: {
+function StatCell({ icon, label, value }: {
     icon: React.ReactNode;
     label: string;
     value: number;
 }) {
     return (
-        <Card>
-            <CardContent>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
-                        <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
-                    </div>
-                    <div className="size-8 flex items-center justify-center rounded-md bg-secondary text-foreground border border-border">
-                        {icon}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="flex items-center justify-between gap-3 px-5 py-5">
+            <div>
+                <p className="text-[26px] font-bold tracking-[-0.02em] text-foreground tabular-nums">{value}</p>
+                <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
+            </div>
+            <div className="text-muted-foreground">{icon}</div>
+        </div>
     );
 }
 
@@ -318,10 +314,10 @@ function JobCard({ job, onClick, tone }: {
         <div
             onClick={onClick}
             className={cn(
-                "flex items-start gap-4 px-5 py-4 rounded-lg border bg-card cursor-pointer",
-                "hover:shadow-md hover:border-primary/30 transition-all",
-                tone === "today" && "border-amber-300/60 dark:border-amber-700/40",
-                tone === "overdue" && "border-destructive/40",
+                "flex items-start gap-4 px-5 py-4 rounded-xl bg-card shadow-2xs cursor-pointer",
+                "hover:shadow-sm transition-all",
+                tone === "today" && "ring-1 ring-amber-300/60 dark:ring-amber-700/40",
+                tone === "overdue" && "ring-1 ring-destructive/40",
             )}
         >
             {/* Kind icon */}

@@ -73,8 +73,8 @@ export default function PipelinePage() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Pipeline</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Pipeline</h1>
+                    <p className="text-sm text-muted-foreground mt-1.5">
                         {leads === undefined
                             ? "Loading…"
                             : page?.truncated
@@ -218,10 +218,10 @@ function PipelineCard({
             onDragEnd={canMoveStage ? onDragEnd : undefined}
             onClick={onClick}
             className={cn(
-                "bg-card border border-border rounded-lg p-3 transition-all select-none",
-                canMoveStage && "cursor-grab active:cursor-grabbing hover:shadow-xs hover:border-foreground/30",
+                "bg-card rounded-xl p-3 shadow-2xs transition-all select-none",
+                canMoveStage && "cursor-grab active:cursor-grabbing hover:shadow-sm",
                 isDragging && "opacity-40 scale-95",
-                isStale && "border-amber-300/60 dark:border-amber-700/40",
+                isStale && "ring-1 ring-amber-300/60 dark:ring-amber-700/40",
             )}
         >
             {/* Name + stale indicator */}

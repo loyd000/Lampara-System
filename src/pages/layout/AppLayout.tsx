@@ -75,7 +75,7 @@ export default function AppLayout() {
                               a page that scrolls past the shell into empty space.
                               Worst on the ocular report, which has ~40 of them.
                             */}
-                            <main className="relative flex-1 overflow-auto pb-16 md:pb-0">
+                            <main className="relative flex-1 overflow-auto pb-24 md:pb-0">
                                 <Outlet />
                             </main>
                         </div>

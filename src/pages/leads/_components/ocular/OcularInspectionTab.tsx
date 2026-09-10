@@ -346,16 +346,15 @@ function StatusBar({
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                         <DownloadReportButton survey={survey} lead={lead} property={property} />
                         {survey.status === "scheduled" && canSchedule && (
                             <ConfirmButton
-                                label="Cancel"
+                                label="Cancel Visit"
                                 variant="ghost"
-                                destructive
                                 icon={<X className="w-3.5 h-3.5 mr-1.5" />}
-                                title="Cancel this inspection?"
-                                description="The visit is called off. Anything already filled in stays on the record."
+                                title="Cancel this visit?"
+                                description="The visit is called off, but the report stays on record with whatever's already filled in — pick this over Delete Report if you just want to note the visit didn't happen."
                                 disabled={busy}
                                 onConfirm={() =>
                                     run(
@@ -366,23 +365,21 @@ function StatusBar({
                             />
                         )}
                         {canSchedule && (
-                            <div className="flex items-center ml-1 pl-1.5 border-l">
-                                <ConfirmButton
-                                    label="Delete Report"
-                                    variant="ghost"
-                                    destructive
-                                    icon={<Trash2 className="w-3.5 h-3.5 mr-1.5" />}
-                                    title="Delete this report?"
-                                    description="This permanently removes the report and its photos. This cannot be undone — use Cancel instead if you just want to record that the visit was called off."
-                                    disabled={busy}
-                                    onConfirm={() =>
-                                        run(
-                                            () => deleteSurvey({ surveyId }).then(onDeleted),
-                                            "Report deleted",
-                                        )
-                                    }
-                                />
-                            </div>
+                            <ConfirmButton
+                                label="Delete Report"
+                                variant="ghost"
+                                destructive
+                                icon={<Trash2 className="w-3.5 h-3.5 mr-1.5" />}
+                                title="Delete this report?"
+                                description="This permanently removes the report and its photos. This cannot be undone."
+                                disabled={busy}
+                                onConfirm={() =>
+                                    run(
+                                        () => deleteSurvey({ surveyId }).then(onDeleted),
+                                        "Report deleted",
+                                    )
+                                }
+                            />
                         )}
                     </div>
                 </div>

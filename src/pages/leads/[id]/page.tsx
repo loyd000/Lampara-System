@@ -306,7 +306,7 @@ export default function LeadDetailPage() {
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <div className="flex-1 min-w-0">
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
                         {lead.firstName} {lead.lastName}
                     </h1>
                     {/* One quiet line instead of a row of badges. The stage
@@ -389,7 +389,7 @@ export default function LeadDetailPage() {
             {/* ── Tabs ───────────────────────────────────── */}
             <Tabs value={tab} onValueChange={setTab}>
                 {/* Scrolls rather than wrapping: seven tabs do not fit a phone. */}
-                <div className="-mx-6 px-6 overflow-x-auto sticky top-0 z-20 bg-background/95 backdrop-blur-sm py-1">
+                <div className="glass-nav -mx-6 px-6 overflow-x-auto sticky top-0 z-20 py-1">
                     <TabsList variant="line" className="w-max">
                         {TABS.map((t) => (
                             <TabsTrigger key={t.value} value={t.value} className="whitespace-nowrap">

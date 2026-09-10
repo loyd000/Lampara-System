@@ -109,8 +109,8 @@ export default function CalendarPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Calendar</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Calendar</h1>
+                    <p className="text-sm text-muted-foreground mt-1.5">
                         Inspections and installations, in one schedule
                     </p>
                 </div>
@@ -191,9 +191,9 @@ function MonthGrid({
 }) {
     const MAX_VISIBLE = 3;
     return (
-        <div className="border rounded-lg overflow-x-auto">
+        <div className="bg-card rounded-xl shadow-sm overflow-x-auto">
             <div className="min-w-[640px]">
-                <div className="grid grid-cols-7 border-b bg-muted/30">
+                <div className="grid grid-cols-7 border-b border-border">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                         <div key={d} className="px-2 py-2 text-xs font-semibold text-muted-foreground text-center">
                             {d}
@@ -210,8 +210,8 @@ function MonthGrid({
                             <div
                                 key={key}
                                 className={cn(
-                                    "min-h-[7rem] border-b border-r p-1.5 space-y-1",
-                                    !isSameMonth(day, anchor) && "bg-muted/20",
+                                    "min-h-[7rem] border-b border-r border-border p-1.5 space-y-1",
+                                    !isSameMonth(day, anchor) && "bg-muted/40",
                                 )}
                             >
                                 <span
@@ -275,10 +275,10 @@ function WeekGrid({
                 const key = format(day, "yyyy-MM-dd");
                 const dayEvents = eventsByDay.get(key) ?? [];
                 return (
-                    <div key={key} className="border rounded-lg overflow-hidden">
+                    <div key={key} className="bg-card rounded-xl shadow-sm overflow-hidden">
                         <div
                             className={cn(
-                                "flex items-center gap-2 px-3 py-2 border-b bg-muted/30",
+                                "flex items-center gap-2 px-3 py-2 border-b border-border",
                                 isToday(day) && "bg-primary/10",
                             )}
                         >

@@ -813,7 +813,7 @@ export default function OcularReportForm({
 
             {/* ── Sticky save bar ──────────────────────────────────────── */}
             {editable && formState.isDirty && (
-                <div className="sticky bottom-0 -mx-1 px-1 py-3 bg-background/95 backdrop-blur-sm border-t flex items-center justify-between gap-3">
+                <div className="glass-nav sticky bottom-20 md:bottom-0 -mx-1 px-3 py-3 rounded-xl md:rounded-none border border-sidebar-border md:border-x-0 md:border-b-0 flex items-center justify-between gap-3 shadow-lg md:shadow-none">
                     <p className="text-xs text-muted-foreground">Unsaved changes</p>
                     <div className="flex gap-2">
                         <Button

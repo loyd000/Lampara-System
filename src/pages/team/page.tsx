@@ -123,8 +123,8 @@ export default function TeamPage() {
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Team</h1>
-                <p className="text-sm text-muted-foreground mt-1">
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Team</h1>
+                <p className="text-sm text-muted-foreground mt-1.5">
                     {isSuperadmin
                         ? "Approve new accounts and manage everyone's role"
                         : "Your team at a glance — only a superadmin can change roles or approve accounts"}

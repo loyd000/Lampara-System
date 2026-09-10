@@ -17,12 +17,15 @@ export default function MobileNav() {
     ];
 
     return (
-        <nav className="glass-nav fixed bottom-0 left-0 right-0 flex justify-around border-t border-sidebar-border md:hidden z-50">
+        <nav
+            className="glass-nav fixed left-3 right-3 flex justify-around rounded-2xl border border-sidebar-border shadow-lg md:hidden z-50"
+            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        >
             {items.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.to === "/"}>
+                <NavLink key={item.to} to={item.to} end={item.to === "/"} className="min-w-0 flex-1">
                     {({ isActive }) => (
                         <div className={cn(
-                            "flex flex-col items-center gap-0.5 py-2.5 px-3 text-[11px] font-medium tracking-tight transition-colors cursor-pointer",
+                            "flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium tracking-tight transition-colors cursor-pointer",
                             isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60",
                         )}>
                             <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.25 : 1.75} />

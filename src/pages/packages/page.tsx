@@ -22,7 +22,8 @@ import { DESIGN_TYPE_LABELS } from "@/lib/constants.ts";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
-import { Card, CardContent } from "@/components/ui/card.tsx";
+import { Card } from "@/components/ui/card.tsx";
+import { cn } from "@/lib/utils.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { QueryError } from "@/components/query-error.tsx";
 import {
@@ -107,8 +108,8 @@ export default function PackagesPage() {
             {/* ── Header ────────────────────────────────────────── */}
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Packages</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Packages</h1>
+                    <p className="text-sm text-muted-foreground mt-1.5">
                         Solar system bundles — the building blocks of quotes
                     </p>
                 </div>
@@ -155,8 +156,8 @@ export default function PackagesPage() {
                                     {activePackages.length}
                                 </Badge>
                             </div>
-                            <div className="space-y-2">
-                                {activePackages.map((pkg) => (
+                            <Card className="py-0 gap-0 overflow-hidden">
+                                {activePackages.map((pkg, i) => (
                                     <PackageCard
                                         key={pkg._id}
                                         pkg={pkg}
@@ -165,9 +166,10 @@ export default function PackagesPage() {
                                         onEdit={() => openEdit(pkg)}
                                         onToggleActive={() => void handleToggleActive(pkg)}
                                         busy={busyId === pkg._id}
+                                        divider={i > 0}
                                     />
                                 ))}
-                            </div>
+                            </Card>
                         </section>
                     )}
 
@@ -183,8 +185,8 @@ export default function PackagesPage() {
                                     {archivedPackages.length}
                                 </Badge>
                             </div>
-                            <div className="space-y-2">
-                                {archivedPackages.map((pkg) => (
+                            <Card className="py-0 gap-0 overflow-hidden">
+                                {archivedPackages.map((pkg, i) => (
                                     <PackageCard
                                         key={pkg._id}
                                         pkg={pkg}
@@ -193,9 +195,10 @@ export default function PackagesPage() {
                                         onEdit={() => openEdit(pkg)}
                                         onToggleActive={() => void handleToggleActive(pkg)}
                                         busy={busyId === pkg._id}
+                                        divider={i > 0}
                                     />
                                 ))}
-                            </div>
+                            </Card>
                         </section>
                     )}
                 </>
@@ -220,14 +223,15 @@ type CardProps = {
     onEdit: () => void;
     onToggleActive: () => void;
     busy: boolean;
+    divider?: boolean;
 };
 
-function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, busy }: CardProps) {
+function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, busy, divider }: CardProps) {
     const itemCount = pkg.items.length;
 
     return (
-        <Card className={!pkg.isActive ? "opacity-60" : undefined}>
-            <CardContent className="p-0">
+        <div className={cn(divider && "border-t border-border", !pkg.isActive && "opacity-60")}>
+            <div>
                 {/* Header row */}
                 <div className="flex items-center gap-3 px-4 py-3">
                     <button
@@ -404,7 +408,7 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                         No line items — this package is just a header.
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

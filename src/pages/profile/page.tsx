@@ -96,8 +96,8 @@ export default function ProfilePage() {
     return (
         <div className="p-6 space-y-6 max-w-2xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">My Profile</h1>
-                <p className="text-sm text-muted-foreground mt-1">
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">My Profile</h1>
+                <p className="text-sm text-muted-foreground mt-1.5">
                     Your account details and personal preferences
                 </p>
             </div>

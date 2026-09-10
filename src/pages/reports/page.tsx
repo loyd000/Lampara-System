@@ -51,41 +51,19 @@ export default function ReportsPage() {
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
-                <p className="text-sm text-muted-foreground mt-1">Business overview and operational metrics</p>
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Reports</h1>
+                <p className="text-sm text-muted-foreground mt-1.5">Business overview and operational metrics</p>
             </div>
 
-            {/* ── Top KPIs ──────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard
-                    label="Total Leads"
-                    value={pipeline?.totalLeads}
-                    icon={<TrendingUp className="w-5 h-5" />}
-                    color="bg-secondary text-foreground"
-                    loading={isLoading}
-                />
-                <KpiCard
-                    label="Conversion Rate"
-                    value={pipeline ? `${pipeline.conversionRate}%` : undefined}
-                    icon={<FileCheck className="w-5 h-5" />}
-                    color="bg-secondary text-foreground"
-                    loading={isLoading}
-                />
-                <KpiCard
-                    label="Pipeline Value"
-                    value={revenue ? `₱${(revenue.pipelineValue / 1000).toFixed(0)}k` : undefined}
-                    icon={<DollarSign className="w-5 h-5" />}
-                    color="bg-secondary text-foreground"
-                    loading={isLoading}
-                />
-                <KpiCard
-                    label="Active Customers"
-                    value={pipeline?.activeCustomers}
-                    icon={<SunMedium className="w-5 h-5" />}
-                    color="bg-secondary text-foreground"
-                    loading={isLoading}
-                />
-            </div>
+            {/* ── Top KPIs — one unified panel, hairline-separated ─────── */}
+            <Card className="py-0">
+                <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x">
+                    <KpiCell label="Total Leads" value={pipeline?.totalLeads} icon={<TrendingUp className="w-4 h-4" />} loading={isLoading} />
+                    <KpiCell label="Conversion Rate" value={pipeline ? `${pipeline.conversionRate}%` : undefined} icon={<FileCheck className="w-4 h-4" />} loading={isLoading} />
+                    <KpiCell label="Pipeline Value" value={revenue ? `₱${(revenue.pipelineValue / 1000).toFixed(0)}k` : undefined} icon={<DollarSign className="w-4 h-4" />} loading={isLoading} />
+                    <KpiCell label="Active Customers" value={pipeline?.activeCustomers} icon={<SunMedium className="w-4 h-4" />} loading={isLoading} />
+                </div>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* ── Pipeline by Stage ─────────────────────────── */}
@@ -269,7 +247,7 @@ export default function ReportsPage() {
                     <CardContent className="p-0 overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
+                                <tr className="border-b border-border text-xs text-muted-foreground">
                                     <th className="px-3 sm:px-6 py-3 text-left">Customer</th>
                                     <th className="px-3 sm:px-6 py-3 text-left">Stage</th>
                                     <th className="px-3 sm:px-6 py-3 text-left">Inactive</th>
@@ -306,35 +284,29 @@ export default function ReportsPage() {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiCard({
+function KpiCell({
     label,
     value,
     icon,
-    color,
     loading,
 }: {
     label: string;
     value?: number | string;
     icon: React.ReactNode;
-    color?: string;
     loading?: boolean;
 }) {
     return (
-        <Card>
-            <CardContent>
-                <div className="flex items-start justify-between">
-                    <div>
-                        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-                        {loading ? (
-                            <Skeleton className="h-7 w-16 mt-1 rounded-md" />
-                        ) : (
-                            <p className="text-2xl font-bold tracking-tight text-foreground mt-1">{value ?? "—"}</p>
-                        )}
-                    </div>
-                    <div className={cn("p-2 rounded-md border border-border", color)}>{icon}</div>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="flex items-start justify-between gap-3 px-5 py-5">
+            <div>
+                <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                {loading ? (
+                    <Skeleton className="h-7 w-16 mt-1 rounded-md" />
+                ) : (
+                    <p className="text-[26px] font-bold tracking-[-0.02em] text-foreground mt-1 tabular-nums">{value ?? "—"}</p>
+                )}
+            </div>
+            <div className="text-muted-foreground mt-0.5">{icon}</div>
+        </div>
     );
 }
 
