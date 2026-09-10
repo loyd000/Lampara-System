@@ -170,10 +170,19 @@ function EventPill({ event, onOpen }: { event: CalendarEvent; onOpen: (e: Calend
                 "w-full text-left rounded-md border px-1.5 py-1 text-[11px] font-medium leading-tight truncate transition-opacity hover:opacity-80",
                 KIND_STYLES[event.kind],
             )}
-            title={`${event.leadName} — ${KIND_LABELS[event.kind]}`}
+            title={
+                event.kind === "installation" && event.dayCount > 1
+                    ? `${event.leadName} — ${KIND_LABELS[event.kind]} (day ${event.dayIndex} of ${event.dayCount})`
+                    : `${event.leadName} — ${KIND_LABELS[event.kind]}`
+            }
         >
             {!event.allDay && <span className="tabular-nums mr-1">{format(new Date(event.at), "h:mma").toLowerCase()}</span>}
             {event.leadName}
+            {event.kind === "installation" && event.dayCount > 1 && (
+                <span className="ml-1 opacity-70 tabular-nums">
+                    {event.dayIndex}/{event.dayCount}
+                </span>
+            )}
         </button>
     );
 }
@@ -325,6 +334,9 @@ function WeekGrid({
                                                 {KIND_LABELS[event.kind]}
                                                 {!event.allDay && ` · ${format(new Date(event.at), "h:mm a")}`}
                                                 {event.allDay && " · All day"}
+                                                {event.kind === "installation" &&
+                                                    event.dayCount > 1 &&
+                                                    ` · Day ${event.dayIndex} of ${event.dayCount}`}
                                                 {event.assigneeNames.length > 0 && ` · ${event.assigneeNames.join(", ")}`}
                                             </p>
                                             {event.address && (

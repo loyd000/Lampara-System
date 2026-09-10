@@ -41,6 +41,13 @@ export type CalendarEvent =
           /** Date only — no time-of-day was ever scheduled. */
           at: string;
           allDay: true;
+          /**
+           * A multi-day install is emitted once per day it covers, so the
+           * calendar's day buckets need no special case. These say which day
+           * of the job this one is: "Day 2 of 4".
+           */
+          dayIndex: number;
+          dayCount: number;
       };
 
 type LeadWithProperty = Pick<LeadRow, "first_name" | "last_name"> & {
@@ -57,7 +64,32 @@ function leadNameOf(lead: LeadWithProperty | null): string {
 }
 
 /**
- * Inspections and installs in `[from, to]`, merged and sorted by time.
+ * Every yyyy-mm-dd from `start` to `end`, inclusive.
+ *
+ * Stepped in UTC on purpose. These are plain dates with no time-of-day, and
+ * walking them through a local-time Date is how a job in a UTC+8 timezone
+ * loses or repeats a day across a DST boundary.
+ */
+export function daysBetween(start: string, end: string): string[] {
+    const days: string[] = [];
+    const cursor = new Date(`${start}T00:00:00Z`);
+    const last = new Date(`${end}T00:00:00Z`);
+    // A backwards range is impossible (CHECK constraint), but a malformed date
+    // would otherwise spin here forever.
+    if (Number.isNaN(cursor.getTime()) || Number.isNaN(last.getTime())) return [start];
+    while (cursor <= last) {
+        days.push(cursor.toISOString().slice(0, 10));
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return days;
+}
+
+/**
+ * Inspections and installs overlapping `[from, to]`, merged and sorted by time.
+ *
+ * A finished inspection leaves the calendar: the schedule answers "what still
+ * has to happen", and a completed visit sitting on last Tuesday is history, not
+ * a commitment. It stays on the lead's Ocular Inspection tab either way.
  *
  * Field technicians see only jobs they are assigned to; every other role sees
  * the whole board — the same "mine vs. everyone" split `listMyInspections` /
@@ -95,14 +127,17 @@ export async function listCalendarEvents(args: {
         )
         .gte("scheduled_at", `${args.from}T00:00:00Z`)
         .lte("scheduled_at", `${args.to}T23:59:59Z`)
-        .neq("status", "cancelled");
+        .neq("status", "cancelled")
+        .is("completed_at", null);
     if (isField) surveyQuery = surveyQuery.eq("assigned_surveyor_id", auth.user.id);
 
     let installationQuery = supabase
         .from("installations")
         .select("*, leads(first_name, last_name, properties(address, city))")
-        .gte("scheduled_date", args.from)
-        .lte("scheduled_date", args.to);
+        // Overlap, not containment: a job that started before this view and
+        // ends inside it still belongs on these days.
+        .lte("scheduled_date", args.to)
+        .gte("scheduled_end_date", args.from);
     if (isField) installationQuery = installationQuery.contains("assigned_crew_ids", [auth.user.id]);
 
     const [surveys, installations, crew] = await Promise.all([
@@ -131,19 +166,30 @@ export async function listCalendarEvents(args: {
         allDay: false,
     }));
 
-    const installationEvents: CalendarEvent[] = installationRows.map((row) => ({
-        kind: "installation",
-        id: row.id,
-        leadId: row.lead_id,
-        leadName: leadNameOf(row.leads),
-        address: addressOf(row.leads),
-        status: row.status,
-        assigneeNames: row.assigned_crew_ids.length
+    const installationEvents: CalendarEvent[] = installationRows.flatMap((row) => {
+        const days = daysBetween(row.scheduled_date, row.scheduled_end_date);
+        const assigneeNames = row.assigned_crew_ids.length
             ? row.assigned_crew_ids.map((id) => crewById.get(id) ?? "Unknown")
-            : ["Unassigned"],
-        at: row.scheduled_date,
-        allDay: true,
-    }));
+            : ["Unassigned"];
+
+        return days
+            // The row was fetched because it overlaps the view, but it may
+            // start before or end after it; only the visible days are emitted.
+            .filter((day) => day >= args.from && day <= args.to)
+            .map((day) => ({
+                kind: "installation" as const,
+                id: row.id,
+                leadId: row.lead_id,
+                leadName: leadNameOf(row.leads),
+                address: addressOf(row.leads),
+                status: row.status,
+                assigneeNames,
+                at: day,
+                allDay: true as const,
+                dayIndex: days.indexOf(day) + 1,
+                dayCount: days.length,
+            }));
+    });
 
     return [...inspectionEvents, ...installationEvents].sort((a, b) =>
         a.at.localeCompare(b.at),

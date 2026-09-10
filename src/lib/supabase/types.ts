@@ -315,6 +315,8 @@ export type Installation = Base & {
     leadId: string;
     status: InstallationStatus;
     scheduledDate: string;
+    /** Inclusive last day of the install; equals scheduledDate for a one-day job. */
+    scheduledEndDate: string;
     completedAt?: string;
     assignedCrewIds: string[];
     leadInstallerNote?: string;
@@ -735,6 +737,7 @@ export function toInstallation(row: InstallationRow): Installation {
         leadId: row.lead_id,
         status: row.status,
         scheduledDate: row.scheduled_date,
+        scheduledEndDate: row.scheduled_end_date,
         completedAt: opt(row.completed_at),
         assignedCrewIds: row.assigned_crew_ids ?? [],
         leadInstallerNote: opt(row.lead_installer_note),

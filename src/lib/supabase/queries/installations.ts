@@ -92,6 +92,8 @@ export async function listMyInstallations(): Promise<InstallationForInstaller[]>
 export async function createInstallation(args: {
     leadId: Id<"leads">;
     scheduledDate: string;
+    /** Inclusive last day. Defaults to a one-day job on `scheduledDate`. */
+    scheduledEndDate?: string;
     assignedCrewIds: Id<"users">[];
     leadInstallerNote?: string;
     notes?: string;
@@ -103,6 +105,13 @@ export async function createInstallation(args: {
         .maybeSingle();
     if (existing) throw new Error("Installation already exists for this lead");
 
+    // A missing finish date means a one-day job, and the CHECK constraint
+    // rejects a finish before the start rather than storing a backwards range.
+    const endDate = args.scheduledEndDate || args.scheduledDate;
+    if (endDate < args.scheduledDate) {
+        throw new Error("The installation cannot finish before it starts");
+    }
+
     const installation = unwrap(
         await supabase
             .from("installations")
@@ -110,6 +119,7 @@ export async function createInstallation(args: {
                 lead_id: args.leadId,
                 status: "scheduled",
                 scheduled_date: args.scheduledDate,
+                scheduled_end_date: endDate,
                 assigned_crew_ids: args.assignedCrewIds,
                 lead_installer_note: args.leadInstallerNote || null,
                 notes: args.notes || null,
@@ -125,7 +135,10 @@ export async function createInstallation(args: {
     await logActivity({
         leadId: args.leadId,
         action: "Installation scheduled",
-        details: `Date: ${new Date(args.scheduledDate).toLocaleDateString()}`,
+        details:
+            endDate === args.scheduledDate
+                ? `Date: ${new Date(args.scheduledDate).toLocaleDateString()}`
+                : `Dates: ${new Date(args.scheduledDate).toLocaleDateString()} – ${new Date(endDate).toLocaleDateString()}`,
         entityType: "installation",
         entityId: installation.id,
     });

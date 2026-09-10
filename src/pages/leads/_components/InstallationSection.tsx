@@ -32,6 +32,21 @@ const STATUS_BADGE: Record<string, string> = {
     on_hold: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
 };
 
+/**
+ * "Mon, Sep 14 2026" for a one-day job, "Mon, Sep 14 – Thu, Sep 17 2026" for a
+ * run of days. The year appears once, at the end, where it belongs.
+ */
+function formatSchedule(start: string, end: string): string {
+    const day = (iso: string, withYear: boolean) =>
+        new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            ...(withYear ? { year: "numeric" as const } : {}),
+        });
+    return start === end ? day(start, true) : `${day(start, false)} – ${day(end, true)}`;
+}
+
 const STATUS_LABEL: Record<string, string> = {
     scheduled: "Scheduled",
     in_progress: "In Progress",
@@ -170,9 +185,10 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                         {STATUS_LABEL[installation.status]}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">
-                                        {new Date(installation.scheduledDate).toLocaleDateString(undefined, {
-                                            weekday: "short", month: "short", day: "numeric", year: "numeric",
-                                        })}
+                                        {formatSchedule(
+                                            installation.scheduledDate,
+                                            installation.scheduledEndDate,
+                                        )}
                                     </span>
                                 </div>
                             </div>

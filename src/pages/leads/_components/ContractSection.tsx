@@ -103,6 +103,11 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
         setDetails(toFormState(contract));
     }
 
+    // 0 counts as missing here: create_contract leaves the column null and the
+    // number input shows a null as an empty box, but a stray 0 is just as wrong
+    // in "a 0 kW-DC rated system" as no value at all.
+    const needsSystemSize = !details?.systemSizeKw;
+
     function updateField<K extends keyof ContractDetailsInput>(
         field: K,
         value: ContractDetailsInput[K],
@@ -310,13 +315,34 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                                     }
                                                 />
                                             </div>
+                                            {/* Every other field on this form arrives filled
+                                                in from the quote. The system size does not —
+                                                create_contract has no line item to read it
+                                                from — so it is the one box someone has to
+                                                notice, and it prints in clause 1 of the
+                                                contract. Highlighted until it has a value. */}
                                             <div className="space-y-1">
-                                                <Label className="text-[11px]">System Size (kW-DC)</Label>
+                                                <Label
+                                                    className={cn(
+                                                        "text-[11px]",
+                                                        needsSystemSize && "text-amber-700 dark:text-amber-400 font-semibold",
+                                                    )}
+                                                >
+                                                    System Size (kW-DC)
+                                                    {needsSystemSize && (
+                                                        <span className="ml-1 font-normal">— required</span>
+                                                    )}
+                                                </Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className={cn(
+                                                        "h-10 sm:h-9 text-xs",
+                                                        needsSystemSize &&
+                                                            "border-amber-400 bg-amber-50 focus-visible:ring-amber-400/40 dark:border-amber-600 dark:bg-amber-950/30",
+                                                    )}
                                                     type="number"
                                                     inputMode="decimal"
                                                     step="0.01"
+                                                    placeholder="e.g. 7.32"
                                                     value={details.systemSizeKw ?? ""}
                                                     disabled={!canEdit}
                                                     onWheel={(e) => e.currentTarget.blur()}
@@ -329,6 +355,12 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                                         )
                                                     }
                                                 />
+                                                {needsSystemSize && (
+                                                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                                                        Not carried over from the quote — enter it before
+                                                        generating the contract.
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Contract Price (₱)</Label>

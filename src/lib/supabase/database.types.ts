@@ -314,6 +314,8 @@ export type InstallationRow = Timestamps & {
     lead_id: string;
     status: InstallationStatus;
     scheduled_date: string;
+    /** Inclusive last day; equals scheduled_date for a one-day job (0032). */
+    scheduled_end_date: string;
     completed_at: string | null;
     assigned_crew_ids: string[];
     lead_installer_note: string | null;

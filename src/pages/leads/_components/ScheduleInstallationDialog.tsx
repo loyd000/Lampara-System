@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCreateInstallation, useUsers } from "@/lib/supabase/hooks.ts";
@@ -16,12 +16,20 @@ import { Input } from "@/components/ui/input.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 
-const schema = z.object({
-    scheduledDate: z.string().min(1, "Please select a date"),
-    crewIds: z.array(z.string()).min(1, "Assign at least one crew member"),
-    leadInstallerNote: z.string().optional(),
-    notes: z.string().optional(),
-});
+const schema = z
+    .object({
+        scheduledDate: z.string().min(1, "Please select a start date"),
+        scheduledEndDate: z.string().min(1, "Please select a finish date"),
+        crewIds: z.array(z.string()).min(1, "Assign at least one crew member"),
+        leadInstallerNote: z.string().optional(),
+        notes: z.string().optional(),
+    })
+    // yyyy-mm-dd sorts correctly as a string, so no Date parsing is needed to
+    // compare them — and none is wanted, since these are plain dates.
+    .refine((v) => v.scheduledEndDate >= v.scheduledDate, {
+        message: "The finish date can't be before the start date",
+        path: ["scheduledEndDate"],
+    });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -36,21 +44,28 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
     const { data: users } = useUsers();
     const crew = users?.filter((u) => ["field", "admin", "superadmin"].includes(u.role)) ?? [];
 
+    // `useWatch` rather than `form.watch()` in render: watch() returns a fresh
+    // function-backed value each render, which React Compiler refuses to
+    // memoize and warns about.
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: {
             scheduledDate: "",
+            scheduledEndDate: "",
             crewIds: [],
             leadInstallerNote: "",
             notes: "",
         },
     });
 
+    const startDate = useWatch({ control: form.control, name: "scheduledDate" });
+
     async function onSubmit(values: FormValues) {
         try {
             await createInstallation({
                 leadId,
                 scheduledDate: values.scheduledDate,
+                scheduledEndDate: values.scheduledEndDate,
                 assignedCrewIds: values.crewIds as Id<"users">[],
                 leadInstallerNote: values.leadInstallerNote || undefined,
                 notes: values.notes || undefined,
@@ -80,13 +95,53 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Installation Date</FormLabel>
-                                <FormControl><Input type="date" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                        {/* `min-w-0` on the cells: a native date input's intrinsic
+                            width is wider than half a phone screen, and grid items
+                            default to `min-width: auto`, so without it the row
+                            overflows instead of shrinking. */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="min-w-0">
+                                <FormField control={form.control} name="scheduledDate" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Start Date</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="date"
+                                                {...field}
+                                                onChange={(e) => {
+                                                    field.onChange(e);
+                                                    // Most installs are one day, and a
+                                                    // finish date that trails the start
+                                                    // is never what someone meant.
+                                                    const end = form.getValues("scheduledEndDate");
+                                                    if (!end || end < e.target.value) {
+                                                        form.setValue("scheduledEndDate", e.target.value, {
+                                                            shouldValidate: true,
+                                                        });
+                                                    }
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <div className="min-w-0">
+                                <FormField control={form.control} name="scheduledEndDate" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Finish Date</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="date"
+                                                min={startDate || undefined}
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </div>
 
                         <FormField control={form.control} name="crewIds" render={({ field }) => (
                             <FormItem>
