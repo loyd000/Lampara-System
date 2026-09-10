@@ -1,7 +1,8 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading } from "@/components/auth-guard.tsx";
 import { AccountGate } from "@/components/account-gate.tsx";
 import { useAuth } from "@/components/providers/auth-context.ts";
+import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 import { useRealtimeSync } from "@/lib/supabase/realtime.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
@@ -9,11 +10,13 @@ import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { SignOutButton } from "@/components/sign-out-button.tsx";
 import AppSidebar from "./_components/AppSidebar.tsx";
 import MobileNav from "./_components/MobileNavbar.tsx";
+import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
 import { BarChart3, Users, ClipboardCheck, Shield, Zap, Sparkles } from "lucide-react";
 
 export default function AppLayout() {
     const { isAuthenticated } = useAuth();
+    const { data: currentUser } = useCurrentUser();
 
     // Convex refreshed every subscriber on write; with React Query this one
     // channel does the same job by invalidating caches on Postgres changes.
@@ -50,6 +53,13 @@ export default function AppLayout() {
                                     <span className="font-bold text-sm tracking-tight text-foreground">{COMPANY_NAME}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
+                                    <NavLink
+                                        to="/profile"
+                                        className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0"
+                                        aria-label="My profile"
+                                    >
+                                        {(currentUser?.name ?? currentUser?.email ?? "U").charAt(0).toUpperCase()}
+                                    </NavLink>
                                     <ThemeToggle size="icon" className="size-10" />
                                     <SignOutButton className="size-10" />
                                 </div>
@@ -70,6 +80,7 @@ export default function AppLayout() {
                             </main>
                         </div>
                         <MobileNav />
+                        <IosInstallPrompt />
                     </div>
                 </AccountGate>
             </Authenticated>

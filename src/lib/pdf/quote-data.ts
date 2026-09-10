@@ -84,8 +84,12 @@ export async function buildQuotePdfData(
         num: idx + 1,
         description: item.description,
         qtyStr: `${item.qty} ${item.unit}`.trim(),
-        priceStr: formatPhp(item.unitPricePhp),
-        totalStr: formatPhp(item.lineTotalPhp),
+        // A package's included components are listed for what they are, not
+        // what they cost — the package's own line carries the real price.
+        // Printing "₱0.00" next to each one reads as "these are free," which
+        // is exactly the confusion blanking the cell avoids.
+        priceStr: item.unitPricePhp > 0 ? formatPhp(item.unitPricePhp) : "",
+        totalStr: item.unitPricePhp > 0 ? formatPhp(item.lineTotalPhp) : "",
     }));
 
     const grandTotal = (quote.items || []).reduce(

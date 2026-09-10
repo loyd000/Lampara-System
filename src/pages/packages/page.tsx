@@ -18,6 +18,7 @@ import {
     useTogglePackageActive,
 } from "@/lib/supabase/hooks.ts";
 import type { PackageWithItems } from "@/lib/supabase/types.ts";
+import { DESIGN_TYPE_LABELS } from "@/lib/constants.ts";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -256,6 +257,12 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                                     {pkg.systemSizeKw} kWp
                                 </Badge>
                             )}
+                            <Badge
+                                variant="secondary"
+                                className="text-[11px] bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                            >
+                                {DESIGN_TYPE_LABELS[pkg.designType]}
+                            </Badge>
                             {!pkg.isActive && (
                                 <Badge
                                     variant="secondary"

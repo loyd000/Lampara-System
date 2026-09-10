@@ -180,7 +180,14 @@ export const TICKET_PRIORITY_LABELS: Record<string, string> = {
 export const PROPERTY_TYPE_LABELS: Record<string, string> = {
   residential: "Residential",
   commercial: "Commercial",
-  agricultural: "Agricultural",
+  industrial: "Industrial",
+};
+
+// ─── Package Design Types ─────────────────────────────────────────────────
+export const DESIGN_TYPE_LABELS: Record<string, string> = {
+  hybrid: "Hybrid",
+  off_grid: "Off-Grid",
+  grid_tie: "Grid-Tie",
 };
 
 // ─── Roof Types ───────────────────────────────────────────────────────────

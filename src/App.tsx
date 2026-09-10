@@ -19,6 +19,7 @@ const LeadsPage = lazy(() => import("./pages/leads/page.tsx"));
 const LeadDetailPage = lazy(() => import("./pages/leads/[id]/page.tsx"));
 const PipelinePage = lazy(() => import("./pages/pipeline/page.tsx"));
 const CalendarPage = lazy(() => import("./pages/calendar/page.tsx"));
+const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
 const TeamPage = lazy(() => import("./pages/team/page.tsx"));
 const ReportsPage = lazy(() => import("./pages/reports/page.tsx"));
 const PackagesPage = lazy(() => import("./pages/packages/page.tsx"));
@@ -55,6 +56,7 @@ export default function App() {
                                     <Route path="/reports" element={<ReportsPage />} />
                                     <Route path="/packages" element={<PackagesPage />} />
                                     <Route path="/team" element={<TeamPage />} />
+                                    <Route path="/profile" element={<ProfilePage />} />
                                 </Route>
                                 <Route path="*" element={<NotFound />} />
                             </Routes>

@@ -65,29 +65,53 @@ export default function ItemPickerModal({
                 },
             ]);
         } else {
-            // Expand all package items.
-            // When items don't carry individual prices, the first item carries
-            // the package base price so the quote total immediately matches —
-            // labelled explicitly, so deleting that line later is a deliberate
-            // choice rather than an accidental way to make the whole package's
-            // price silently vanish from the quote.
             const hasExistingPrices = pkg.items.some((it) => it.unitPricePhp > 0);
-            const newItems: QuoteItemInput[] = pkg.items.map((it, idx) => {
-                const baseDescription = it.name
-                    ? `${it.name}${it.description ? ` · ${it.description}` : ""}`
-                    : it.description;
-                const carriesPackagePrice = !hasExistingPrices && idx === 0;
-                return {
-                    description: carriesPackagePrice
-                        ? `${baseDescription} (${pkg.name} package price)`
-                        : baseDescription,
+
+            if (hasExistingPrices) {
+                // Real per-item pricing exists — expand as separate priced
+                // lines, same as any other itemised catalog entry.
+                onAddItems(
+                    pkg.items.map((it) => ({
+                        description: it.name
+                            ? `${it.name}${it.description ? ` · ${it.description}` : ""}`
+                            : it.description,
+                        qty: it.qty,
+                        unit: it.unit,
+                        unitPricePhp: it.unitPricePhp,
+                        sourcePackageId: pkg._id,
+                    })),
+                );
+            } else {
+                // Every component still gets its own line — qty and unit
+                // intact, so the itemised list reads the same as a manually
+                // typed one — but at ₱0, not a share of the package price.
+                // The price lives on its own qty-1 line instead: putting it
+                // on a component line multiplies it by that line's quantity
+                // (unitPricePhp × qty is how every line total downstream is
+                // computed — 5 panels × ₱215,000 was the actual bug this
+                // replaced), and the PDF blanks the Price/Total cells for any
+                // ₱0 line (see quote-data.ts) so the components don't print
+                // as if they were free.
+                const componentItems: QuoteItemInput[] = pkg.items.map((it) => ({
+                    description: it.name
+                        ? `${it.name}${it.description ? ` · ${it.description}` : ""}`
+                        : it.description,
                     qty: it.qty,
                     unit: it.unit,
-                    unitPricePhp: carriesPackagePrice ? pkg.basePricePhp : hasExistingPrices ? it.unitPricePhp : 0,
+                    unitPricePhp: 0,
                     sourcePackageId: pkg._id,
-                };
-            });
-            onAddItems(newItems);
+                }));
+                onAddItems([
+                    {
+                        description: `${pkg.name} — package price`,
+                        qty: 1,
+                        unit: "Set",
+                        unitPricePhp: pkg.basePricePhp,
+                        sourcePackageId: pkg._id,
+                    },
+                    ...componentItems,
+                ]);
+            }
         }
         onClose();
     }

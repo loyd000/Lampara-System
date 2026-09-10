@@ -270,11 +270,19 @@ export type CreateLeadArgs = {
     referredBy?: string;
     notes?: string;
     assignedSalesRepId?: Id<"users">;
+    /** Composed from the granular fields below — see src/lib/ph-address.ts. */
     address: string;
     city: string;
     state: string;
     zip: string;
     propertyType: PropertyType;
+    houseUnitBlockLot?: string;
+    streetName?: string;
+    subdivision?: string;
+    barangay?: string;
+    cityMunicipality?: string;
+    province?: string;
+    zipCode?: string;
 };
 
 /**
@@ -303,6 +311,13 @@ export async function createLead(args: CreateLeadArgs): Promise<Id<"leads">> {
         p_referred_by: args.referredBy ?? null,
         p_notes: args.notes ?? null,
         p_assigned_sales_rep_id: args.assignedSalesRepId ?? null,
+        p_house_unit_block_lot: args.houseUnitBlockLot ?? null,
+        p_street_name: args.streetName ?? null,
+        p_subdivision: args.subdivision ?? null,
+        p_barangay: args.barangay ?? null,
+        p_city_municipality: args.cityMunicipality ?? null,
+        p_province: args.province ?? null,
+        p_zip_code: args.zipCode ?? null,
     });
 
     if (error) throw toAppError(error, "Failed to create lead");
@@ -416,6 +431,13 @@ export async function updateProperty(args: {
     zip?: string;
     propertyType?: PropertyType;
     notes?: string | null;
+    houseUnitBlockLot?: string;
+    streetName?: string;
+    subdivision?: string;
+    barangay?: string;
+    cityMunicipality?: string;
+    province?: string;
+    zipCode?: string;
 }): Promise<void> {
     const { propertyId, ...fields } = args;
 
@@ -428,6 +450,17 @@ export async function updateProperty(args: {
             ...(fields.zip !== undefined && { zip: fields.zip }),
             ...(fields.propertyType !== undefined && { property_type: fields.propertyType }),
             ...(fields.notes !== undefined && { notes: fields.notes || null }),
+            ...(fields.houseUnitBlockLot !== undefined && {
+                house_unit_block_lot: fields.houseUnitBlockLot || null,
+            }),
+            ...(fields.streetName !== undefined && { street_name: fields.streetName || null }),
+            ...(fields.subdivision !== undefined && { subdivision: fields.subdivision || null }),
+            ...(fields.barangay !== undefined && { barangay: fields.barangay || null }),
+            ...(fields.cityMunicipality !== undefined && {
+                city_municipality: fields.cityMunicipality || null,
+            }),
+            ...(fields.province !== undefined && { province: fields.province || null }),
+            ...(fields.zipCode !== undefined && { zip_code: fields.zipCode || null }),
         })
         .eq("id", propertyId);
 

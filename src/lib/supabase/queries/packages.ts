@@ -12,7 +12,7 @@
  */
 
 import { supabase, toAppError, unwrap } from "../client.ts";
-import type { PackageItemRow, PackageRow } from "../database.types.ts";
+import type { PackageDesignType, PackageItemRow, PackageRow } from "../database.types.ts";
 import {
     displayName,
     toPackage,
@@ -84,6 +84,7 @@ export async function createPackage(args: {
     description?: string;
     systemSizeKw?: number;
     basePricePhp: number;
+    designType: PackageDesignType;
     items: PackageItemInput[];
 }): Promise<string> {
     const { data: auth } = await supabase.auth.getUser();
@@ -97,6 +98,7 @@ export async function createPackage(args: {
                 description: args.description?.trim() || null,
                 system_size_kw: args.systemSizeKw ?? null,
                 base_price_php: args.basePricePhp,
+                design_type: args.designType,
                 created_by: auth.user.id,
             })
             .select("id")
@@ -128,6 +130,7 @@ export async function updatePackage(args: {
     description?: string;
     systemSizeKw?: number;
     basePricePhp: number;
+    designType: PackageDesignType;
     items: PackageItemInput[];
 }): Promise<void> {
     const { error: headerError } = await supabase
@@ -137,6 +140,7 @@ export async function updatePackage(args: {
             description: args.description?.trim() || null,
             system_size_kw: args.systemSizeKw ?? null,
             base_price_php: args.basePricePhp,
+            design_type: args.designType,
         })
         .eq("id", args.packageId);
     if (headerError) throw toAppError(headerError, "Failed to update package");

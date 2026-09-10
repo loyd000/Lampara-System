@@ -80,7 +80,10 @@ export default function AppSidebar() {
             {currentUser && (
                 <div className="px-3.5 py-3 border-t border-sidebar-border">
                     <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <NavLink
+                            to="/profile"
+                            className="flex items-center gap-2.5 min-w-0 rounded-md -mx-1 px-1 py-1 hover:bg-sidebar-accent/50 transition-colors"
+                        >
                             <div className="size-8 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0">
                                 {(currentUser.name ?? currentUser.email ?? "U").charAt(0).toUpperCase()}
                             </div>
@@ -92,7 +95,7 @@ export default function AppSidebar() {
                                     {ROLE_LABELS[currentUser.role] ?? currentUser.role}
                                 </p>
                             </div>
-                        </div>
+                        </NavLink>
                         <SignOutButton />
                     </div>
                 </div>

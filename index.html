@@ -24,6 +24,32 @@
     <meta name="apple-mobile-web-app-title" content="Lampara" />
     <link rel="apple-touch-icon" href="/lampara-icon.png" />
 
+    <!--
+      iOS launch splash screens. Unlike Android, iOS generates nothing from the
+      manifest's icons/background_color — each screen size needs its own exact
+      pixel-dimension PNG plus a media query pinned to that device, or the
+      install just shows a blank white flash between tapping the icon and the
+      app painting. Covers the common iPhone sizes from the last several
+      generations, portrait only (the manifest locks orientation to
+      portrait-primary, so a landscape splash is never shown anyway).
+    -->
+    <link rel="apple-touch-startup-image" href="/apple-splash-750-1334.png"
+        media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-828-1792.png"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-1125-2436.png"
+        media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-1242-2688.png"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-1170-2532.png"
+        media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-1284-2778.png"
+        media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-1179-2556.png"
+        media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/apple-splash-1290-2796.png"
+        media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

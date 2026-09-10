@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,13 @@ import {
 } from "@/components/ui/select.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import PhilippineAddressFields from "@/components/ph-address-fields.tsx";
+import {
+    composeLegacyAddress,
+    EMPTY_PH_ADDRESS,
+    validatePhAddress,
+    type PhAddressValue,
+} from "@/lib/ph-address.ts";
 
 const schema = z.object({
     firstName: z.string().min(1, "Required"),
@@ -29,11 +36,7 @@ const schema = z.object({
     notes: z.string().optional(),
     assignedSalesRepId: z.string().optional(),
     // property
-    address: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zip: z.string().optional(),
-    propertyType: z.enum(["residential", "commercial", "agricultural"]).optional(),
+    propertyType: z.enum(["residential", "commercial", "industrial"]).optional(),
     propertyNotes: z.string().optional(),
 });
 
@@ -46,11 +49,27 @@ type Props = {
     onClose: () => void;
 };
 
+function phAddressFromProperty(property?: Doc<"properties">): PhAddressValue {
+    if (!property) return EMPTY_PH_ADDRESS;
+    return {
+        houseUnitBlockLot: property.houseUnitBlockLot ?? "",
+        streetName: property.streetName ?? "",
+        subdivision: property.subdivision ?? "",
+        barangay: property.barangay ?? "",
+        cityMunicipality: property.cityMunicipality ?? "",
+        province: property.province ?? "",
+        zipCode: property.zipCode ?? "",
+    };
+}
+
 export default function EditLeadDialog({ lead, property, open, onClose }: Props) {
     const { mutateAsync: updateLead } = useUpdateLead();
     const { mutateAsync: updateProperty } = useUpdateProperty();
     const { data: users } = useUsers();
     const assignableReps = users?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
+
+    const [phAddress, setPhAddress] = useState<PhAddressValue>(() => phAddressFromProperty(property));
+    const [submitting, setSubmitting] = useState(false);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -63,41 +82,43 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             referredBy: lead.referredBy ?? "",
             notes: lead.notes ?? "",
             assignedSalesRepId: lead.assignedSalesRepId ?? "",
-            address: property?.address ?? "",
-            city: property?.city ?? "",
-            state: property?.state ?? "",
-            zip: property?.zip ?? "",
             propertyType: property?.propertyType ?? "residential",
             propertyNotes: property?.notes ?? "",
         },
     });
 
-    // Sync form when lead changes
-    useEffect(() => {
-        if (open) {
-            form.reset({
-                firstName: lead.firstName,
-                lastName: lead.lastName,
-                phone: lead.phone,
-                email: lead.email ?? "",
-                source: lead.source,
-                referredBy: lead.referredBy ?? "",
-                notes: lead.notes ?? "",
-                assignedSalesRepId: lead.assignedSalesRepId ?? "",
-                address: property?.address ?? "",
-                city: property?.city ?? "",
-                state: property?.state ?? "",
-                zip: property?.zip ?? "",
-                propertyType: property?.propertyType ?? "residential",
-                propertyNotes: property?.notes ?? "",
-            });
-        }
-        // `form` is stable for the life of the component; re-running this on
-        // every render would clobber whatever the user has typed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, lead, property]);
+    // Sync form when the dialog (re)opens for a lead — guarded by identity so
+    // it fires once per open, not on every render, which would clobber
+    // whatever the user has typed.
+    const [syncedKey, setSyncedKey] = useState<string | null>(null);
+    const openKey = open ? `${lead._id}|${property?._id ?? ""}` : null;
+    if (openKey !== null && syncedKey !== openKey) {
+        setSyncedKey(openKey);
+        form.reset({
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+            phone: lead.phone,
+            email: lead.email ?? "",
+            source: lead.source,
+            referredBy: lead.referredBy ?? "",
+            notes: lead.notes ?? "",
+            assignedSalesRepId: lead.assignedSalesRepId ?? "",
+            propertyType: property?.propertyType ?? "residential",
+            propertyNotes: property?.notes ?? "",
+        });
+        setPhAddress(phAddressFromProperty(property));
+    }
 
     async function onSubmit(values: FormValues) {
+        if (property) {
+            const addressError = validatePhAddress(phAddress);
+            if (addressError) {
+                toast.error(addressError);
+                return;
+            }
+        }
+
+        setSubmitting(true);
         try {
             await updateLead({
                 id: lead._id,
@@ -116,12 +137,16 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             if (property) {
                 await updateProperty({
                     propertyId: property._id,
-                    address: values.address || undefined,
-                    city: values.city || undefined,
-                    state: values.state || undefined,
-                    zip: values.zip || undefined,
+                    ...composeLegacyAddress(phAddress),
                     propertyType: values.propertyType,
                     notes: values.propertyNotes || null,
+                    houseUnitBlockLot: phAddress.houseUnitBlockLot,
+                    streetName: phAddress.streetName,
+                    subdivision: phAddress.subdivision,
+                    barangay: phAddress.barangay,
+                    cityMunicipality: phAddress.cityMunicipality,
+                    province: phAddress.province,
+                    zipCode: phAddress.zipCode,
                 });
             }
 
@@ -129,6 +154,8 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             onClose();
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to update lead");
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -157,7 +184,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <FormField control={form.control} name="phone" render={({ field }) => (
-                                        <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="0917 123 4567" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={form.control} name="email" render={({ field }) => (
                                         <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
@@ -201,42 +228,37 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                             </TabsContent>
 
                             <TabsContent value="property" className="space-y-3 pt-2">
-                                <FormField control={form.control} name="address" render={({ field }) => (
-                                    <FormItem><FormLabel>Street Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )} />
-                                <div className="grid grid-cols-3 gap-3">
-                                    <FormField control={form.control} name="city" render={({ field }) => (
-                                        <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="state" render={({ field }) => (
-                                        <FormItem><FormLabel>State</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="zip" render={({ field }) => (
-                                        <FormItem><FormLabel>ZIP</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                </div>
-                                <FormField control={form.control} name="propertyType" render={({ field }) => (
-                                    <FormItem><FormLabel>Property Type</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="residential">Residential</SelectItem>
-                                                <SelectItem value="commercial">Commercial</SelectItem>
-                                                <SelectItem value="agricultural">Agricultural</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage /></FormItem>
-                                )} />
-                                <FormField control={form.control} name="propertyNotes" render={({ field }) => (
-                                    <FormItem><FormLabel>Property Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[80px]" placeholder="Roof age, access notes, etc." {...field} /></FormControl><FormMessage /></FormItem>
-                                )} />
+                                {property ? (
+                                    <>
+                                        <PhilippineAddressFields value={phAddress} onChange={setPhAddress} />
+                                        <FormField control={form.control} name="propertyType" render={({ field }) => (
+                                            <FormItem><FormLabel>Property Type</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="residential">Residential</SelectItem>
+                                                        <SelectItem value="commercial">Commercial</SelectItem>
+                                                        <SelectItem value="industrial">Industrial</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="propertyNotes" render={({ field }) => (
+                                            <FormItem><FormLabel>Property Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[80px]" placeholder="Roof age, access notes, etc." {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground py-6 text-center">
+                                        This lead has no property on record yet.
+                                    </p>
+                                )}
                             </TabsContent>
                         </Tabs>
 
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? "Saving…" : "Save Changes"}
+                            <Button type="submit" disabled={submitting}>
+                                {submitting ? "Saving…" : "Save Changes"}
                             </Button>
                         </DialogFooter>
                     </form>

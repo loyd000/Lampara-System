@@ -24,7 +24,6 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
 import { QueryError } from "@/components/query-error.tsx";
-import NotificationPreferencesCard from "./_components/NotificationPreferencesCard.tsx";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
     superadmin: <Shield className="w-3.5 h-3.5" />,
@@ -130,10 +129,6 @@ export default function TeamPage() {
                         ? "Approve new accounts and manage everyone's role"
                         : "Your team at a glance — only a superadmin can change roles or approve accounts"}
                 </p>
-            </div>
-
-            <div className="max-w-md">
-                <NotificationPreferencesCard />
             </div>
 
             {users === undefined ? (

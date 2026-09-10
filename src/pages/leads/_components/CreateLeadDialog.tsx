@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +17,13 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
+import PhilippineAddressFields from "@/components/ph-address-fields.tsx";
+import {
+    composeLegacyAddress,
+    EMPTY_PH_ADDRESS,
+    validatePhAddress,
+    type PhAddressValue,
+} from "@/lib/ph-address.ts";
 
 const schema = z.object({
     firstName: z.string().min(1, "Required"),
@@ -25,11 +33,7 @@ const schema = z.object({
     source: z.enum(["referral", "facebook_ad", "website_form", "walk_in", "other"]),
     referredBy: z.string().optional(),
     notes: z.string().optional(),
-    address: z.string().min(1, "Required"),
-    city: z.string().min(1, "Required"),
-    state: z.string().min(2, "Required"),
-    zip: z.string().min(4, "Required"),
-    propertyType: z.enum(["residential", "commercial", "agricultural"]),
+    propertyType: z.enum(["residential", "commercial", "industrial"]),
     assignedSalesRepId: z.string().optional(),
 });
 
@@ -44,15 +48,30 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
     // rule like the old "sales reps only assign to themselves" behaviour.
     const assignableReps = users?.filter(u => ["admin", "superadmin"].includes(u.role)) ?? [];
 
+    const [phAddress, setPhAddress] = useState<PhAddressValue>(EMPTY_PH_ADDRESS);
+    const [submitting, setSubmitting] = useState(false);
+
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: {
             firstName: "", lastName: "", phone: "", email: "", source: "website_form",
-            address: "", city: "", state: "", zip: "", propertyType: "residential",
+            propertyType: "residential",
         },
     });
 
+    function resetAll() {
+        form.reset();
+        setPhAddress(EMPTY_PH_ADDRESS);
+    }
+
     async function onSubmit(values: FormValues) {
+        const addressError = validatePhAddress(phAddress);
+        if (addressError) {
+            toast.error(addressError);
+            return;
+        }
+
+        setSubmitting(true);
         try {
             await createLead({
                 ...values,
@@ -60,17 +79,35 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                 assignedSalesRepId: values.assignedSalesRepId
                     ? (values.assignedSalesRepId as Id<"users">)
                     : undefined,
+                ...composeLegacyAddress(phAddress),
+                houseUnitBlockLot: phAddress.houseUnitBlockLot,
+                streetName: phAddress.streetName,
+                subdivision: phAddress.subdivision || undefined,
+                barangay: phAddress.barangay,
+                cityMunicipality: phAddress.cityMunicipality,
+                province: phAddress.province,
+                zipCode: phAddress.zipCode,
             });
             toast.success("Lead created successfully");
-            form.reset();
+            resetAll();
             onClose();
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to create lead");
+        } finally {
+            setSubmitting(false);
         }
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                if (!v) {
+                    resetAll();
+                    onClose();
+                }
+            }}
+        >
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New Lead</DialogTitle>
@@ -87,7 +124,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="phone" render={({ field }) => (
-                                <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="+1 555 000 0000" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="0917 123 4567" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="email" render={({ field }) => (
                                 <FormItem><FormLabel>Email (optional)</FormLabel><FormControl><Input placeholder="jane@example.com" {...field} /></FormControl><FormMessage /></FormItem>
@@ -123,20 +160,8 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                         </div>
 
                         <p className="text-sm font-semibold text-muted-foreground pt-1">Property / Site</p>
-                        <FormField control={form.control} name="address" render={({ field }) => (
-                            <FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="123 Solar Way" {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <FormField control={form.control} name="city" render={({ field }) => (
-                                <FormItem className="col-span-2 sm:col-span-1"><FormLabel>City</FormLabel><FormControl><Input placeholder="Sunnyvale" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="state" render={({ field }) => (
-                                <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="CA" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="zip" render={({ field }) => (
-                                <FormItem><FormLabel>ZIP</FormLabel><FormControl><Input placeholder="94086" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                        </div>
+                        <PhilippineAddressFields value={phAddress} onChange={setPhAddress} />
+
                         <FormField control={form.control} name="propertyType" render={({ field }) => (
                             <FormItem><FormLabel>Property Type</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -144,7 +169,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                     <SelectContent>
                                         <SelectItem value="residential">Residential</SelectItem>
                                         <SelectItem value="commercial">Commercial</SelectItem>
-                                        <SelectItem value="agricultural">Agricultural</SelectItem>
+                                        <SelectItem value="industrial">Industrial</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <FormMessage /></FormItem>
@@ -154,9 +179,9 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                         )} />
 
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? "Creating…" : "Create Lead"}
+                            <Button type="button" variant="ghost" onClick={() => { resetAll(); onClose(); }}>Cancel</Button>
+                            <Button type="submit" disabled={submitting}>
+                                {submitting ? "Creating…" : "Create Lead"}
                             </Button>
                         </DialogFooter>
                     </form>

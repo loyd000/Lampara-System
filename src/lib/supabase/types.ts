@@ -27,6 +27,7 @@ import type {
     LeadRow,
     LeadSource,
     LeadStage,
+    PackageDesignType,
     PackageItemRow,
     PackageRow,
     PermitRow,
@@ -74,6 +75,7 @@ export type {
     MeterKind,
     MeterPhase,
     MountingType,
+    PackageDesignType,
     PackageType,
     PanelOption,
     PermitStatus,
@@ -160,6 +162,15 @@ export type Property = Base & {
     zip: string;
     propertyType: PropertyType;
     notes?: string;
+    // Granular Philippine address fields — undefined for properties created
+    // before this feature, or edited without the picker.
+    houseUnitBlockLot?: string;
+    streetName?: string;
+    subdivision?: string;
+    barangay?: string;
+    cityMunicipality?: string;
+    province?: string;
+    zipCode?: string;
 };
 
 /**
@@ -392,6 +403,7 @@ export type Package = Base & {
     description?: string;
     systemSizeKw?: number;
     basePricePhp: number;
+    designType: PackageDesignType;
     isActive: boolean;
     sortOrder: number;
     createdById?: string;
@@ -596,6 +608,13 @@ export function toProperty(row: PropertyRow): Property {
         zip: row.zip,
         propertyType: row.property_type,
         notes: opt(row.notes),
+        houseUnitBlockLot: opt(row.house_unit_block_lot),
+        streetName: opt(row.street_name),
+        subdivision: opt(row.subdivision),
+        barangay: opt(row.barangay),
+        cityMunicipality: opt(row.city_municipality),
+        province: opt(row.province),
+        zipCode: opt(row.zip_code),
     };
 }
 
@@ -830,6 +849,7 @@ export function toPackage(row: PackageRow): Package {
         description: opt(row.description),
         systemSizeKw: num(row.system_size_kw),
         basePricePhp: num(row.base_price_php) ?? 0,
+        designType: row.design_type,
         isActive: row.is_active,
         sortOrder: row.sort_order,
         createdById: opt(row.created_by),

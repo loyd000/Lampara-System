@@ -31,7 +31,7 @@ export type LeadSource =
     | "walk_in"
     | "other";
 
-export type PropertyType = "residential" | "commercial" | "agricultural";
+export type PropertyType = "residential" | "commercial" | "industrial";
 export type SurveyStatus = "scheduled" | "submitted" | "approved" | "cancelled";
 
 // ─── Site Ocular Report enumerations ──────────────────────────────────────
@@ -89,12 +89,16 @@ export type ChecklistItem = { item: string; checked: boolean };
 
 // ─── Packages (Phase 5) ───────────────────────────────────────────────────
 
+/** How a package is wired — independent of `PackageType` (survey battery option). */
+export type PackageDesignType = "hybrid" | "off_grid" | "grid_tie";
+
 export type PackageRow = Timestamps & {
     id: string;
     name: string;
     description: string | null;
     system_size_kw: number | string | null;
     base_price_php: number | string;
+    design_type: PackageDesignType;
     is_active: boolean;
     sort_order: number;
     created_by: string | null;
@@ -155,6 +159,16 @@ export type PropertyRow = Timestamps & {
     zip: string;
     property_type: PropertyType;
     notes: string | null;
+    // Granular Philippine address fields — nullable; pre-existing rows have
+    // none, and address/city/state/zip above stay the composed source of
+    // truth every other consumer (PDF, contract, Overview) already reads.
+    house_unit_block_lot: string | null;
+    street_name: string | null;
+    subdivision: string | null;
+    barangay: string | null;
+    city_municipality: string | null;
+    province: string | null;
+    zip_code: string | null;
 };
 
 export type SurveyRow = Timestamps & {
@@ -448,6 +462,13 @@ export type Database = {
                     p_referred_by?: string | null;
                     p_notes?: string | null;
                     p_assigned_sales_rep_id?: string | null;
+                    p_house_unit_block_lot?: string | null;
+                    p_street_name?: string | null;
+                    p_subdivision?: string | null;
+                    p_barangay?: string | null;
+                    p_city_municipality?: string | null;
+                    p_province?: string | null;
+                    p_zip_code?: string | null;
                 };
                 Returns: string;
             };

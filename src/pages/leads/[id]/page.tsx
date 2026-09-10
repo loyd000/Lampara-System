@@ -11,6 +11,7 @@ import {
     useLead,
     useLeadActivity,
     useLeadProperties,
+    usePackages,
     usePermitsForLead,
     useQuotesForLead,
     useSurveysForLead,
@@ -20,6 +21,7 @@ import {
 import { useNow } from "@/hooks/use-now.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import {
+    DESIGN_TYPE_LABELS,
     INSPECTION_LABEL_SHORT,
     PROPERTY_TYPE_LABELS,
     SOURCE_LABELS,
@@ -153,6 +155,9 @@ export default function LeadDetailPage() {
     const { data: permits } = usePermitsForLead(id as Id<"leads">);
     const { data: installation } = useInstallationForLead(id as Id<"leads">);
     const { data: tickets } = useTicketsForLead(id as Id<"leads">);
+    // All packages, not just active ones — an approved quote can reference a
+    // package that's since been archived, and it should still resolve.
+    const { data: packages } = usePackages();
 
     const { mutateAsync: updateStage } = useUpdateStage();
     const { mutateAsync: deleteLead } = useDeleteLead();
@@ -223,6 +228,24 @@ export default function LeadDetailPage() {
     // they cannot otherwise edit — a note from the crew on site is exactly what
     // the office needs to read.
     const canContribute = ["superadmin", "admin", "field"].includes(currentUser?.role ?? "");
+
+    // A lead has at most one approved quote at a time (approving one is the
+    // gate that unlocks the contract) — once it exists, the design type(s) of
+    // whatever packages it's built from become a fact about the lead, worth
+    // surfacing on the Overview rather than requiring a trip into the Quotes
+    // tab's line items.
+    const approvedQuote = quotes?.find((q) => q.status === "approved");
+    const packageById = new Map((packages ?? []).map((p) => [p._id, p]));
+    const designTypeLabels = approvedQuote
+        ? [
+              ...new Set(
+                  approvedQuote.items
+                      .map((it) => it.sourcePackageId && packageById.get(it.sourcePackageId)?.designType)
+                      .filter((dt): dt is NonNullable<typeof dt> => Boolean(dt))
+                      .map((dt) => DESIGN_TYPE_LABELS[dt] ?? dt),
+              ),
+          ]
+        : [];
 
     const openTickets = tickets?.filter((t) => !["resolved", "closed"].includes(t.status)) ?? [];
     const counts: Record<string, number | undefined> = {
@@ -428,6 +451,12 @@ export default function LeadDetailPage() {
                             {prop && (
                                 <DetailRow label="Property type">
                                     {PROPERTY_TYPE_LABELS[prop.propertyType] ?? prop.propertyType}
+                                </DetailRow>
+                            )}
+
+                            {designTypeLabels.length > 0 && (
+                                <DetailRow label="Design type">
+                                    {designTypeLabels.join(", ")}
                                 </DetailRow>
                             )}
 

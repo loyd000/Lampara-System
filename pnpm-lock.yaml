@@ -53,6 +53,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      phil-reg-prov-mun-brgy:
+        specifier: ^1.1.0
+        version: 1.1.0
       pizzip:
         specifier: ^3.2.0
         version: 3.2.0
@@ -2775,6 +2778,9 @@ packages:
 
   pdfkit@0.20.1:
     resolution: {integrity: sha512-1rRXK6x5o8I/3dBrBzXfxibpHpkfCnIA7EBAES7pEpGFc/65inMLlA8SalGWpJfal7BGekxeLf6A30IOpQpc5Q==}
+
+  phil-reg-prov-mun-brgy@1.1.0:
+    resolution: {integrity: sha512-lD47cbyIKyLX30+V8yTgzhQoIWtpvEwlWzgjbMqPBJgTRVZYVj+Kc9B0KJjG8z1VvXEaJSBVlS5uonoNR+bb6Q==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -5738,6 +5744,8 @@ snapshots:
       fontkit: 2.0.4
       linebreak: 1.1.0
       png-js: 2.0.0
+
+  phil-reg-prov-mun-brgy@1.1.0: {}
 
   picocolors@1.1.1: {}
 

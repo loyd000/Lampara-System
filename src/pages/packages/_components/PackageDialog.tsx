@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 
 import { useCreatePackage, useUpdatePackage } from "@/lib/supabase/hooks.ts";
-import type { PackageWithItems } from "@/lib/supabase/types.ts";
+import type { PackageDesignType, PackageWithItems } from "@/lib/supabase/types.ts";
+import { DESIGN_TYPE_LABELS } from "@/lib/constants.ts";
 
 import {
     Dialog,
@@ -18,6 +19,15 @@ import { Input } from "@/components/ui/input.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select.tsx";
+
+const DESIGN_TYPES: PackageDesignType[] = ["hybrid", "off_grid", "grid_tie"];
 
 type Props = {
     open: boolean;
@@ -54,6 +64,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
     const [description, setDescription] = useState("");
     const [systemSizeKw, setSystemSizeKw] = useState("");
     const [basePricePhp, setBasePricePhp] = useState("");
+    const [designType, setDesignType] = useState<PackageDesignType>("hybrid");
     const [items, setItems] = useState<ItemDraft[]>([blankItem()]);
 
     // Reset when dialog opens or when switching between create/edit.
@@ -69,6 +80,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
             setDescription(existing.description ?? "");
             setSystemSizeKw(existing.systemSizeKw?.toString() ?? "");
             setBasePricePhp(existing.basePricePhp.toString());
+            setDesignType(existing.designType);
             setItems(
                 existing.items.length > 0
                     ? existing.items.map((it) => ({
@@ -85,6 +97,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
             setDescription("");
             setSystemSizeKw("");
             setBasePricePhp("");
+            setDesignType("hybrid");
             setItems([blankItem()]);
         }
     }
@@ -152,6 +165,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                     description: description.trim() || undefined,
                     systemSizeKw: sizeKw,
                     basePricePhp: price,
+                    designType,
                     items: payloadItems,
                 });
                 toast.success("Package updated");
@@ -161,6 +175,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                     description: description.trim() || undefined,
                     systemSizeKw: sizeKw,
                     basePricePhp: price,
+                    designType,
                     items: payloadItems,
                 });
                 toast.success("Package created");
@@ -185,8 +200,8 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* ── Header fields ───────────────────────────────── */}
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5 sm:col-span-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="space-y-1.5 sm:col-span-3">
                             <Label htmlFor="pkg-name">
                                 Package Name <span className="text-destructive">*</span>
                             </Label>
@@ -227,7 +242,28 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                             />
                         </div>
 
-                        <div className="space-y-1.5 sm:col-span-2">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="pkg-design-type">
+                                Design Type <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                                value={designType}
+                                onValueChange={(v) => setDesignType(v as PackageDesignType)}
+                            >
+                                <SelectTrigger id="pkg-design-type">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {DESIGN_TYPES.map((dt) => (
+                                        <SelectItem key={dt} value={dt}>
+                                            {DESIGN_TYPE_LABELS[dt]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5 sm:col-span-3">
                             <Label htmlFor="pkg-desc">Description</Label>
                             <Textarea
                                 id="pkg-desc"
