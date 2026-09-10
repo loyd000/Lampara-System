@@ -89,7 +89,7 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
                 }
             }}
         >
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New Service Ticket</DialogTitle>
                 </DialogHeader>

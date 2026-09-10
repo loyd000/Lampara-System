@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { FieldErrors } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -61,6 +62,9 @@ function phAddressFromProperty(property?: Doc<"properties">): PhAddressValue {
     };
 }
 
+/** Fields rendered on the Property tab; everything else is on Contact. */
+const PROPERTY_TAB_FIELDS = new Set(["propertyType", "propertyNotes"]);
+
 export default function EditLeadDialog({ lead, property, open, onClose }: Props) {
     const { mutateAsync: updateLead } = useUpdateLead();
     const { mutateAsync: updateProperty } = useUpdateProperty();
@@ -69,6 +73,8 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
 
     const [phAddress, setPhAddress] = useState<PhAddressValue>(() => phAddressFromProperty(property));
     const [submitting, setSubmitting] = useState(false);
+    // Controlled, so a validation failure can bring the offending tab forward.
+    const [tab, setTab] = useState<"contact" | "property">("contact");
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
@@ -106,10 +112,24 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
         setPhAddress(phAddressFromProperty(property));
     }
 
+    /**
+      * Radix unmounts the inactive tab panel, so a `FormMessage` for a field on
+      * the other tab renders into nothing: the submit button appears to do
+      * nothing at all. Bring the tab holding the first error forward instead.
+      */
+    function onInvalid(errors: FieldErrors<FormValues>) {
+        const firstError = Object.keys(errors)[0];
+        if (firstError && PROPERTY_TAB_FIELDS.has(firstError)) setTab("property");
+        else if (firstError) setTab("contact");
+    }
+
     async function onSubmit(values: FormValues) {
         if (property) {
             const addressError = validatePhAddress(phAddress);
             if (addressError) {
+                // The address lives on the Property tab; showing this while the
+                // Contact tab is open is the same invisible-error problem.
+                setTab("property");
                 toast.error(addressError);
                 return;
             }
@@ -157,13 +177,13 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Edit Lead — {lead.firstName} {lead.lastName}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <Tabs defaultValue="contact">
+                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+                        <Tabs value={tab} onValueChange={(v) => setTab(v as "contact" | "property")}>
                             <TabsList className="w-full">
                                 <TabsTrigger value="contact" className="flex-1">Contact</TabsTrigger>
                                 <TabsTrigger value="property" className="flex-1">Property</TabsTrigger>

@@ -40,13 +40,25 @@ export default function StageSelect({
     const currentGroup = groupOf(value);
 
     return (
-        <div className={cn("flex items-center gap-1.5", className)}>
+        // Side by side needs ~300px. At `sm` this renders inside a 208px
+        // pipeline card, where a fixed w-32 main select left the substatus
+        // trigger about 42px for labels like "Installation Scheduled" — so the
+        // small variant stacks instead.
+        <div
+            className={cn(
+                "flex items-center gap-1.5",
+                size === "sm" && "flex-col items-stretch gap-1",
+                className,
+            )}
+        >
             <Select
                 value={currentGroup}
                 onValueChange={(group) => onChange(STAGE_GROUPS[group as StageGroup][0])}
             >
                 <SelectTrigger
-                    className={cn("shrink-0", size === "sm" ? "h-8 text-[11px] w-32" : "w-40")}
+                    className={cn(
+                        size === "sm" ? "h-8 text-[11px] w-full" : "shrink-0 w-40",
+                    )}
                     aria-label="Main status"
                 >
                     <SelectValue />
@@ -62,7 +74,12 @@ export default function StageSelect({
 
             <Select value={value} onValueChange={(stage) => onChange(stage as Stage)}>
                 <SelectTrigger
-                    className={cn("min-w-0 flex-1", size === "sm" ? "h-8 text-[11px]" : "")}
+                    className={cn(
+                        "min-w-0",
+                        // `flex-1` is a main-axis rule; stacked, the main axis
+                        // is vertical and it would mean "grow taller".
+                        size === "sm" ? "h-8 text-[11px] w-full" : "flex-1",
+                    )}
                     aria-label="Substatus"
                 >
                     <SelectValue />

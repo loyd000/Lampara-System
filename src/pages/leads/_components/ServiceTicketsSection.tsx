@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import CreateTicketDialog from "./CreateTicketDialog.tsx";
+import { InlineQueryError } from "@/components/query-error.tsx";
 
 type Props = {
     leadId: Id<"leads">;
@@ -41,7 +42,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props) {
     const { data: installation } = useInstallationForLead(leadId);
-    const { data: tickets } = useTicketsForLead(leadId);
+    const ticketsQuery = useTicketsForLead(leadId);
+    const { data: tickets } = ticketsQuery;
     const { mutateAsync: updateStatus } = useUpdateTicketStatus();
     const [createOpen, setCreateOpen] = useState(false);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -101,6 +103,11 @@ export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props)
                         <p className="text-xs text-muted-foreground">
                             Service tickets are available once installation is complete.
                         </p>
+                    ) : ticketsQuery.isError ? (
+                        <InlineQueryError
+                            message="Couldn't load service tickets."
+                            onRetry={() => void ticketsQuery.refetch()}
+                        />
                     ) : tickets === undefined ? (
                         <div className="space-y-2">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
                     ) : tickets.length === 0 ? (
@@ -143,7 +150,7 @@ export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props)
 
                                     {expanded && (
                                         <div className="px-3 pb-3 border-t bg-muted/10 space-y-3">
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-3 [&>div]:min-w-0">
                                                 <div>
                                                     <span className="text-muted-foreground">Priority: </span>
                                                     <Badge className={cn(PRIORITY_BADGE[ticket.priority], "text-[10px]")}>{ticket.priority}</Badge>

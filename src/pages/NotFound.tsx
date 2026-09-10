@@ -13,21 +13,21 @@ export default function NotFound() {
     }, [location.pathname]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-            <div className="text-center space-y-6">
-                <div className="space-y-2">
-                    <h1 className="text-6xl font-bold text-muted-foreground">404</h1>
-                    <h2 className="text-2xl font-semibold">Page Not Found</h2>
-                </div>
-                <p className="text-lg text-muted-foreground max-w-md mx-auto">
-                    This page does not exist.
+        // The house page container. This renders inside AppLayout now, so the
+        // sidebar and mobile nav are already there — a full-height centred
+        // splash would fight them.
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+            <div>
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
+                    Page not found
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                    Nothing lives at <code className="font-mono">{location.pathname}</code>.
                 </p>
-                <div className="pt-4">
-                    <Button asChild>
-                        <Link to="/">Return to Home</Link>
-                    </Button>
-                </div>
             </div>
+            <Button asChild>
+                <Link to="/">Back to dashboard</Link>
+            </Button>
         </div>
     );
 }

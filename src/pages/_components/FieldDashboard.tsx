@@ -348,7 +348,7 @@ function JobCard({ job, onClick, tone }: {
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-sm truncate">{job.customerName}</p>
+                    <p className="font-semibold text-sm truncate min-w-0">{job.customerName}</p>
                     <Badge variant="secondary" className="text-[10px] font-medium">
                         {isInspection ? INSPECTION_LABEL_SHORT : "Installation"}
                     </Badge>

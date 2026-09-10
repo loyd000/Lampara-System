@@ -53,7 +53,7 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-w-sm">
+            <DialogContent className="sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Create Contract</DialogTitle>
                 </DialogHeader>

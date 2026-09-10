@@ -30,6 +30,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { countTicketsForInstallation } from "@/lib/supabase/queries/installations.ts";
+import { InlineQueryError } from "@/components/query-error.tsx";
 
 type Props = {
     leadId: Id<"leads">;
@@ -68,7 +69,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 
 export default function InstallationSection({ leadId, stage, canEdit }: Props) {
-    const { data: installation } = useInstallationForLead(leadId);
+    const installationQuery = useInstallationForLead(leadId);
+    const { data: installation } = installationQuery;
     const { data: currentUser } = useCurrentUser();
     const { mutateAsync: updateStatus } = useUpdateInstallationStatus();
     const { mutateAsync: toggleChecklistItem } = useToggleChecklistItem();
@@ -206,6 +208,11 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                 <CardContent className="space-y-4">
                     {!isUnlocked ? (
                         <p className="text-xs text-muted-foreground">Installation is scheduled once the contract is signed.</p>
+                    ) : installationQuery.isError ? (
+                        <InlineQueryError
+                            message="Couldn't load the installation."
+                            onRetry={() => void installationQuery.refetch()}
+                        />
                     ) : installation === undefined ? (
                         <Skeleton className="h-20 w-full" />
                     ) : installation === null ? (

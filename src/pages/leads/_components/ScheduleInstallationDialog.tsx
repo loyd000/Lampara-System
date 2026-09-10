@@ -135,7 +135,7 @@ export default function ScheduleInstallationDialog({
                 }
             }}
         >
-            <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {editing ? "Reschedule Installation" : "Schedule Installation"}

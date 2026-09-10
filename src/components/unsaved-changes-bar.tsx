@@ -37,11 +37,14 @@ export default function UnsavedChangesBar({
                 className,
             )}
         >
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            {/* `min-w-0` + `truncate`: the buttons are `shrink-0`, so without
+                this the label wrapped to two lines at ~320px and the bar grew
+                a row taller mid-edit. */}
+            <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <span className="size-2 shrink-0 rounded-full bg-amber-500 animate-pulse" />
-                {label}
+                <span className="truncate">{label}</span>
             </span>
-            <div className="flex items-center gap-2">{children}</div>
+            <div className="flex shrink-0 items-center gap-2">{children}</div>
         </div>
     );
 }

@@ -23,6 +23,22 @@ import { useNow } from "@/hooks/use-now.ts";
 import { cn } from "@/lib/utils.ts";
 import type { PackageDesignType } from "@/lib/supabase/types.ts";
 
+/**
+ * Which breakpoint each of the seven table columns appears at, in order:
+ * Name, Location, Date Added, Property Type, Design Type, Stage, Last Activity.
+ * Kept beside the header row it mirrors — if a column's visibility changes
+ * there, it has to change here or the skeleton stops matching the table.
+ */
+const SKELETON_COLUMNS = [
+    "",
+    "hidden sm:table-cell",
+    "hidden lg:table-cell",
+    "hidden md:table-cell",
+    "hidden lg:table-cell",
+    "",
+    "hidden md:table-cell",
+] as const;
+
 export default function LeadsPage() {
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
@@ -175,8 +191,13 @@ export default function LeadsPage() {
                         {isLoading ? (
                             [...Array(6)].map((_, i) => (
                                 <tr key={i} className="border-b last:border-0">
-                                    {[...Array(7)].map((_, j) => (
-                                        <td key={j} className="px-4 py-3">
+                                    {/* The same per-column visibility as the header
+                                        and body rows. Without it the skeleton is a
+                                        7-column table on a phone that forces a
+                                        horizontal scrollbar, then reflows to 2
+                                        columns the moment data lands. */}
+                                    {SKELETON_COLUMNS.map((visibility, j) => (
+                                        <td key={j} className={cn("px-4 py-3", visibility)}>
                                             <Skeleton className="h-4 w-full" />
                                         </td>
                                     ))}

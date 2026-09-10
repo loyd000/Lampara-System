@@ -72,8 +72,12 @@ export default function App() {
                                     />
                                     <Route path="/team" element={<TeamPage />} />
                                     <Route path="/profile" element={<ProfilePage />} />
+                                    {/* Inside the layout, not beside it: a
+                                        mistyped URL used to strand a signed-in
+                                        user on a bare page with no sidebar, no
+                                        mobile nav and one button out. */}
+                                    <Route path="*" element={<NotFound />} />
                                 </Route>
-                                <Route path="*" element={<NotFound />} />
                             </Routes>
                         </Suspense>
                     </PasswordRecoveryGate>

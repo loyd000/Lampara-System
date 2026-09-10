@@ -51,6 +51,7 @@ import QuotesTab from "../_components/quotes/QuotesTab.tsx";
 import ContractSection from "../_components/ContractSection.tsx";
 import InstallationSection from "../_components/InstallationSection.tsx";
 import ServiceTicketsSection from "../_components/ServiceTicketsSection.tsx";
+import { QueryError } from "@/components/query-error.tsx";
 
 /**
  * One lead, one tab per stage of its life.
@@ -118,8 +119,10 @@ export default function LeadDetailPage() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const { data: lead } = useLead(id as Id<"leads">);
-    const { data: properties } = useLeadProperties(id as Id<"leads">);
+    const leadQuery = useLead(id as Id<"leads">);
+    const propertiesQuery = useLeadProperties(id as Id<"leads">);
+    const { data: lead } = leadQuery;
+    const { data: properties } = propertiesQuery;
     const { data: activity } = useLeadActivity(id as Id<"leads">);
     const { data: currentUser } = useCurrentUser();
 
@@ -155,6 +158,21 @@ export default function LeadDetailPage() {
                 return next;
             },
             { replace: true },
+        );
+    }
+
+    // Before the skeleton branch, not after: both are plain useQuery, so on
+    // error `data` stays undefined forever and the skeleton below would
+    // never resolve — the whole page reading as permanently loading.
+    if (leadQuery.isError || propertiesQuery.isError) {
+        return (
+            <QueryError
+                title="Couldn't load this lead"
+                onRetry={() => {
+                    void leadQuery.refetch();
+                    void propertiesQuery.refetch();
+                }}
+            />
         );
     }
 

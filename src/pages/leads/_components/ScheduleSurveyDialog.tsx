@@ -76,7 +76,7 @@ export default function ScheduleSurveyDialog({
                 }
             }}
         >
-            <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Schedule {INSPECTION_LABEL}</DialogTitle>
                 </DialogHeader>

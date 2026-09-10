@@ -32,6 +32,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
 import { cn } from "@/lib/utils.ts";
+import { InlineQueryError } from "@/components/query-error.tsx";
 
 /**
  * Photos and documents on the Overview.
@@ -54,7 +55,8 @@ export default function LeadFiles({
     leadId: Id<"leads">;
     canWrite: boolean;
 }) {
-    const { data: files } = useLeadFiles(leadId);
+    const filesQuery = useLeadFiles(leadId);
+    const { data: files } = filesQuery;
     const { mutateAsync: upload } = useUploadLeadFiles();
     const inputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
@@ -153,7 +155,12 @@ export default function LeadFiles({
                 </div>
             )}
 
-            {files === undefined ? (
+            {filesQuery.isError ? (
+                <InlineQueryError
+                    message="Couldn't load files."
+                    onRetry={() => void filesQuery.refetch()}
+                />
+            ) : files === undefined ? (
                 <div className="flex flex-wrap gap-2">
                     {[...Array(4)].map((_, i) => (
                         <Skeleton key={i} className="w-24 h-24 rounded-md" />

@@ -161,7 +161,12 @@ export default function TeamPage() {
                                                 </div>
                                             </div>
                                             {isSuperadmin ? (
-                                                <div className="flex items-center flex-wrap gap-1.5 flex-shrink-0">
+                                                <div
+                                                    // `flex-shrink-0` pinned this cluster wider
+                                                    // than the card, so `flex-wrap` never
+                                                    // engaged and it overflowed instead.
+                                                    className="flex items-center flex-wrap gap-1.5 min-w-0 w-full sm:w-auto"
+                                                >
                                                     <Select
                                                         value={pendingRole[user._id] ?? "field"}
                                                         onValueChange={(v) =>

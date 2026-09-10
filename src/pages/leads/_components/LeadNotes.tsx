@@ -24,6 +24,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
+import { InlineQueryError } from "@/components/query-error.tsx";
 
 /**
  * Dated notes on the Overview.
@@ -43,7 +44,8 @@ export default function LeadNotes({
     leadId: Id<"leads">;
     canWrite: boolean;
 }) {
-    const { data: notes } = useLeadNotes(leadId);
+    const notesQuery = useLeadNotes(leadId);
+    const { data: notes } = notesQuery;
     const { mutateAsync: addNote } = useAddLeadNote();
 
     const [draft, setDraft] = useState("");
@@ -100,7 +102,12 @@ export default function LeadNotes({
                 </div>
             )}
 
-            {notes === undefined ? (
+            {notesQuery.isError ? (
+                <InlineQueryError
+                    message="Couldn't load notes."
+                    onRetry={() => void notesQuery.refetch()}
+                />
+            ) : notes === undefined ? (
                 <div className="space-y-2">
                     {[...Array(2)].map((_, i) => (
                         <Skeleton key={i} className="h-16 w-full rounded-lg" />
