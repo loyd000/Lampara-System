@@ -355,12 +355,6 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                                         )
                                                     }
                                                 />
-                                                {needsSystemSize && (
-                                                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                                                        Not carried over from the quote — enter it before
-                                                        generating the contract.
-                                                    </p>
-                                                )}
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Contract Price (₱)</Label>
