@@ -7,9 +7,11 @@ export function MissingConfigScreen() {
         <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
             <div className="w-full max-w-lg space-y-6 rounded-lg border border-border bg-card p-6 md:p-8 shadow-xs">
                 <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-md bg-card border border-border flex items-center justify-center p-2 shadow-2xs">
-                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
-                    </div>
+                    <img
+                        src="/lampara-icon.png"
+                        alt="Lampara"
+                        className="size-9 object-contain drop-shadow-md dark:invert shrink-0"
+                    />
                     <div>
                         <h1 className="text-lg font-semibold text-foreground tracking-tight">{COMPANY_NAME} CRM</h1>
                         <p className="text-xs text-muted-foreground">Setup Required</p>

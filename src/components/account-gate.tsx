@@ -32,9 +32,11 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="flex size-12 animate-pulse items-center justify-center rounded-lg bg-card border border-border p-2.5 shadow-2xs">
-                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
-                    </div>
+                    <img
+                        src="/lampara-icon.png"
+                        alt="Lampara"
+                        className="size-12 object-contain animate-pulse drop-shadow-lg dark:invert"
+                    />
                     <Skeleton className="h-4 w-32 rounded-md" />
                 </div>
             </div>
@@ -113,8 +115,8 @@ function AccountMessage({
     return (
         <div className="flex min-h-svh items-center justify-center bg-background px-4">
             <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-                <div className="flex size-12 items-center justify-center rounded-lg bg-card border border-border p-2 shadow-2xs">
-                    {icon ?? <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />}
+                <div className="flex size-12 items-center justify-center">
+                    {icon ?? <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain drop-shadow-lg dark:invert" />}
                 </div>
                 <div>
                     <h1 className="text-lg font-semibold text-foreground">{title}</h1>

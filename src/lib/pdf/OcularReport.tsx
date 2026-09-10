@@ -95,17 +95,20 @@ const CONTENT_WIDTH = 516;
 
 export function OcularReport({
     data,
+    docTitle,
     logo,
     compass = COMPASS,
 }: {
     data: ReportData;
+    /** See QuotePdf — this becomes the print preview's suggested filename. */
+    docTitle?: string;
     /** Overridden only by the offline preview script; see theme.tsx. */
     logo?: string;
     compass?: string;
 }) {
     return (
         <Document
-            title={`Site Ocular Report — ${data.name}`}
+            title={docTitle ?? `Site Ocular Report — ${data.name}`}
             author="Lampara Electrical Installation Services"
             subject="Site Ocular Report"
         >

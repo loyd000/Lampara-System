@@ -277,16 +277,19 @@ function Paragraphs({ items }: { items: string[] }) {
 
 export function ContractPdf({
     data,
+    docTitle,
     logo = LOGO,
 }: {
     data: ContractPdfData;
+    /** See QuotePdf — this becomes the print preview's suggested filename. */
+    docTitle?: string;
     logo?: string;
 }) {
     const homeowner = data.homeownerName || "________________________";
 
     return (
         <Document
-            title={`Photovoltaic Installation Contract — ${homeowner}`}
+            title={docTitle ?? `Photovoltaic Installation Contract — ${homeowner}`}
             author="Lampara Electrical Installation Services"
         >
             <Page size="A4" style={styles.page}>

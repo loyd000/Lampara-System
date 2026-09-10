@@ -32,9 +32,11 @@ export default function AppLayout() {
                 <div className="flex h-screen items-center justify-center bg-background">
                     <div className="flex flex-col items-center gap-4">
                         <div className="relative">
-                            <div className="size-12 rounded-lg bg-card border border-border flex items-center justify-center animate-pulse p-2.5 shadow-2xs">
-                                <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
-                            </div>
+                            <img
+                                src="/lampara-icon.png"
+                                alt="Lampara"
+                                className="size-12 object-contain animate-pulse drop-shadow-lg dark:invert"
+                            />
                         </div>
                         <Skeleton className="h-4 w-32 rounded-md" />
                     </div>
@@ -50,10 +52,12 @@ export default function AppLayout() {
                         <div className="flex flex-1 flex-col overflow-hidden">
                             {/* Mobile top bar */}
                             <div className="glass-nav flex md:hidden items-center justify-between px-4 py-3 border-b border-border sticky top-0 z-40">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="size-7 rounded-md bg-card border border-border flex items-center justify-center p-1 shadow-2xs">
-                                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
-                                    </div>
+                                <div className="flex items-center gap-2">
+                                    <img
+                                        src="/lampara-icon.png"
+                                        alt="Lampara"
+                                        className="size-6 object-contain drop-shadow-md dark:invert shrink-0"
+                                    />
                                     <span className="font-bold text-sm tracking-tight text-foreground">{COMPANY_NAME}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
@@ -140,9 +144,11 @@ function LandingPage() {
             {/* Header */}
             <header className="relative z-10 flex items-center justify-between px-6 py-4 md:px-12 md:py-6 border-b border-border/40 bg-background/80 backdrop-blur-md">
                 <div className="flex items-center gap-2.5">
-                    <div className="size-8 rounded-lg bg-card border border-border flex items-center justify-center p-1.5 shadow-2xs">
-                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
-                    </div>
+                    <img
+                        src="/lampara-icon.png"
+                        alt="Lampara"
+                        className="size-8 object-contain drop-shadow-md dark:invert shrink-0"
+                    />
                     <span className="text-xl font-bold tracking-tight text-foreground">
                         {COMPANY_NAME}
                     </span>

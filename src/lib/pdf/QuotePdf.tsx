@@ -364,15 +364,21 @@ const styles = StyleSheet.create({
 
 export function QuotePdf({
     data,
+    docTitle,
     logo = LOGO,
 }: {
     data: QuotePdfData;
+    /**
+     * The PDF's `/Title`. Chrome's print preview pre-fills the "Save as PDF"
+     * filename from it, so it has to match the name the button offers.
+     */
+    docTitle?: string;
     logo?: string;
 }) {
     const hasPhotos = Boolean(data.inverterBatteryPhoto || data.roofPanelPhoto);
 
     return (
-        <Document title={data.quotationNo} author={data.preparerName}>
+        <Document title={docTitle ?? data.quotationNo} author={data.preparerName}>
             {/* ════ PAGE 1: Proposal & Itemised Quotation ════ */}
             <Page size="A4" style={styles.page}>
                 {/* Header */}

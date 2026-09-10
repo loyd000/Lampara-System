@@ -47,9 +47,11 @@ export default function AppSidebar() {
             {/* Logo & Theme Toggle */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2.5">
-                    <div className="size-8 rounded-lg bg-card border border-border flex items-center justify-center p-1 shadow-2xs">
-                        <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />
-                    </div>
+                    <img
+                        src="/lampara-icon.png"
+                        alt="Lampara"
+                        className="size-7 object-contain drop-shadow-md dark:invert shrink-0"
+                    />
                     <div className="flex flex-col">
                         <span className="font-bold text-base tracking-tight text-sidebar-foreground leading-tight">Lampara</span>
                         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Solar CRM</span>
