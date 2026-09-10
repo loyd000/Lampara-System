@@ -281,10 +281,13 @@ export default function OcularInspectionTab({
                                 className={cn(
                                     "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
                                     "hover:bg-muted/40",
+                                    // Matches the quotes list: one line on desktop,
+                                    // stacked on phones.
+                                    "md:flex md:items-center md:justify-between md:gap-4",
                                     idx > 0 && "border-t border-border",
                                 )}
                             >
-                                <div className="min-w-0 space-y-1">
+                                <div className="min-w-0 space-y-1 md:flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {/* The date is the report's name, so it stays
                                             short — no weekday, no clock time. */}
@@ -317,7 +320,7 @@ export default function OcularInspectionTab({
                                 </div>
 
                                 <div
-                                    className="flex items-center gap-2 mt-3 min-w-0"
+                                    className="flex items-center gap-2 mt-3 min-w-0 md:mt-0 md:shrink-0"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <DownloadReportButton

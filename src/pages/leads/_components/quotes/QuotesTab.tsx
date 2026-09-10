@@ -187,10 +187,13 @@ export default function QuotesTab({
                                     className={cn(
                                         "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
                                         "hover:bg-muted/40",
+                                        // Desktop has the width for one line: details
+                                        // left, actions right. On phones they stack.
+                                        "md:flex md:items-center md:justify-between md:gap-4",
                                         idx > 0 && "border-t border-border",
                                     )}
                                 >
-                                    <div className="min-w-0 space-y-1">
+                                    <div className="min-w-0 space-y-1 md:flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             {/* Version reads as part of the name, as it
                                                 does in the builder. */}
@@ -229,7 +232,7 @@ export default function QuotesTab({
                                         labelled buttons squeezing it off the edge when
                                         both are present. */}
                                     <div
-                                        className="flex items-center gap-2 mt-3 min-w-0"
+                                        className="flex items-center gap-2 mt-3 min-w-0 md:mt-0 md:shrink-0"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <DownloadQuotePdfButton
