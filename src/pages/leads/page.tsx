@@ -52,8 +52,8 @@ export default function LeadsPage() {
             {/* Header */}
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Leads & Customers</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Leads & Customers</h1>
+                    <p className="text-sm text-muted-foreground mt-1.5">
                         {isLoading
                             ? "Loading…"
                             : !isSearching && page?.truncated
@@ -124,10 +124,10 @@ export default function LeadsPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-lg border border-border overflow-x-auto bg-card shadow-2xs">
+            <div className="rounded-xl overflow-x-auto bg-card shadow-sm">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b bg-muted/30">
+                        <tr className="border-b border-border">
                             <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Name</th>
                             <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">Contact</th>
                             <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden lg:table-cell">Location</th>

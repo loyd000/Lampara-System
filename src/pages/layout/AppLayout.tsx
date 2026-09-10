@@ -45,7 +45,7 @@ export default function AppLayout() {
                         <AppSidebar />
                         <div className="flex flex-1 flex-col overflow-hidden">
                             {/* Mobile top bar */}
-                            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
+                            <div className="glass-nav flex md:hidden items-center justify-between px-4 py-3 border-b border-border sticky top-0 z-40">
                                 <div className="flex items-center gap-2.5">
                                     <div className="size-7 rounded-md bg-card border border-border flex items-center justify-center p-1 shadow-2xs">
                                         <img src="/lampara-icon.png" alt="Lampara" className="size-full object-contain dark:invert" />

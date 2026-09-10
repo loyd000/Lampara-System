@@ -174,7 +174,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                             </TabsList>
 
                             <TabsContent value="contact" className="space-y-3 pt-2">
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <FormField control={form.control} name="firstName" render={({ field }) => (
                                         <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
@@ -182,7 +182,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                         <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <FormField control={form.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="0917 123 4567" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
@@ -190,7 +190,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                         <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <FormField control={form.control} name="source" render={({ field }) => (
                                         <FormItem><FormLabel>Source</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>

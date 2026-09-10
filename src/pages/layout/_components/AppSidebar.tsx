@@ -17,7 +17,7 @@ import { ROLE_LABELS } from "@/lib/constants.ts";
 type NavItem = {
     label: string;
     to: string;
-    icon: React.ComponentType<{ className?: string }>;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
     roles?: string[];
 };
 
@@ -62,13 +62,13 @@ export default function AppSidebar() {
                         {({ isActive }) => (
                             <div
                                 className={cn(
-                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13.5px] font-medium tracking-tight transition-colors cursor-pointer",
                                     isActive
-                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
                                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                                 )}
                             >
-                                <item.icon className="w-4 h-4 flex-shrink-0" />
+                                <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
                                 {item.label}
                             </div>
                         )}

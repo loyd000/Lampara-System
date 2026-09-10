@@ -114,7 +114,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="firstName" render={({ field }) => (
                                 <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="Jane" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
@@ -122,7 +122,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                 <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Smith" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="phone" render={({ field }) => (
                                 <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="0917 123 4567" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
@@ -130,7 +130,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                 <FormItem><FormLabel>Email (optional)</FormLabel><FormControl><Input placeholder="jane@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="source" render={({ field }) => (
                                 <FormItem><FormLabel>Lead Source</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>

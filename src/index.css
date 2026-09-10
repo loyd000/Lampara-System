@@ -9,11 +9,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --font-serif: "Noto Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
-    --radius: 0.375rem;
+    --radius: 1rem;
     --radius-sm: calc(var(--radius) - 2px);
     --radius-md: calc(var(--radius) - 1px);
     --radius-lg: var(--radius);
@@ -76,162 +76,158 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Lampara — Monochrome Light Theme (White 60–100 Palette)
+   Lampara — Apple Liquid Glass, Light
+   Cool grey ground + white panels + hairline dividers; blue is the one
+   accent. See apple-liquid-glass skill's tokens.css for the source values —
+   these are the same values, remapped onto shadcn's semantic names so every
+   component that already reads bg-card / text-muted-foreground / etc.
+   inherits the new look without a per-component rewrite.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-    --radius: 0.375rem;
+    --radius: 1rem;
 
-    /* Background — White 90 (#F0F1F5) */
-    --background: #f0f1f5;
-    /* Foreground — Black 100 (#0A0E15) */
-    --foreground: #0a0e15;
+    /* Ground — cool grey-white, never warm/cream */
+    --background: #f5f5f7;
+    --foreground: #1d1d1f;
 
-    /* Cards — White 100 (#FFFFFF) */
+    /* Panels — solid white, separated from the ground by shadow, not border */
     --card: #ffffff;
-    --card-foreground: #0a0e15;
+    --card-foreground: #1d1d1f;
 
-    /* Popovers — White 100 (#FFFFFF) */
+    /* Overlays (dialog/popover/dropdown) — same white surface; glass is added
+       per-component only where it actually overlaps scrolling content. */
     --popover: #ffffff;
-    --popover-foreground: #0a0e15;
+    --popover-foreground: #1d1d1f;
 
-    /* Primary — High-contrast Black 100 (#0A0E15) */
-    --primary: #0a0e15;
+    /* Primary — Apple blue is the one accent; body content stays grayscale */
+    --primary: #0071e3;
     --primary-foreground: #ffffff;
 
-    /* Secondary — White 80 (#E0E4EB) */
-    --secondary: #e0e4eb;
-    --secondary-foreground: #0a0e15;
+    /* Secondary — visible-but-quiet fill, for badges/buttons on a white panel */
+    --secondary: #e8e8ed;
+    --secondary-foreground: #1d1d1f;
 
-    /* Muted — White 90 (#F0F1F5) with Black 70 (#4E5766) text */
-    --muted: #e0e4eb;
-    --muted-foreground: #4e5766;
+    /* Muted — secondary text tier */
+    --muted: #f5f5f7;
+    --muted-foreground: #6e6e73;
 
-    /* Accent — White 80 (#E0E4EB) */
-    --accent: #e0e4eb;
-    --accent-foreground: #0a0e15;
+    /* Accent — neutral hover/highlight tint (not the brand accent above) */
+    --accent: #f5f5f7;
+    --accent-foreground: #1d1d1f;
 
-    /* Destructive */
-    --destructive: #dc2626;
+    /* Destructive — Apple system red */
+    --destructive: #ff3b30;
     --destructive-foreground: #ffffff;
 
-    /* Borders & Inputs — White 70 (#D1D6E0) */
-    --border: #d1d6e0;
-    --input: #d1d6e0;
-    --ring: #0a0e15;
+    /* Hairline dividers, not heavy borders */
+    --border: rgba(0, 0, 0, 0.07);
+    --input: rgba(0, 0, 0, 0.09);
+    --ring: #0071e3;
 
-    /* Charts — Monochrome scale */
-    --chart-1: #0a0e15;
-    --chart-2: #37404f;
-    --chart-3: #667085;
-    --chart-4: #bfc6d4;
-    --chart-5: #d1d6e0;
+    /* Charts — grayscale + the one accent */
+    --chart-1: #0071e3;
+    --chart-2: #1d1d1f;
+    --chart-3: #6e6e73;
+    --chart-4: #aeaeb2;
+    --chart-5: #d2d2d7;
 
-    /* Sidebar — White 100 with White 70 border */
-    --sidebar: #ffffff;
-    --sidebar-foreground: #0a0e15;
-    --sidebar-primary: #0a0e15;
+    /* Sidebar — a shade off the page ground, active item lifts to a white pill */
+    --sidebar: #f5f5f7;
+    --sidebar-foreground: #1d1d1f;
+    --sidebar-primary: #0071e3;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #f0f1f5;
-    --sidebar-accent-foreground: #0a0e15;
-    --sidebar-border: #d1d6e0;
-    --sidebar-ring: #0a0e15;
+    --sidebar-accent: #ffffff;
+    --sidebar-accent-foreground: #1d1d1f;
+    --sidebar-border: rgba(0, 0, 0, 0.07);
+    --sidebar-ring: #0071e3;
 
     /* Typography */
-    --font-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
     --font-serif: "Noto Serif", Georgia, serif;
     --font-mono: "Geist Mono", "JetBrains Mono", monospace;
     --letter-spacing: 0em;
 
-    /* Shadows — cool neutral tone */
-    --shadow-color: rgb(10 14 21 / 0.06);
-    --shadow-2xs: 0 1px 2px 0 rgb(10 14 21 / 0.04);
-    --shadow-xs: 0 1px 3px 0 rgb(10 14 21 / 0.06);
-    --shadow-sm: 0 1px 3px 0 rgb(10 14 21 / 0.08), 0 1px 2px -1px rgb(10 14 21 / 0.06);
-    --shadow: 0 2px 6px -1px rgb(10 14 21 / 0.08), 0 1px 3px -1px rgb(10 14 21 / 0.06);
-    --shadow-md: 0 4px 8px -2px rgb(10 14 21 / 0.10), 0 2px 4px -2px rgb(10 14 21 / 0.06);
-    --shadow-lg: 0 8px 16px -4px rgb(10 14 21 / 0.10), 0 4px 6px -2px rgb(10 14 21 / 0.05);
-    --shadow-xl: 0 16px 32px -8px rgb(10 14 21 / 0.12), 0 8px 12px -4px rgb(10 14 21 / 0.06);
-    --shadow-2xl: 0 24px 48px -12px rgb(10 14 21 / 0.18);
+    /* Shadows — always two-layer (tight contact + soft spread), never one hard shadow */
+    --shadow-color: rgb(0 0 0 / 0.06);
+    --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 14px 40px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.1), 0 30px 80px rgba(0, 0, 0, 0.24);
+    --shadow-xl: 0 4px 12px rgba(0, 0, 0, 0.12), 0 40px 100px rgba(0, 0, 0, 0.26);
+    --shadow-2xl: 0 4px 16px rgba(0, 0, 0, 0.14), 0 60px 120px rgba(0, 0, 0, 0.3);
     --spacing: 0.25rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Lampara — Monochrome Dark Theme (Black 60–100 Palette)
+   Lampara — Apple Liquid Glass, Dark
+   Extrapolated from Apple HIG's dark "grouped" convention (the skill only
+   ships light tokens): true-black ground, elevated #1c1c1e panels, and the
+   dark-mode system blue #0a84ff (the skill's own --grad-blue start color).
    ═══════════════════════════════════════════════════════════════════════════ */
 .dark {
-    --radius: 0.375rem;
+    --radius: 1rem;
 
-    /* Background — Black 100 (#0A0E15) */
-    --background: #0a0e15;
-    /* Foreground — White 90 (#F0F1F5) */
-    --foreground: #f0f1f5;
+    --background: #000000;
+    --foreground: #f5f5f7;
 
-    /* Cards — Black 90 (#202531) */
-    --card: #202531;
-    --card-foreground: #ffffff;
+    --card: #1c1c1e;
+    --card-foreground: #f5f5f7;
 
-    /* Popovers — Black 90 (#202531) */
-    --popover: #202531;
-    --popover-foreground: #ffffff;
+    --popover: #1c1c1e;
+    --popover-foreground: #f5f5f7;
 
-    /* Primary — Inverted White 100 (#FFFFFF) with Black 100 (#0A0E15) text */
-    --primary: #ffffff;
-    --primary-foreground: #0a0e15;
+    --primary: #0a84ff;
+    --primary-foreground: #ffffff;
 
-    /* Secondary — Black 80 (#37404F) */
-    --secondary: #37404f;
-    --secondary-foreground: #ffffff;
+    --secondary: #2c2c2e;
+    --secondary-foreground: #f5f5f7;
 
-    /* Muted — Black 80 (#37404F) with White 60 (#BFC6D4) text */
-    --muted: #37404f;
-    --muted-foreground: #bfc6d4;
+    --muted: #1c1c1e;
+    --muted-foreground: #98989d;
 
-    /* Accent — Black 80 (#37404F) */
-    --accent: #37404f;
-    --accent-foreground: #ffffff;
+    --accent: #2c2c2e;
+    --accent-foreground: #f5f5f7;
 
-    /* Destructive */
-    --destructive: #ef4444;
+    --destructive: #ff453a;
     --destructive-foreground: #ffffff;
 
-    /* Borders & Inputs — Black 80 (#37404F) */
-    --border: #37404f;
-    --input: #37404f;
-    --ring: #ffffff;
+    --border: rgba(255, 255, 255, 0.1);
+    --input: rgba(255, 255, 255, 0.12);
+    --ring: #0a84ff;
 
-    /* Charts — Monochrome luminous scale */
-    --chart-1: #ffffff;
-    --chart-2: #bfc6d4;
-    --chart-3: #667085;
-    --chart-4: #4e5766;
-    --chart-5: #37404f;
+    --chart-1: #0a84ff;
+    --chart-2: #f5f5f7;
+    --chart-3: #98989d;
+    --chart-4: #6e6e73;
+    --chart-5: #48484a;
 
-    /* Sidebar — Black 100 (#0A0E15) */
-    --sidebar: #0a0e15;
-    --sidebar-foreground: #f0f1f5;
-    --sidebar-primary: #ffffff;
-    --sidebar-primary-foreground: #0a0e15;
-    --sidebar-accent: #202531;
-    --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: #37404f;
-    --sidebar-ring: #ffffff;
+    --sidebar: #000000;
+    --sidebar-foreground: #f5f5f7;
+    --sidebar-primary: #0a84ff;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #1c1c1e;
+    --sidebar-accent-foreground: #f5f5f7;
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-ring: #0a84ff;
 
     /* Typography */
-    --font-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
     --font-serif: "Noto Serif", Georgia, serif;
     --font-mono: "Geist Mono", "JetBrains Mono", monospace;
     --letter-spacing: 0em;
 
-    /* Shadows — deep atmospheric dark */
-    --shadow-color: rgb(0 0 0 / 0.50);
-    --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+    /* Shadows — deep atmospheric dark, still two-layer */
+    --shadow-color: rgb(0 0 0 / 0.5);
+    --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
     --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.35);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.30);
-    --shadow: 0 2px 6px -1px rgb(0 0 0 / 0.40), 0 1px 3px -1px rgb(0 0 0 / 0.30);
-    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.30);
-    --shadow-lg: 0 8px 16px -4px rgb(0 0 0 / 0.50), 0 4px 6px -2px rgb(0 0 0 / 0.25);
-    --shadow-xl: 0 16px 32px -8px rgb(0 0 0 / 0.55), 0 8px 12px -4px rgb(0 0 0 / 0.30);
-    --shadow-2xl: 0 24px 48px -12px rgb(0 0 0 / 0.65);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 14px 40px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.4), 0 30px 80px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 4px 12px rgba(0, 0, 0, 0.45), 0 40px 100px rgba(0, 0, 0, 0.62);
+    --shadow-2xl: 0 4px 16px rgba(0, 0, 0, 0.5), 0 60px 120px rgba(0, 0, 0, 0.68);
     --spacing: 0.25rem;
 }
 
@@ -283,5 +279,20 @@
 
     .dark ::-webkit-scrollbar-thumb:hover {
         background: #4e5766;
+    }
+}
+
+@layer utilities {
+    /* Liquid-glass frost — ONLY for sticky/fixed nav bars that overlap
+       scrolling content (top bar, bottom tab bar, dialog/popover chrome).
+       Never apply to plain content surfaces. */
+    .glass-nav {
+        background: rgba(245, 245, 247, 0.72);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+    }
+
+    .dark .glass-nav {
+        background: rgba(28, 28, 30, 0.72);
     }
 }

@@ -1,7 +1,6 @@
 import { useLeads, usePermitsSummary, usePipelineSummary } from "@/lib/supabase/hooks.ts";
 import type { Doc } from "@/lib/supabase/types.ts";
 
-import { cn } from "@/lib/utils.ts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 
 /** The "Recent Leads" card shows a handful; no reason to fetch more. */
@@ -59,42 +58,24 @@ export default function AdminDashboard({ user }: Props) {
     const hasAlerts = staleLeads.length > 0 || overduePermits.length > 0;
 
     return (
-        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <div className="p-6 space-y-8 max-w-7xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
                     Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">Here's what's happening at Lampara today.</p>
+                <p className="text-sm text-muted-foreground mt-1.5">Here's what's happening at Lampara today.</p>
             </div>
 
-            {/* Stat Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                    title="Total Leads"
-                    value={stats?.total ?? "—"}
-                    icon={<Users className="w-5 h-5 text-foreground" />}
-                    color="bg-secondary"
-                />
-                <StatCard
-                    title="Active Pipeline"
-                    value={stats?.active ?? "—"}
-                    icon={<TrendingUp className="w-5 h-5 text-foreground" />}
-                    color="bg-secondary"
-                />
-                <StatCard
-                    title="Contracts Signed"
-                    value={stats?.contracts ?? "—"}
-                    icon={<ClipboardList className="w-5 h-5 text-foreground" />}
-                    color="bg-secondary"
-                />
-                <StatCard
-                    title="Installations"
-                    value={stats?.installs ?? "—"}
-                    icon={<SunMedium className="w-5 h-5 text-foreground" />}
-                    color="bg-secondary"
-                />
-            </div>
+            {/* Stat line — one unified panel, hairline-separated, not fragmented cards */}
+            <Card className="py-0">
+                <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x">
+                    <StatCell title="Total Leads" value={stats?.total} icon={<Users className="w-4 h-4" />} />
+                    <StatCell title="Active Pipeline" value={stats?.active} icon={<TrendingUp className="w-4 h-4" />} />
+                    <StatCell title="Contracts Signed" value={stats?.contracts} icon={<ClipboardList className="w-4 h-4" />} />
+                    <StatCell title="Installations" value={stats?.installs} icon={<SunMedium className="w-4 h-4" />} />
+                </div>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Activity */}
@@ -196,19 +177,17 @@ export default function AdminDashboard({ user }: Props) {
     );
 }
 
-function StatCard({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: string }) {
+function StatCell({ title, value, icon }: { title: string; value: number | string | undefined; icon: React.ReactNode }) {
     return (
-        <Card>
-            <CardContent>
-                <div className="flex items-start justify-between">
-                    <div>
-                        <p className="text-xs font-medium text-muted-foreground">{title}</p>
-                        <p className="text-2xl font-bold tracking-tight text-foreground mt-1">{value}</p>
-                    </div>
-                    <div className={cn("p-2 rounded-md border border-border", color)}>{icon}</div>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="flex items-start justify-between gap-3 px-5 py-5">
+            <div>
+                <p className="text-xs font-medium text-muted-foreground">{title}</p>
+                <p className="text-[26px] font-bold tracking-[-0.02em] text-foreground mt-1 tabular-nums">
+                    {value ?? "—"}
+                </p>
+            </div>
+            <div className="text-muted-foreground mt-0.5">{icon}</div>
+        </div>
     );
 }
 
