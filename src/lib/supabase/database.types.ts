@@ -250,11 +250,9 @@ export type SurveyRow = Timestamps & {
     battery_option: BatteryOption | null;
     panel_option: PanelOption | null;
     report_notes: string | null;
-
-    prepared_by_id: string | null;
-    prepared_at: string | null;
-    approved_by_id: string | null;
-    approved_at: string | null;
+    // The submit/approve handoff's bookkeeping columns lived here until 0029.
+    // An inspection is finished when `completed_at` is set (0028); there is no
+    // approver, because there is no approval step.
 };
 
 export type SurveyPhotoRow = {
@@ -280,7 +278,6 @@ export type QuoteRow = Timestamps & {
     panel_model?: string | null;
     inverter_type?: string | null;
     system_size_kw?: number | null;
-    total_price_usd?: number | string | null;
     financing_option?: FinancingOption | null;
     valid_until: string | null;
     notes: string | null;
@@ -486,24 +483,11 @@ export type Database = {
                 };
                 Returns: string;
             };
-            create_quote: {
-                Args: {
-                    p_lead_id: string;
-                    p_panel_count: number;
-                    p_panel_model: string;
-                    p_inverter_type: string;
-                    p_system_size_kw: number;
-                    p_total_price_usd: number;
-                    p_financing_option: FinancingOption;
-                    p_valid_until?: string | null;
-                    p_notes?: string | null;
-                };
-                Returns: string;
-            };
-            revise_quote: {
-                Args: { p_quote_id: string };
-                Returns: string;
-            };
+            // `create_quote` and `revise_quote` were dropped in 0029 — both
+            // uncalled, and `revise_quote` could not have worked anyway: it set
+            // statuses the CHECK constraint stopped permitting. The client
+            // creates and revises quotes directly (see queries/quotes.ts), so
+            // it can allocate the version and quotation number.
             create_contract: {
                 Args: { p_lead_id: string; p_quote_id: string; p_notes?: string | null };
                 Returns: string;

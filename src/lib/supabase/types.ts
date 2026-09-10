@@ -245,12 +245,9 @@ export type Survey = Base & {
     batteryOption?: BatteryOption;
     panelOption?: PanelOption;
     reportNotes?: string;
-
-    // ── Sign-off ─────────────────────────────────────────────────────────
-    preparedById?: string;
-    preparedAt?: string;
-    approvedById?: string;
-    approvedAt?: string;
+    // No sign-off fields: 0012 removed the submit/approve handoff and 0029
+    // dropped the columns it left behind. A finished inspection is one with
+    // `completedAt` set (see Base).
 };
 
 /** One photo in one slot of the report. `url` is a short-lived signed URL. */
@@ -275,7 +272,6 @@ export type Quote = Base & {
     panelModel?: string;
     inverterType?: string;
     systemSizeKw?: number;
-    totalPriceUsd?: number;
     financingOption?: FinancingOption;
     validUntil?: string;
     notes?: string;
@@ -684,11 +680,6 @@ export function toSurvey(row: SurveyRow): Survey {
         batteryOption: opt(row.battery_option),
         panelOption: opt(row.panel_option),
         reportNotes: opt(row.report_notes),
-
-        preparedById: opt(row.prepared_by_id),
-        preparedAt: opt(row.prepared_at),
-        approvedById: opt(row.approved_by_id),
-        approvedAt: opt(row.approved_at),
     };
 }
 
@@ -710,14 +701,15 @@ export function toQuote(row: QuoteRow): Quote {
         leadId: row.lead_id,
         version: row.version,
         status: row.status,
-        totalPhp: Number(row.total_php ?? row.total_price_usd ?? 0),
+        // `total_php` is NOT NULL with a default; the old `total_price_usd`
+        // fallback went with the column in 0029.
+        totalPhp: Number(row.total_php ?? 0),
         quotationNo: row.quotation_no ?? `PV System Quotation-${row.version}`,
         preparedById: opt(row.prepared_by_id),
         panelCount: num(row.panel_count),
         panelModel: opt(row.panel_model),
         inverterType: opt(row.inverter_type),
         systemSizeKw: num(row.system_size_kw),
-        totalPriceUsd: num(row.total_price_usd),
         financingOption: row.financing_option ?? undefined,
         validUntil: opt(row.valid_until),
         notes: opt(row.notes),
