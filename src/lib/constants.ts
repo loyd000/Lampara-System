@@ -35,6 +35,26 @@ export const STAGES: Stage[] = [
   "cancelled",
 ];
 
+/**
+ * Whether a lead has come far enough to schedule its installation — which is
+ * the moment the contract is signed.
+ *
+ * Derived from the position in STAGES rather than listing the locked stages by
+ * hand. The hand-written list used to name every stage up to and including
+ * `contract_signed`, because `permitting` sat between the two and was what
+ * actually unlocked the tab; when 0030 removed `permitting` that list locked
+ * installation at every stage a lead could reach. Deriving it means adding or
+ * removing a stage can't reintroduce that gap.
+ *
+ * `cancelled` is last in STAGES but is a dead end, not a late stage, so it is
+ * excluded explicitly.
+ */
+export function canScheduleInstallation(stage: string): boolean {
+  if (stage === "cancelled") return false;
+  const at = STAGES.indexOf(stage as Stage);
+  return at >= 0 && at >= STAGES.indexOf("contract_signed");
+}
+
 export const STAGE_LABELS: Record<Stage, string> = {
   lead: "New Lead",
   // The stage *values* keep the old names — only the labels are rebranded.

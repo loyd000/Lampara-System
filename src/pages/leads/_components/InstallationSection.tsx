@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Wrench, Plus, Camera, CheckSquare, Square, X, CheckCircle2, Zap, PauseCircle } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
+import { canScheduleInstallation } from "@/lib/constants.ts";
 import { toast } from "sonner";
 import ScheduleInstallationDialog from "./ScheduleInstallationDialog.tsx";
 
@@ -38,8 +39,6 @@ const STATUS_LABEL: Record<string, string> = {
     on_hold: "On Hold",
 };
 
-const isUnlockedStage = (stage: string) =>
-    !["lead", "survey_scheduled", "survey_completed", "proposal_sent", "contract_signed"].includes(stage);
 
 export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const { data: installation } = useInstallationForLead(leadId);
@@ -69,7 +68,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
         installation.assignedCrewIds.includes(currentUser._id);
     const canWork = canEdit || isCrew;
 
-    const isUnlocked = isUnlockedStage(stage);
+    const isUnlocked = canScheduleInstallation(stage);
 
     async function handleStatusChange(status: "scheduled" | "in_progress" | "completed" | "on_hold") {
         if (!installation) return;
