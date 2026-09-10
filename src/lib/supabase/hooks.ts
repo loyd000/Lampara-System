@@ -698,6 +698,33 @@ export function useCreateInstallation() {
     });
 }
 
+export function useRescheduleInstallation() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.rescheduleInstallation,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.installations }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
+export function useDeleteInstallation() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: installationsApi.deleteInstallation,
+        onSuccess: () =>
+            Promise.all([
+                client.invalidateQueries({ queryKey: queryKeys.installations }),
+                // Deleting cascades to service tickets, so the maintenance tab
+                // is stale too.
+                client.invalidateQueries({ queryKey: queryKeys.serviceTickets }),
+                invalidatePipeline(client),
+            ]),
+    });
+}
+
 export function useUpdateInstallationStatus() {
     const client = useQueryClient();
     return useMutation({

@@ -17,38 +17,39 @@ import type {
 } from "../database.types.ts";
 import type { Id } from "../types.ts";
 
+/**
+ * Fields every event carries, whatever kind it is.
+ *
+ * `startDate`/`endDate` are inclusive yyyy-mm-dd. They exist so the month grid
+ * can lay an event out as one continuous bar across the days it covers — an
+ * event is emitted once, not once per day, because a job split into seven
+ * separate chips is exactly the thing the bar replaces.
+ */
+type EventBase = {
+    leadId: Id<"leads">;
+    leadName: string;
+    address: string | null;
+    assigneeNames: string[];
+    startDate: string;
+    endDate: string;
+};
+
 export type CalendarEvent =
-    | {
+    | (EventBase & {
           kind: "inspection";
           id: Id<"surveys">;
-          leadId: Id<"leads">;
-          leadName: string;
-          address: string | null;
           status: SurveyStatus;
-          assigneeNames: string[];
           /** Exact time slot. */
           at: string;
           allDay: false;
-      }
-    | {
+      })
+    | (EventBase & {
           kind: "installation";
           id: Id<"installations">;
-          leadId: Id<"leads">;
-          leadName: string;
-          address: string | null;
           status: InstallationStatus;
-          assigneeNames: string[];
-          /** Date only — no time-of-day was ever scheduled. */
-          at: string;
+          /** Dates only — no time-of-day was ever scheduled. */
           allDay: true;
-          /**
-           * A multi-day install is emitted once per day it covers, so the
-           * calendar's day buckets need no special case. These say which day
-           * of the job this one is: "Day 2 of 4".
-           */
-          dayIndex: number;
-          dayCount: number;
-      };
+      });
 
 type LeadWithProperty = Pick<LeadRow, "first_name" | "last_name"> & {
     properties: Pick<PropertyRow, "address" | "city">[] | null;
@@ -61,6 +62,13 @@ function addressOf(lead: LeadWithProperty | null): string | null {
 
 function leadNameOf(lead: LeadWithProperty | null): string {
     return lead ? `${lead.first_name} ${lead.last_name}` : "Unknown";
+}
+
+/** The local calendar day an instant falls on, as yyyy-mm-dd. */
+function localDayOf(instant: string): string {
+    const d = new Date(instant);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 /**
@@ -154,44 +162,49 @@ export async function listCalendarEvents(args: {
         (crew.data ?? []).map((u) => [u.id, u.name || u.email || "Unknown"]),
     );
 
-    const inspectionEvents: CalendarEvent[] = surveyRows.map((row) => ({
-        kind: "inspection",
+    const inspectionEvents: CalendarEvent[] = surveyRows.map((row) => {
+        // `scheduled_at` is an instant; the day it falls on is the *local* day,
+        // which is what the grid is drawn in.
+        const day = localDayOf(row.scheduled_at);
+        return {
+            kind: "inspection",
+            id: row.id,
+            leadId: row.lead_id,
+            leadName: leadNameOf(row.leads),
+            address: addressOf(row.leads),
+            status: row.status,
+            assigneeNames: [row.surveyor?.name || row.surveyor?.email || "Unassigned"],
+            at: row.scheduled_at,
+            allDay: false,
+            startDate: day,
+            endDate: day,
+        };
+    });
+
+    const installationEvents: CalendarEvent[] = installationRows.map((row) => ({
+        kind: "installation",
         id: row.id,
         leadId: row.lead_id,
         leadName: leadNameOf(row.leads),
         address: addressOf(row.leads),
         status: row.status,
-        assigneeNames: [row.surveyor?.name || row.surveyor?.email || "Unassigned"],
-        at: row.scheduled_at,
-        allDay: false,
+        assigneeNames: row.assigned_crew_ids.length
+            ? row.assigned_crew_ids.map((id) => crewById.get(id) ?? "Unknown")
+            : ["Unassigned"],
+        allDay: true,
+        // The row may start before or end after the requested window; it is
+        // returned whole and the grid clips it to the weeks on screen.
+        startDate: row.scheduled_date,
+        endDate: row.scheduled_end_date,
     }));
 
-    const installationEvents: CalendarEvent[] = installationRows.flatMap((row) => {
-        const days = daysBetween(row.scheduled_date, row.scheduled_end_date);
-        const assigneeNames = row.assigned_crew_ids.length
-            ? row.assigned_crew_ids.map((id) => crewById.get(id) ?? "Unknown")
-            : ["Unassigned"];
-
-        return days
-            // The row was fetched because it overlaps the view, but it may
-            // start before or end after it; only the visible days are emitted.
-            .filter((day) => day >= args.from && day <= args.to)
-            .map((day) => ({
-                kind: "installation" as const,
-                id: row.id,
-                leadId: row.lead_id,
-                leadName: leadNameOf(row.leads),
-                address: addressOf(row.leads),
-                status: row.status,
-                assigneeNames,
-                at: day,
-                allDay: true as const,
-                dayIndex: days.indexOf(day) + 1,
-                dayCount: days.length,
-            }));
-    });
-
-    return [...inspectionEvents, ...installationEvents].sort((a, b) =>
-        a.at.localeCompare(b.at),
+    // Longest-first within a day so a multi-day bar takes the top lane and
+    // shorter jobs settle underneath it, rather than the bar zig-zagging down
+    // the rows as it crosses each one.
+    return [...inspectionEvents, ...installationEvents].sort(
+        (a, b) =>
+            a.startDate.localeCompare(b.startDate) ||
+            b.endDate.localeCompare(a.endDate) ||
+            a.leadName.localeCompare(b.leadName),
     );
 }

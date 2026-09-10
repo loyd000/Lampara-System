@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import {
     useActivateCustomer,
+    useDeleteInstallation,
     useAddChecklistItem,
     useAddCompletionPhotos,
     useCurrentUser,
@@ -13,11 +14,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Wrench, Plus, Camera, CheckSquare, Square, X, CheckCircle2, Zap, PauseCircle } from "lucide-react";
+import { Wrench, Plus, Camera, CheckSquare, Square, X, CheckCircle2, Zap, PauseCircle, CalendarClock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { canScheduleInstallation } from "@/lib/constants.ts";
 import { toast } from "sonner";
 import ScheduleInstallationDialog from "./ScheduleInstallationDialog.tsx";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog.tsx";
+import { countTicketsForInstallation } from "@/lib/supabase/queries/installations.ts";
 
 type Props = {
     leadId: Id<"leads">;
@@ -63,8 +75,14 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const { mutateAsync: addChecklistItem } = useAddChecklistItem();
     const { mutateAsync: addPhotos } = useAddCompletionPhotos();
     const { mutateAsync: activateCustomer } = useActivateCustomer();
+    const { mutateAsync: deleteInstallation, isPending: deleting } = useDeleteInstallation();
 
     const [scheduleOpen, setScheduleOpen] = useState(false);
+    const [rescheduleOpen, setRescheduleOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    // Counted when the confirm dialog opens rather than watched continuously —
+    // it is only ever read to word one sentence.
+    const [ticketsAtRisk, setTicketsAtRisk] = useState<number | null>(null);
     const [newItem, setNewItem] = useState("");
     const [addingItem, setAddingItem] = useState(false);
     const [uploadingPhotos, setUploadingPhotos] = useState(false);
@@ -132,6 +150,30 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to upload photos");
         } finally { setUploadingPhotos(false); }
+    }
+
+    async function openDeleteDialog() {
+        setTicketsAtRisk(null);
+        setDeleteOpen(true);
+        if (!installation) return;
+        try {
+            setTicketsAtRisk(await countTicketsForInstallation(installation._id));
+        } catch {
+            // The count only sharpens the warning; failing to get it must not
+            // stop someone deleting a job they meant to delete.
+            setTicketsAtRisk(null);
+        }
+    }
+
+    async function handleDelete() {
+        if (!installation) return;
+        try {
+            await deleteInstallation({ installationId: installation._id });
+            toast.success("Installation deleted");
+            setDeleteOpen(false);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to delete the installation");
+        }
     }
 
     async function handleActivateCustomer() {
@@ -247,6 +289,23 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                             <CheckCircle2 className="w-3 h-3 mr-1" />Activate as Customer
                                         </Button>
                                     )}
+
+                                    {/* Changing the job, as opposed to working it:
+                                        running the schedule is `canEdit`, not
+                                        something the crew on site does. */}
+                                    {canEdit && (
+                                        <>
+                                            <Button size="sm" variant="outline" className="h-9 text-xs"
+                                                onClick={() => setRescheduleOpen(true)}>
+                                                <CalendarClock className="w-3 h-3 mr-1" />Reschedule
+                                            </Button>
+                                            <Button size="sm" variant="ghost"
+                                                className="h-9 text-xs ml-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                onClick={openDeleteDialog}>
+                                                <Trash2 className="w-3 h-3 mr-1" />Delete
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             )}
 
@@ -350,6 +409,50 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                 onClose={() => setScheduleOpen(false)}
                 leadId={leadId}
             />
+
+            {installation && (
+                <ScheduleInstallationDialog
+                    open={rescheduleOpen}
+                    onClose={() => setRescheduleOpen(false)}
+                    leadId={leadId}
+                    installation={installation}
+                />
+            )}
+
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this installation?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            The schedule, crew, materials checklist and any completion
+                            photos are removed for good, and the lead can then have a
+                            new installation scheduled.
+                            {ticketsAtRisk !== null && ticketsAtRisk > 0 && (
+                                <>
+                                    {" "}
+                                    <strong>
+                                        {ticketsAtRisk} service ticket
+                                        {ticketsAtRisk === 1 ? "" : "s"} raised against
+                                        this job will be deleted with it.
+                                    </strong>
+                                </>
+                            )}{" "}
+                            The stage is left as it is — change it yourself if the work
+                            is no longer going ahead.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Installation</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive hover:bg-destructive/90 text-white"
+                            disabled={deleting}
+                        >
+                            {deleting ? "Deleting…" : "Delete Installation"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

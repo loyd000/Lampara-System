@@ -153,6 +153,148 @@ export async function createInstallation(args: {
     return installation.id;
 }
 
+/**
+ * Formats a schedule for the activity log: one date, or a range.
+ *
+ * Kept next to the two callers rather than shared with the UI's version — this
+ * one is a permanent record, so it must not follow a later change of taste in
+ * how the section displays dates.
+ */
+function describeSchedule(start: string, end: string): string {
+    const at = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString();
+    return start === end ? at(start) : `${at(start)} – ${at(end)}`;
+}
+
+/**
+ * Moves an existing installation's dates and crew.
+ *
+ * Until this existed a mistyped date could not be corrected at all: one
+ * installation per lead is enforced at creation, and the only other mutation is
+ * the status buttons, so the row was effectively immutable.
+ *
+ * The lead's stage is deliberately untouched. It is already at or past
+ * Install Scheduled, and an automatic advance never moves a lead backwards.
+ */
+export async function rescheduleInstallation(args: {
+    installationId: Id<"installations">;
+    scheduledDate: string;
+    scheduledEndDate?: string;
+    assignedCrewIds: Id<"users">[];
+    leadInstallerNote?: string;
+    notes?: string;
+}): Promise<void> {
+    const current = unwrap(
+        await supabase
+            .from("installations")
+            .select("lead_id, scheduled_date, scheduled_end_date")
+            .eq("id", args.installationId)
+            .single(),
+        "Installation not found",
+    ) as { lead_id: string; scheduled_date: string; scheduled_end_date: string };
+
+    const endDate = args.scheduledEndDate || args.scheduledDate;
+    if (endDate < args.scheduledDate) {
+        throw new Error("The installation cannot finish before it starts");
+    }
+
+    const { error } = await supabase
+        .from("installations")
+        .update({
+            scheduled_date: args.scheduledDate,
+            scheduled_end_date: endDate,
+            assigned_crew_ids: args.assignedCrewIds,
+            lead_installer_note: args.leadInstallerNote || null,
+            notes: args.notes || null,
+        })
+        .eq("id", args.installationId);
+    if (error) throw toAppError(error, "Failed to reschedule the installation");
+
+    const before = describeSchedule(current.scheduled_date, current.scheduled_end_date);
+    const after = describeSchedule(args.scheduledDate, endDate);
+
+    await logActivity({
+        leadId: current.lead_id,
+        action: "Installation rescheduled",
+        details: before === after ? `Crew updated · ${after}` : `${before} → ${after}`,
+        entityType: "installation",
+        entityId: args.installationId,
+    });
+
+    // The crew is told about the new dates the same way they were told about
+    // the original ones — a silent move is how someone turns up on the wrong day.
+    await notifyEvent({
+        event: "installation_scheduled",
+        leadId: current.lead_id,
+        recipientUserIds: args.assignedCrewIds,
+        meta: { scheduledDate: new Date(`${args.scheduledDate}T00:00:00`).toLocaleDateString() },
+    });
+}
+
+/**
+ * Deletes an installation, freeing the lead to have a new one scheduled.
+ *
+ * Two things go with it and both are handled here rather than left to chance:
+ * `service_tickets.installation_id` cascades in the database, so any tickets
+ * raised against this job are destroyed with it, and the completion photos in
+ * the `photos` bucket are referenced by nothing else, so they would sit there
+ * forever. The caller is expected to have shown the ticket count first —
+ * `countTicketsForInstallation` exists for exactly that.
+ *
+ * The lead's stage is left where it is; moving it back is a judgement call that
+ * belongs to whoever is looking at the lead, not to this function.
+ */
+export async function deleteInstallation(args: {
+    installationId: Id<"installations">;
+}): Promise<void> {
+    const installation = unwrap(
+        await supabase
+            .from("installations")
+            .select("lead_id, scheduled_date, scheduled_end_date, completion_photo_paths")
+            .eq("id", args.installationId)
+            .single(),
+        "Installation not found",
+    ) as {
+        lead_id: string;
+        scheduled_date: string;
+        scheduled_end_date: string;
+        completion_photo_paths: string[] | null;
+    };
+
+    const photos = installation.completion_photo_paths ?? [];
+
+    const { error } = await supabase
+        .from("installations")
+        .delete()
+        .eq("id", args.installationId);
+    if (error) throw toAppError(error, "Failed to delete the installation");
+
+    // Only once the row is gone — deleting the objects first would strand the
+    // row pointing at files that no longer exist if the delete then failed.
+    if (photos.length) await removeFiles("photos", photos);
+
+    await logActivity({
+        leadId: installation.lead_id,
+        action: "Installation deleted",
+        details: describeSchedule(
+            installation.scheduled_date,
+            installation.scheduled_end_date,
+        ),
+        entityType: "installation",
+    });
+}
+
+/** How many service tickets would be destroyed along with this installation. */
+export async function countTicketsForInstallation(
+    installationId: Id<"installations">,
+): Promise<number> {
+    const { count, error } = await supabase
+        .from("service_tickets")
+        .select("id", { count: "exact", head: true })
+        .eq("installation_id", installationId);
+    if (error) throw toAppError(error, "Failed to check service tickets");
+    return count ?? 0;
+}
+
 export async function updateInstallationStatus(args: {
     installationId: Id<"installations">;
     status: InstallationStatus;

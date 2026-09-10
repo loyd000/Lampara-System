@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    addDays,
     addMonths,
     addWeeks,
     eachDayOfInterval,
     endOfMonth,
     endOfWeek,
     format,
-    isSameDay,
     isSameMonth,
     isToday,
     startOfMonth,
@@ -19,16 +17,14 @@ import {
 import { ChevronLeft, ChevronRight, ClipboardCheck, MapPin, Wrench } from "lucide-react";
 
 import { useCalendarEvents } from "@/lib/supabase/hooks.ts";
-import type { CalendarEvent } from "@/lib/supabase/queries/calendar.ts";
+import { daysBetween, type CalendarEvent } from "@/lib/supabase/queries/calendar.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
     ToggleGroup, ToggleGroupItem,
 } from "@/components/ui/toggle-group.tsx";
-import {
-    Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
+import { layOutWeek, type Segment } from "./week-layout.ts";
 
 type ViewMode = "month" | "week";
 
@@ -44,6 +40,15 @@ const KIND_LABELS: Record<CalendarEvent["kind"], string> = {
 
 function eventTab(event: CalendarEvent): string {
     return event.kind === "inspection" ? "ocular" : "installation";
+}
+
+function dayKey(day: Date): string {
+    return format(day, "yyyy-MM-dd");
+}
+
+function spanLabel(event: CalendarEvent): string {
+    const days = daysBetween(event.startDate, event.endDate).length;
+    return days > 1 ? ` (${days} days)` : "";
 }
 
 export default function CalendarPage() {
@@ -71,20 +76,6 @@ export default function CalendarPage() {
         from: format(rangeStart, "yyyy-MM-dd"),
         to: format(rangeEnd, "yyyy-MM-dd"),
     });
-
-    const eventsByDay = useMemo(() => {
-        const map = new Map<string, CalendarEvent[]>();
-        for (const event of events ?? []) {
-            // `at` is a date-only string for installations and a full
-            // timestamp for inspections — both parse fine as local dates once
-            // sliced to the day, avoiding a UTC-vs-local off-by-one.
-            const key = event.at.slice(0, 10);
-            const list = map.get(key) ?? [];
-            list.push(event);
-            map.set(key, list);
-        }
-        return map;
-    }, [events]);
 
     function goToday() {
         setAnchor(new Date());
@@ -153,52 +144,87 @@ export default function CalendarPage() {
             {isLoading ? (
                 <Skeleton className="h-[60vh] w-full rounded-lg" />
             ) : view === "month" ? (
-                <MonthGrid days={days} anchor={anchor} eventsByDay={eventsByDay} onOpen={openEvent} />
+                <MonthGrid days={days} anchor={anchor} events={events ?? []} onOpen={openEvent} />
             ) : (
-                <WeekGrid days={days} eventsByDay={eventsByDay} onOpen={openEvent} />
+                <WeekList days={days} events={events ?? []} onOpen={openEvent} />
             )}
         </div>
     );
 }
 
-function EventPill({ event, onOpen }: { event: CalendarEvent; onOpen: (e: CalendarEvent) => void }) {
+/** The bar itself — one per run of days, not one per day. */
+function EventBar({
+    segment,
+    onOpen,
+}: {
+    segment: Segment<CalendarEvent>;
+    onOpen: (e: CalendarEvent) => void;
+}) {
+    const { event, continuesLeft, continuesRight } = segment;
     return (
         <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onOpen(event); }}
             className={cn(
-                "w-full text-left rounded-md border px-1.5 py-1 text-[11px] font-medium leading-tight truncate transition-opacity hover:opacity-80",
+                "w-full h-full flex items-center gap-1 border px-1.5 text-[11px] font-medium leading-none truncate transition-opacity hover:opacity-80",
+                // Square off whichever end runs into the next week, so the bar
+                // reads as continuing rather than as two separate jobs.
+                continuesLeft ? "rounded-l-none border-l-0" : "rounded-l-md",
+                continuesRight ? "rounded-r-none border-r-0" : "rounded-r-md",
                 KIND_STYLES[event.kind],
             )}
             title={
-                event.kind === "installation" && event.dayCount > 1
-                    ? `${event.leadName} — ${KIND_LABELS[event.kind]} (day ${event.dayIndex} of ${event.dayCount})`
-                    : `${event.leadName} — ${KIND_LABELS[event.kind]}`
+                [
+                    `${event.leadName} — ${KIND_LABELS[event.kind]}${spanLabel(event)}`,
+                    event.address,
+                ]
+                    .filter(Boolean)
+                    .join("\n")
             }
         >
-            {!event.allDay && <span className="tabular-nums mr-1">{format(new Date(event.at), "h:mma").toLowerCase()}</span>}
-            {event.leadName}
-            {event.kind === "installation" && event.dayCount > 1 && (
-                <span className="ml-1 opacity-70 tabular-nums">
-                    {event.dayIndex}/{event.dayCount}
+            {continuesLeft && <span aria-hidden className="opacity-60 shrink-0">◀</span>}
+            {!event.allDay && (
+                <span className="tabular-nums shrink-0">
+                    {format(new Date(event.at), "h:mma").toLowerCase()}
                 </span>
             )}
+            <span className="truncate">
+                {event.leadName}
+                {event.address && (
+                    <span className="font-normal opacity-70"> · {event.address}</span>
+                )}
+            </span>
+            {continuesRight && <span aria-hidden className="opacity-60 shrink-0 ml-auto">▶</span>}
         </button>
     );
 }
 
+const LANE_HEIGHT = 22; // px per stacked bar, including its gap
+/**
+ * Space reserved above the bars for the day number.
+ *
+ * The number is a 20px badge under 6px of cell padding, so it ends at 26px;
+ * starting the bars there left them touching it. This is that plus a gap.
+ */
+const DATE_ROW_HEIGHT = 34;
+
 function MonthGrid({
     days,
     anchor,
-    eventsByDay,
+    events,
     onOpen,
 }: {
     days: Date[];
     anchor: Date;
-    eventsByDay: Map<string, CalendarEvent[]>;
+    events: CalendarEvent[];
     onOpen: (e: CalendarEvent) => void;
 }) {
-    const MAX_VISIBLE = 3;
+    const weeks = useMemo(() => {
+        const out: Date[][] = [];
+        for (let i = 0; i < days.length; i += 7) out.push(days.slice(i, i + 7));
+        return out;
+    }, [days]);
+
     return (
         <div className="bg-card rounded-xl shadow-sm overflow-x-auto">
             <div className="min-w-[640px]">
@@ -209,80 +235,105 @@ function MonthGrid({
                         </div>
                     ))}
                 </div>
-                <div className="grid grid-cols-7">
-                    {days.map((day) => {
-                        const key = format(day, "yyyy-MM-dd");
-                        const dayEvents = eventsByDay.get(key) ?? [];
-                        const visible = dayEvents.slice(0, MAX_VISIBLE);
-                        const overflow = dayEvents.length - visible.length;
-                        return (
-                            <div
-                                key={key}
-                                className={cn(
-                                    "min-h-[7rem] border-b border-r border-border p-1.5 space-y-1",
-                                    !isSameMonth(day, anchor) && "bg-muted/40",
-                                )}
-                            >
-                                <span
-                                    className={cn(
-                                        "inline-flex size-5 items-center justify-center rounded-full text-[11px] font-semibold",
-                                        isToday(day)
-                                            ? "bg-primary text-primary-foreground"
-                                            : !isSameMonth(day, anchor)
-                                              ? "text-muted-foreground/50"
-                                              : "text-foreground",
-                                    )}
-                                >
-                                    {format(day, "d")}
-                                </span>
-                                <div className="space-y-1">
-                                    {visible.map((event) => (
-                                        <EventPill key={`${event.kind}-${event.id}`} event={event} onOpen={onOpen} />
-                                    ))}
-                                </div>
-                                {overflow > 0 && (
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <button
-                                                type="button"
-                                                className="text-[11px] text-muted-foreground hover:text-foreground font-medium"
-                                            >
-                                                +{overflow} more
-                                            </button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-64 p-2 space-y-1" align="start">
-                                            <p className="text-xs font-semibold text-muted-foreground px-1 pb-1">
-                                                {format(day, "MMMM d, yyyy")}
-                                            </p>
-                                            {dayEvents.map((event) => (
-                                                <EventPill key={`${event.kind}-${event.id}`} event={event} onOpen={onOpen} />
-                                            ))}
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
+
+                {weeks.map((week) => {
+                    const { segments, laneCount } = layOutWeek(week.map(dayKey), events);
+                    const rowHeight = Math.max(
+                        112,
+                        DATE_ROW_HEIGHT + laneCount * LANE_HEIGHT + 8,
+                    );
+
+                    return (
+                        <div key={dayKey(week[0])} className="relative" style={{ minHeight: rowHeight }}>
+                            {/* The day cells are the backdrop: they draw the
+                                borders and the date numbers only. */}
+                            <div className="absolute inset-0 grid grid-cols-7">
+                                {week.map((day) => (
+                                    <div
+                                        key={dayKey(day)}
+                                        className={cn(
+                                            "border-b border-r border-border p-1.5",
+                                            !isSameMonth(day, anchor) && "bg-muted/40",
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                "inline-flex size-5 items-center justify-center rounded-full text-[11px] font-semibold",
+                                                isToday(day)
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : !isSameMonth(day, anchor)
+                                                      ? "text-muted-foreground/50"
+                                                      : "text-foreground",
+                                            )}
+                                        >
+                                            {format(day, "d")}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
-                        );
-                    })}
-                </div>
+
+                            {/* Bars sit in their own grid on top, so one can
+                                span several columns instead of being chopped
+                                up into a chip inside each day cell. */}
+                            <div
+                                className="absolute inset-x-0 grid grid-cols-7"
+                                style={{ top: DATE_ROW_HEIGHT }}
+                            >
+                                {segments.map((segment) => (
+                                    <div
+                                        key={`${segment.event.kind}-${segment.event.id}`}
+                                        className="px-1"
+                                        style={{
+                                            gridColumn: `${segment.startCol + 1} / span ${segment.span}`,
+                                            gridRow: segment.lane + 1,
+                                            height: LANE_HEIGHT - 4,
+                                            marginBottom: 4,
+                                        }}
+                                    >
+                                        <EventBar segment={segment} onOpen={onOpen} />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
-function WeekGrid({
+/**
+ * The narrow view: a card per day. Here a multi-day job *should* repeat, since
+ * each day is its own agenda and the crew is on site on all of them — so it is
+ * expanded per day and told which day of the run this is.
+ */
+function WeekList({
     days,
-    eventsByDay,
+    events,
     onOpen,
 }: {
     days: Date[];
-    eventsByDay: Map<string, CalendarEvent[]>;
+    events: CalendarEvent[];
     onOpen: (e: CalendarEvent) => void;
 }) {
+    const byDay = useMemo(() => {
+        const map = new Map<string, { event: CalendarEvent; dayIndex: number; dayCount: number }[]>();
+        for (const event of events) {
+            const span = daysBetween(event.startDate, event.endDate);
+            span.forEach((day, i) => {
+                const list = map.get(day) ?? [];
+                list.push({ event, dayIndex: i + 1, dayCount: span.length });
+                map.set(day, list);
+            });
+        }
+        return map;
+    }, [events]);
+
     return (
         <div className="space-y-3">
             {days.map((day) => {
-                const key = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDay.get(key) ?? [];
+                const key = dayKey(day);
+                const entries = byDay.get(key) ?? [];
                 return (
                     <div key={key} className="bg-card rounded-xl shadow-sm overflow-hidden">
                         <div
@@ -300,14 +351,14 @@ function WeekGrid({
                                 </span>
                             )}
                             <span className="text-xs text-muted-foreground ml-auto">
-                                {dayEvents.length} {dayEvents.length === 1 ? "job" : "jobs"}
+                                {entries.length} {entries.length === 1 ? "job" : "jobs"}
                             </span>
                         </div>
-                        {dayEvents.length === 0 ? (
+                        {entries.length === 0 ? (
                             <p className="px-3 py-4 text-xs text-muted-foreground">Nothing scheduled</p>
                         ) : (
                             <div className="divide-y">
-                                {dayEvents.map((event) => (
+                                {entries.map(({ event, dayIndex, dayCount }) => (
                                     <button
                                         key={`${event.kind}-${event.id}`}
                                         type="button"
@@ -334,9 +385,7 @@ function WeekGrid({
                                                 {KIND_LABELS[event.kind]}
                                                 {!event.allDay && ` · ${format(new Date(event.at), "h:mm a")}`}
                                                 {event.allDay && " · All day"}
-                                                {event.kind === "installation" &&
-                                                    event.dayCount > 1 &&
-                                                    ` · Day ${event.dayIndex} of ${event.dayCount}`}
+                                                {dayCount > 1 && ` · Day ${dayIndex} of ${dayCount}`}
                                                 {event.assigneeNames.length > 0 && ` · ${event.assigneeNames.join(", ")}`}
                                             </p>
                                             {event.address && (

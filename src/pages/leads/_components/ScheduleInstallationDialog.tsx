@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useCreateInstallation, useUsers } from "@/lib/supabase/hooks.ts";
-import type { Id } from "@/lib/supabase/types.ts";
+import {
+    useCreateInstallation,
+    useRescheduleInstallation,
+    useUsers,
+} from "@/lib/supabase/hooks.ts";
+import type { Id, Installation } from "@/lib/supabase/types.ts";
 import { ROLE_LABELS } from "@/lib/constants.ts";
 import { toast } from "sonner";
 import {
@@ -12,9 +17,10 @@ import {
     Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { DateRangePicker } from "@/components/date-range-picker.tsx";
+import { describeRange } from "@/components/date-range.ts";
 
 const schema = z
     .object({
@@ -37,44 +43,84 @@ type Props = {
     open: boolean;
     onClose: () => void;
     leadId: Id<"leads">;
+    /**
+     * Present when rescheduling. The form is the same either way — the dates
+     * and crew of a job — so it takes the existing one rather than being
+     * duplicated into a near-identical "edit" dialog that would drift.
+     */
+    installation?: Installation;
 };
 
-export default function ScheduleInstallationDialog({ open, onClose, leadId }: Props) {
+export default function ScheduleInstallationDialog({
+    open,
+    onClose,
+    leadId,
+    installation,
+}: Props) {
     const { mutateAsync: createInstallation } = useCreateInstallation();
+    const { mutateAsync: rescheduleInstallation } = useRescheduleInstallation();
     const { data: users } = useUsers();
     const crew = users?.filter((u) => ["field", "admin", "superadmin"].includes(u.role)) ?? [];
 
-    // `useWatch` rather than `form.watch()` in render: watch() returns a fresh
-    // function-backed value each render, which React Compiler refuses to
-    // memoize and warns about.
+    const editing = Boolean(installation);
+
+    const defaults: FormValues = {
+        scheduledDate: installation?.scheduledDate ?? "",
+        scheduledEndDate: installation?.scheduledEndDate ?? "",
+        crewIds: installation?.assignedCrewIds ?? [],
+        leadInstallerNote: installation?.leadInstallerNote ?? "",
+        notes: installation?.notes ?? "",
+    };
+
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
-        defaultValues: {
-            scheduledDate: "",
-            scheduledEndDate: "",
-            crewIds: [],
-            leadInstallerNote: "",
-            notes: "",
-        },
+        defaultValues: defaults,
     });
 
+    // Refill from the current props every time the dialog opens.
+    //
+    // `form.reset()` on close restores the defaults captured when useForm first
+    // ran, not the latest ones — so after saving a reschedule, reopening would
+    // show the dates as they were before the edit. Re-syncing on the closed ->
+    // open transition (rather than on the installation's identity) fixes that,
+    // and never fires while someone is part-way through typing.
+    const [wasOpen, setWasOpen] = useState(false);
+    if (open !== wasOpen) {
+        setWasOpen(open);
+        if (open) form.reset(defaults);
+    }
+
+    // `useWatch`, not `form.watch()` in render — watch() returns a fresh
+    // function-backed value every render, which React Compiler refuses to
+    // memoize and warns about. Watched rather than read through getValues() so
+    // the picker and the summary line both redraw as the drag moves.
     const startDate = useWatch({ control: form.control, name: "scheduledDate" });
+    const endDate = useWatch({ control: form.control, name: "scheduledEndDate" });
+    const range = { start: startDate ?? "", end: endDate ?? "" };
 
     async function onSubmit(values: FormValues) {
+        const payload = {
+            scheduledDate: values.scheduledDate,
+            scheduledEndDate: values.scheduledEndDate,
+            assignedCrewIds: values.crewIds as Id<"users">[],
+            leadInstallerNote: values.leadInstallerNote || undefined,
+            notes: values.notes || undefined,
+        };
         try {
-            await createInstallation({
-                leadId,
-                scheduledDate: values.scheduledDate,
-                scheduledEndDate: values.scheduledEndDate,
-                assignedCrewIds: values.crewIds as Id<"users">[],
-                leadInstallerNote: values.leadInstallerNote || undefined,
-                notes: values.notes || undefined,
-            });
-            toast.success("Installation scheduled");
+            if (installation) {
+                await rescheduleInstallation({
+                    installationId: installation._id as Id<"installations">,
+                    ...payload,
+                });
+                toast.success("Installation rescheduled — the crew has been notified");
+            } else {
+                await createInstallation({ leadId, ...payload });
+                toast.success("Installation scheduled");
+            }
             form.reset();
             onClose();
         } catch (e) {
-            const msg = e instanceof Error ? e.message : "Failed to schedule installation";
+            const msg = e instanceof Error ? e.message : "Failed to save the installation";
             toast.error(msg);
         }
     }
@@ -91,57 +137,36 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
         >
             <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Schedule Installation</DialogTitle>
+                    <DialogTitle>
+                        {editing ? "Reschedule Installation" : "Schedule Installation"}
+                    </DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {/* `min-w-0` on the cells: a native date input's intrinsic
-                            width is wider than half a phone screen, and grid items
-                            default to `min-width: auto`, so without it the row
-                            overflows instead of shrinking. */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="min-w-0">
-                                <FormField control={form.control} name="scheduledDate" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Start Date</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                {...field}
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    // Most installs are one day, and a
-                                                    // finish date that trails the start
-                                                    // is never what someone meant.
-                                                    const end = form.getValues("scheduledEndDate");
-                                                    if (!end || end < e.target.value) {
-                                                        form.setValue("scheduledEndDate", e.target.value, {
-                                                            shouldValidate: true,
-                                                        });
-                                                    }
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                            </div>
-                            <div className="min-w-0">
-                                <FormField control={form.control} name="scheduledEndDate" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Finish Date</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                min={startDate || undefined}
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                            </div>
-                        </div>
+                        <FormField control={form.control} name="scheduledDate" render={() => (
+                            <FormItem>
+                                <FormLabel>Installation Dates</FormLabel>
+                                <FormControl>
+                                    <DateRangePicker
+                                        value={range}
+                                        onChange={(next) => {
+                                            form.setValue("scheduledDate", next.start, {
+                                                shouldValidate: true,
+                                            });
+                                            form.setValue("scheduledEndDate", next.end, {
+                                                shouldValidate: true,
+                                            });
+                                        }}
+                                    />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                    {range.start
+                                        ? describeRange(range)
+                                        : "Drag across the days, or click the first and last."}
+                                </p>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
 
                         <FormField control={form.control} name="crewIds" render={({ field }) => (
                             <FormItem>
@@ -196,7 +221,11 @@ export default function ScheduleInstallationDialog({ open, onClose, leadId }: Pr
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => { form.reset(); onClose(); }}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? "Scheduling…" : "Schedule Installation"}
+                                {form.formState.isSubmitting
+                                    ? "Saving…"
+                                    : editing
+                                      ? "Save Changes"
+                                      : "Schedule Installation"}
                             </Button>
                         </DialogFooter>
                     </form>
