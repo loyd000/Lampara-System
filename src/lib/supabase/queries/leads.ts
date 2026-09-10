@@ -87,22 +87,27 @@ export async function logActivity(args: {
  * technician from editing the rest of the lead as a side effect of finishing
  * their own work.
  *
- * `onlyFrom` makes the move conditional on the lead's current stage, so a
- * re-sent quote cannot drag a further-along lead backwards.
+ * Finishing a piece of work calls this to move the lead to the stage that
+ * work represents, and by default the move is forward-only: booking a repeat
+ * inspection for a live customer, or re-approving an old quote, leaves the
+ * stage where it is. A lead that has been cancelled is never moved
+ * automatically either — reviving one is a decision, not a side effect.
+ *
+ * `allowBackwards` is for the explicit stage control in the UI, where the user
+ * is choosing the stage outright and may well be correcting a mistake.
  *
  * Resolves to the previous stage, or null when nothing moved.
  */
 export async function advanceLeadStage(
     leadId: Id<"leads">,
     stage: LeadStage,
-    onlyFrom?: LeadStage[],
-    cancelledReason?: string,
+    options: { allowBackwards?: boolean; cancelledReason?: string } = {},
 ): Promise<LeadStage | null> {
     const { data, error } = await supabase.rpc("advance_lead_stage", {
         p_lead_id: leadId,
         p_stage: stage,
-        p_only_from: onlyFrom ?? null,
-        p_cancelled_reason: cancelledReason ?? null,
+        p_allow_backwards: options.allowBackwards ?? false,
+        p_cancelled_reason: options.cancelledReason ?? null,
     });
     if (error) throw toAppError(error, "Failed to update stage");
     return data ?? null;
@@ -516,7 +521,11 @@ export async function updateStage(args: {
     /** Required in practice when `stage` is "cancelled"; the UI prompts for it. */
     cancelledReason?: string;
 }): Promise<void> {
-    const previous = await advanceLeadStage(args.id, args.stage, undefined, args.cancelledReason);
+    // The user picked this stage by hand, so it may legitimately go backwards.
+    const previous = await advanceLeadStage(args.id, args.stage, {
+        allowBackwards: true,
+        cancelledReason: args.cancelledReason,
+    });
     if (!previous) throw new Error("Lead not found");
     if (previous === args.stage) return;
 

@@ -4,9 +4,7 @@ import { supabase, toAppError, unwrap } from "../client.ts";
 import type { ContractRow } from "../database.types.ts";
 import { buildPath, removeFiles, signedUrl, uploadFile } from "../storage.ts";
 import { toContract, type ContractDetail, type Id } from "../types.ts";
-// The stage advance for a new contract happens inside create_contract itself,
-// so it stays in the same transaction as the insert.
-import { logActivity } from "./leads.ts";
+import { advanceLeadStage, logActivity } from "./leads.ts";
 import { notifyEvent } from "./notifications.ts";
 
 export async function getContractForLead(
@@ -56,8 +54,8 @@ export async function getContractForLead(
 }
 
 /**
- * Creates the single contract for a lead, accepts the quote it is based on, and
- * advances the lead to contract_signed.
+ * Creates the single contract for a lead and accepts the quote it is based on.
+ * The lead's stage does not move here — it moves when the contract is signed.
  *
  * All three in one transaction: previously the quote was flipped to `accepted`
  * before the contract insert, so a failed insert left a quote marked accepted
@@ -97,6 +95,10 @@ export async function markContractSigned(args: {
         .update({ status: "signed", signed_at: new Date().toISOString() })
         .eq("id", args.contractId);
     if (error) throw toAppError(error, "Failed to update contract");
+
+    // Signing is what puts the lead at Contract Signed — creating the contract
+    // used to, which claimed the deal days before anyone had signed anything.
+    await advanceLeadStage(contract.lead_id, "contract_signed");
 
     await logActivity({
         leadId: contract.lead_id,

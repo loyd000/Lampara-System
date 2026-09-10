@@ -120,7 +120,7 @@ export async function createInstallation(args: {
         "Failed to schedule installation",
     ) as { id: string };
 
-    await advanceLeadStage(args.leadId, "installation_scheduled", ["contract_signed"]);
+    await advanceLeadStage(args.leadId, "installation_scheduled");
 
     await logActivity({
         leadId: args.leadId,

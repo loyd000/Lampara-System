@@ -248,7 +248,7 @@ export async function approveQuote(args: { quoteId: Id<"quotes"> }): Promise<voi
 
     if (error) throw toAppError(error, "Failed to approve quote");
 
-    await advanceLeadStage(quote.lead_id, "proposal_sent", ["survey_completed"]);
+    await advanceLeadStage(quote.lead_id, "proposal_sent");
 
     await logActivity({
         leadId: quote.lead_id,

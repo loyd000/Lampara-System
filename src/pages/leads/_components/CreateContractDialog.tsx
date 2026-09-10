@@ -38,7 +38,7 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
             return;
         }
 
-        toast.success("Contract created — lead advanced to Contract Signed");
+        toast.success("Contract created — mark it signed once it comes back");
         setCreating(false);
         onClose();
 
@@ -59,9 +59,9 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
                 </DialogHeader>
 
                 <p className="text-sm text-muted-foreground">
-                    This creates a contract based on the approved quote and advances this
-                    lead to <strong>Contract Signed</strong>. You can fill in the contract
-                    details and generate the PDF from the Contracts tab.
+                    This creates a contract based on the approved quote. Fill in the
+                    details and generate the PDF from the Contracts tab; the lead moves
+                    to <strong>Contract Signed</strong> once you mark it signed there.
                 </p>
 
                 <DialogFooter>

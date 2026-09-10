@@ -503,7 +503,7 @@ export type Database = {
                 Args: {
                     p_lead_id: string;
                     p_stage: LeadStage;
-                    p_only_from?: LeadStage[] | null;
+                    p_allow_backwards?: boolean;
                     p_cancelled_reason?: string | null;
                 };
                 Returns: LeadStage | null;
