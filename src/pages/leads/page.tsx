@@ -58,6 +58,23 @@ export default function LeadsPage() {
         return days > 7 && !["active_customer", "installation_complete", "cancelled"].includes(l.stage);
     }).length;
 
+    /**
+     * The stage, property type and design type filters run over the *fetched*
+     * page, which is capped at `LEAD_LIST_LIMIT`. Past that cap a filtered
+     * count describes a truncated set, so the cap has to stay on screen — the
+     * dangerous version of this is the one that quietly looks authoritative.
+     */
+    const countLabel = (() => {
+        if (isLoading) return "Loading…";
+        const records = `${leads.length} record${leads.length !== 1 ? "s" : ""}`;
+        if (isSearching || !page?.truncated) return records;
+
+        const total = page.total.toLocaleString();
+        return hasActiveFilters
+            ? `${records} — filtered from the first ${rawLeads.length} of ${total}`
+            : `Showing ${rawLeads.length} of ${total} — narrow with search or filters`;
+    })();
+
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
@@ -65,11 +82,7 @@ export default function LeadsPage() {
                 <div>
                     <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Leads & Customers</h1>
                     <p className="text-sm text-muted-foreground mt-1.5">
-                        {isLoading
-                            ? "Loading…"
-                            : !isSearching && !hasActiveFilters && page?.truncated
-                                ? `Showing ${rawLeads.length} of ${page.total.toLocaleString()} — narrow with search or filters`
-                                : `${leads.length} record${leads.length !== 1 ? "s" : ""}`}
+                        {countLabel}
                         {staleCount > 0 && (
                             <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground font-medium">
                                 <AlertTriangle className="w-3 h-3" />{staleCount} stale

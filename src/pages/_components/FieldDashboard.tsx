@@ -112,9 +112,16 @@ export default function FieldDashboard({ user }: Props) {
             at: parseJobDate(s.scheduledAt),
             allDay: false,
             status: s.status,
-            done: s.status === "approved",
-            statusLabel: SURVEY_STATUS_LABELS[s.status] ?? s.status,
-            statusClass: SURVEY_STATUS_COLORS[s.status] ?? "",
+            // An inspection is finished when the technician says so (0028),
+            // not by reaching a status — there is no terminal status to reach
+            // since 0012 removed the approval handoff.
+            done: s.completedAt != null,
+            statusLabel: s.completedAt
+                ? "Completed"
+                : (SURVEY_STATUS_LABELS[s.status] ?? s.status),
+            statusClass: s.completedAt
+                ? SURVEY_STATUS_COLORS.completed
+                : (SURVEY_STATUS_COLORS[s.status] ?? ""),
             completedAt: s.completedAt,
         }));
 

@@ -3,9 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import {
     ArrowLeft,
     CalendarDays,
+    CheckCircle2,
     ChevronRight,
     ClipboardCheck,
     Plus,
+    RotateCcw,
     Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +15,7 @@ import { toast } from "sonner";
 import {
     useCurrentUser,
     useDeleteSurvey,
+    useSetSurveyCompleted,
     useSurveysForLead,
 } from "@/lib/supabase/hooks.ts";
 import type { Id, Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
@@ -131,6 +134,7 @@ export default function OcularInspectionTab({
                     lead={lead}
                     property={property}
                     canSchedule={canSchedule}
+                    editable={editable}
                     onDeleted={() => openReport(null)}
                 />
 
@@ -266,6 +270,10 @@ export default function OcularInspectionTab({
  * optional on any given site.
  */
 function progressOf(survey: SurveyForLead): string | null {
+    // A finished visit says so — otherwise the list gives no way to tell a
+    // completed inspection from one still being filled in.
+    if (survey.completedAt) return "Completed";
+
     const started =
         survey.inspectionDate ||
         survey.usageHabit ||
@@ -294,16 +302,23 @@ function StatusBar({
     lead,
     property,
     canSchedule,
+    editable,
     onDeleted,
 }: {
     survey: SurveyForLead;
     lead: Lead;
     property: Property | undefined;
     canSchedule: boolean;
+    /**
+     * Admin staff *or* the assigned technician — completing a visit is the
+     * technician's call to make, not something they wait on the office for.
+     */
+    editable: boolean;
     /** Deleting removes the report entirely, so the view goes back to the list. */
     onDeleted: () => void;
 }) {
     const { mutateAsync: deleteSurvey } = useDeleteSurvey();
+    const { mutateAsync: setCompleted } = useSetSurveyCompleted();
     const [busy, setBusy] = useState(false);
 
     const surveyId = survey._id as Id<"surveys">;
@@ -341,10 +356,51 @@ function StatusBar({
                                 minute: "2-digit",
                             })}
                         </p>
+                        {survey.completedAt && (
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Completed {new Date(survey.completedAt).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                })}
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5">
                         <DownloadReportButton survey={survey} lead={lead} property={property} />
+                        {editable && (
+                            <Button
+                                size="sm"
+                                variant={survey.completedAt ? "ghost" : "default"}
+                                className="h-9 text-xs"
+                                disabled={busy}
+                                onClick={() =>
+                                    void run(
+                                        () => setCompleted({
+                                            surveyId,
+                                            completed: !survey.completedAt,
+                                        }),
+                                        survey.completedAt
+                                            ? "Inspection reopened"
+                                            : "Inspection marked complete",
+                                    )
+                                }
+                            >
+                                {survey.completedAt ? (
+                                    <>
+                                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                                        Reopen
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                        Mark complete
+                                    </>
+                                )}
+                            </Button>
+                        )}
                         {canSchedule && (
                             <ConfirmButton
                                 label="Delete Report"

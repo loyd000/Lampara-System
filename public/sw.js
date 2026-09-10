@@ -90,34 +90,11 @@ self.addEventListener("activate", (event) => {
     );
 });
 
-// Handle push notifications - only show if app is not in focus
-self.addEventListener("push", (event) => {
-    const data = event.data?.json() ?? {};
-
-    event.waitUntil(
-        clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-            const isAppInFocus = clientList.some((client) => client.focused);
-
-            // Only show notification if app is not in focus
-            if (!isAppInFocus) {
-                return self.registration.showNotification(data.title, data.options);
-            }
-        }),
-    );
-});
-
-// Handle notification clicks - opens/focuses the app
-self.addEventListener("notificationclick", (event) => {
-    event.notification.close();
-
-    event.waitUntil(
-        clients.matchAll({ type: "window" }).then((clientList) => {
-            // Focus existing window if found
-            for (const client of clientList) {
-                if ("focus" in client) return client.focus();
-            }
-            // Open new window if none exists
-            if (clients.openWindow) return clients.openWindow("/");
-        }),
-    );
-});
+// There were `push` and `notificationclick` handlers here. Nothing ever
+// subscribed — no `pushManager.subscribe()` call exists anywhere in the app —
+// so they could not fire, while looking for all the world like web push was a
+// working feature. Notifications are email, sent by the `notify` edge function.
+//
+// If push is wanted later it needs: a subscription registered at sign-in, VAPID
+// keys, a table of subscriptions per user, and a sender. Handlers alone are not
+// half of that feature; they are none of it.
