@@ -16,10 +16,15 @@ Two things worth saying up front:
 
 ---
 
-> **Status:** Phases A–D done. Findings 1–8, 11, 12 fixed, plus **16, 17 and 18
-> — none of which the read-only scan found**. Migrations `0026`, `0027`, `0028`
-> are **applied**. Only the Phase E cleanup list (9, 10, 13, 14, 15) remains.
-> Test suite 23 → 37.
+> **Status:** all phases complete. Every finding is fixed except 14 (declined
+> on purpose) and 15 (a standing gap, not a task). Migrations `0026`–`0029` are
+> **applied**. Test suite 23 → 37; UI components 57 → 28; dependencies 30 → 24.
+>
+> Findings **16–19 were not in the original scan.** Each surfaced only by
+> querying the live database, and between them they include the worst problems
+> found: a revenue report stuck at ₱0, two type unions asserting values the
+> schema forbids, inspections that could never be completed, and a quote-revision
+> function that raises on every call.
 >
 > **The most useful thing in this document is that last sentence.** The
 > original scan read 29.6k lines and found real problems, but the three worst
@@ -311,13 +316,13 @@ requirements, not drift.
 
 | # | Finding | Evidence | Effort |
 |---|---|---|---|
-| 9 | **27 of 57 shadcn components are unused** — accordion, carousel, chart, drawer, menubar, sidebar, table, resizable, input-otp, slider… | scan of `src/components/ui/*` | 1h |
-| 10 | **Dependencies only those dead components use**: `recharts`, `embla-carousel-react`, `vaul`, `react-resizable-panels`, `input-otp`. Bundle impact is probably small (tree-shaking already drops them) — the real win is install time and supply-chain surface, not KB | `package.json` | 30min |
+| 9 | ~~**27 of 57 shadcn components are unused**~~ ✅ fixed — **28** removed. Resolved transitively: deleting `sidebar` orphaned `sheet`, so the sweep repeated until stable. 57 → 28 components | `src/components/ui/*` | done |
+| 10 | ~~**Dependencies only those dead components use**~~ ✅ fixed — `recharts`, `embla-carousel-react`, `vaul`, `react-resizable-panels`, `input-otp`, `react-day-picker` removed (44 packages, deps 30 → 24). **Bundle unchanged at ~993 kB, exactly as predicted** — tree-shaking already excluded them. The win is install time and supply-chain surface, not KB | `package.json` | done |
 | 11 | ~~**`supabase/.temp/` is untracked and not ignored**~~ ✅ fixed — added to `.gitignore` | `git status`, `.gitignore` | done |
 | 12 | ~~**Service worker handles `push` / `notificationclick`, but nothing ever subscribes**~~ ✅ fixed — handlers deleted, with a comment recording what wiring push up would actually require | `public/sw.js` | done |
-| 13 | **`quotes.total_price_usd numeric(12,2)`** still in the schema next to `total_php` — a dead USD column from before the PHP switch | `0001_initial_schema.sql:219` | 15min |
-| 14 | **Every table is hand-rolled `<table>` markup** while `ui/table.tsx` sits unused — 4 pages each re-declaring the same header cell classes | leads / reports / packages / dashboards | 2h |
-| 15 | **No component or integration tests** — 23 tests, all pure functions. Nothing covers global search, the stage control, the filters, or any query builder | `src/**/*.test.ts` | ongoing |
+| 13 | ~~**`quotes.total_price_usd`** dead USD column~~ ✅ fixed in `0029` — and it was nothing like the 15 minutes estimated here; see finding 19 | `0029_drop_orphans.sql` | done |
+| 14 | ~~Hand-rolled tables vs unused `ui/table.tsx`~~ — **deliberately not done.** ~2h of churn across four pages just restyled in the Apple pass, no user-visible benefit, real regression risk, and shadcn's Table doesn't provide the per-breakpoint column hiding these rely on. `ui/table.tsx` was deleted instead (finding 9) | — | won't do |
+| 15 | **No component or integration tests** — now 37, still all pure functions. Nothing covers global search, the stage control, the filters, or any query builder | `src/**/*.test.ts` | ongoing |
 
 ---
 
@@ -390,13 +395,16 @@ which duplicates name/email/phone on every leads-list row. PostgREST has no
 **Phase D — money consistency. ✅ done.** Finding 8, plus consolidating
 `formatPhp` from six copies to three (two of which are deliberate).
 
-**Phase E — cleanup (~4h, whenever).** Findings 9, 10, 13, 14, 15, plus dropping
-the dead columns the drift sweep turned up. Pure maintenance with no
-user-visible change — the one item carrying real value is the dead columns,
-since each is a future trap of exactly the kind that produced finding 16.
+**Phase E — cleanup. ✅ done**, except finding 14, declined on its merits.
+Billed as pure maintenance with no user-visible change, and mostly was — 28
+components and 44 packages removed, bundle unchanged at ~993 kB exactly as
+predicted. But the "15-minute" dead-column drop turned up finding 19, a
+quote-revision function that raises on every call. Cleanup kept earning its
+keep right to the end.
 
-**Phases A–D are complete.** Everything identified that can bite a real user is
-fixed; Phase E is optional.
+**All phases complete.** The estimate for this work was ~7 hours across A–D
+plus ~4 optional. What it actually produced was four findings the plan never
+contained, three of them more serious than anything in it.
 
 ---
 
@@ -412,6 +420,42 @@ fixed; Phase E is optional.
    client-side. Revisit if lead count nears 500.
 
 3. **Push notifications** → *deleted.* Email covers the same six events.
+
+## 19. A broken `revise_quote` was sitting in the database ⭐ found while dropping a "dead" column ✅ fixed
+
+Finding 13 was estimated at 15 minutes: drop one unused column. Checking what
+referenced it first turned up six functions, and one of them mattered.
+
+`revise_quote(uuid)` reads as the canonical way to revise a quote — and it
+cannot work. It sets `status = 'superseded'` and inserts `'draft'`, neither of
+which the CHECK constraint has permitted since the vocabulary narrowed to
+`('in_progress','approved')`. Every call raises a constraint violation; it also
+never sets `quotation_no` or `total_php`. The client is unaffected because it
+hand-rolls its own `reviseQuote` and never calls this — but anyone who found
+this function and used it, reasonably assuming it was the supported path, would
+have hit a wall.
+
+`create_quote` was likewise uncalled, and `reporting_sales_metrics` summed
+`total_price_usd`, carrying the identical bug `0027` fixed in
+`report_revenue_summary` — a second wrong-revenue report, just one nobody ran.
+`approve_survey_report`, `guard_survey_write` and `guard_survey_photo_write`
+are leftovers of the workflow `0012` removed.
+
+**Fixed as:** `0029` drops all six, then the five dead columns. No `CASCADE`
+anywhere — if something still depended on one, the migration should fail loudly
+rather than quietly take the dependency with it. It applied clean, which is
+itself the confirmation.
+
+Deliberately kept, because checking showed they are still live:
+`survey_arrays_valid` (trigger-attached), `can_write_survey_object` (three
+storage policies), `quotes.prepared_by_id`, `users.approved_at`,
+`permits.approved_at`. The last three share column names with dropped ones on
+*different tables* — a good reason to check rather than pattern-match.
+
+**The lesson repeats:** the estimate assumed the column was isolated because the
+*code* didn't reference it. The database disagreed.
+
+---
 
 ## Drift sweep — every status vocabulary, code vs database
 
