@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-    ChevronRight,
     FileBadge2,
     FileText,
     Loader2,
@@ -239,8 +238,9 @@ export default function QuotesTab({
                         </div>
                     </div>
 
-                    {/* Selection Sub-Header */}
-                    {quotes && quotes.length > 0 && canEdit && (
+                    {/* Selection Sub-Header — only worth its row once there is
+                        more than one thing to select. */}
+                    {quotes && quotes.length > 1 && canEdit && (
                         <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground border-t mt-3">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <Checkbox
@@ -299,20 +299,24 @@ export default function QuotesTab({
                             )}
                         </Empty>
                     ) : (
-                        quotes.map((q) => {
+                        quotes.map((q, idx) => {
                             const isApproved = q.status === "approved";
                             const isChecked = selectedIds.has(q._id);
+                            const itemCount = q.items?.length ?? 0;
                             return (
+                                // Rows on one panel, separated by a hairline —
+                                // not a bordered card inside a bordered card.
                                 <div
                                     key={q._id}
                                     onClick={() => openQuote(q._id)}
                                     className={cn(
-                                        "group p-4 rounded-lg border bg-card hover:border-primary/50 transition-all cursor-pointer shadow-sm",
-                                        "flex flex-col sm:flex-row sm:items-start gap-3",
-                                        isChecked && "border-primary/60 bg-primary/5",
+                                        "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
+                                        "hover:bg-muted/40",
+                                        idx > 0 && "border-t border-border",
+                                        isChecked && "bg-primary/5",
                                     )}
                                 >
-                                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                                    <div className="flex items-start gap-3 min-w-0">
                                         {/* Multi-Select Checkbox */}
                                         {canEdit && (
                                             <div
@@ -326,17 +330,16 @@ export default function QuotesTab({
                                             </div>
                                         )}
 
-                                        <div className="min-w-0 flex-1 space-y-1.5">
+                                        <div className="min-w-0 flex-1 space-y-1">
                                             <div className="flex items-center gap-2 flex-wrap">
+                                                {/* Version reads as part of the name, as
+                                                    it does in the builder. */}
                                                 <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                                                    {q.quotationNo || `Quotation v${q.version}`}
+                                                    {q.quotationNo || "Quotation"}
+                                                    <span className="ml-1.5 font-medium text-muted-foreground">
+                                                        v{q.version}
+                                                    </span>
                                                 </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className="text-[10px] font-semibold"
-                                                >
-                                                    v{q.version}
-                                                </Badge>
                                                 {isApproved ? (
                                                     <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
                                                         <Lock className="w-2.5 h-2.5" />
@@ -349,33 +352,37 @@ export default function QuotesTab({
                                                 )}
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                                            {/* Separators travel with the text they follow.
+                                                As standalone spans in a wrapping row they
+                                                stranded a "·" at the end of a line whenever
+                                                the next item wrapped. */}
+                                            <p className="text-xs text-muted-foreground">
                                                 <span className="font-bold font-mono text-foreground text-sm">
                                                     {formatPhp(q.totalPhp)}
                                                 </span>
-                                                <span className="text-muted-foreground/40" aria-hidden>•</span>
-                                                <span>
-                                                    {q.items?.length ?? 0}{" "}
-                                                    {(q.items?.length ?? 0) === 1 ? "item" : "items"}
+                                                <span className="ml-2">
+                                                    {itemCount} {itemCount === 1 ? "item" : "items"}
                                                 </span>
-                                                <span className="text-muted-foreground/40" aria-hidden>•</span>
-                                                <span className="truncate">
-                                                    Prepared by {q.preparerName || q.createdByName}
-                                                </span>
-                                            </div>
+                                            </p>
 
-                                            {q.items && q.items.length > 0 && (
-                                                <p className="text-[11px] text-muted-foreground/70 truncate pt-0.5">
+                                            <p className="text-xs text-muted-foreground truncate">
+                                                Prepared by {q.preparerName || q.createdByName}
+                                            </p>
+
+                                            {itemCount > 0 && (
+                                                <p className="text-[11px] text-muted-foreground/70 truncate">
                                                     {q.items.map((it) => it.description).join(" · ")}
                                                 </p>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons — wraps below the content on mobile,
-                                        lines up on the right on wider screens */}
+                                    {/* One row of actions: the labelled ones together on
+                                        the left, delete alone on the right. The chevron
+                                        that used to sit here did exactly what clicking
+                                        the row does. */}
                                     <div
-                                        className="flex items-center flex-wrap gap-2 pl-8 sm:pl-0 sm:shrink-0 sm:self-center"
+                                        className="flex items-center gap-2 mt-3 pl-8"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <DownloadQuotePdfButton
@@ -384,7 +391,7 @@ export default function QuotesTab({
                                             property={property}
                                             size="sm"
                                             variant="outline"
-                                            className="h-9 sm:h-8 text-xs"
+                                            className="h-8 text-xs"
                                         />
 
                                         {isApproved && canEdit && (
@@ -394,7 +401,7 @@ export default function QuotesTab({
                                                         size="sm"
                                                         variant="outline"
                                                         className={cn(
-                                                            "h-9 sm:h-8 text-xs font-medium",
+                                                            "h-8 text-xs font-medium",
                                                             contract.status === "cancelled"
                                                                 ? "text-muted-foreground bg-muted/40 hover:bg-muted/70 border-muted"
                                                                 : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-300 dark:text-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-800",
@@ -422,7 +429,7 @@ export default function QuotesTab({
                                                 <Button
                                                     size="sm"
                                                     variant="secondary"
-                                                    className="h-9 sm:h-8 text-xs"
+                                                    className="h-8 text-xs"
                                                     onClick={() =>
                                                         setContractQuoteId(q._id as Id<"quotes">)
                                                     }
@@ -437,23 +444,13 @@ export default function QuotesTab({
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="size-9 sm:size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="size-8 ml-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Delete quote"
                                                 onClick={() => setQuoteToDelete(q._id)}
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         )}
-
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="size-9 sm:size-8 ml-auto sm:ml-0 group-hover:translate-x-0.5 transition-transform"
-                                            onClick={() => openQuote(q._id)}
-                                            aria-label="Open quote"
-                                        >
-                                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                                        </Button>
                                     </div>
                                 </div>
                             );
