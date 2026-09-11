@@ -154,6 +154,11 @@
     --shadow-xl: 0 4px 12px rgba(0, 0, 0, 0.12), 0 40px 100px rgba(0, 0, 0, 0.26);
     --shadow-2xl: 0 4px 16px rgba(0, 0, 0, 0.14), 0 60px 120px rgba(0, 0, 0, 0.3);
     --spacing: 0.25rem;
+
+    /* Apple-style spring-like easing (apple-liquid-glass skill, motion.md) —
+       critically damped, no overshoot. For interactive layers a dialog/sheet
+       summons and dismisses, not static content. */
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -324,6 +329,42 @@
             black calc(100% - 20px),
             transparent 100%
         );
+    }
+
+    /* Materializes a full-viewport backdrop as blur arrives, not as a flat
+       fade — same "glass as material" idea glass-modal follows, for an
+       overlay that blurs the whole app behind it instead of framing its own
+       panel. Reads Radix Dialog's own `data-state` attribute directly.
+
+       `blur(0.1px)` at rest, not `blur(0px)` — verified against the actual
+       built output, not assumed: the production minifier (Lightning CSS)
+       optimises an exact `blur(0px)` down to an argument-less `blur()`,
+       which is a different function shape than `blur(24px)` and does not
+       interpolate — the transition just pops instead of animating. A
+       visually-identical near-zero value keeps the shape intact so the
+       radius actually animates. */
+    .materialize-blur {
+        background: color-mix(in srgb, var(--background) 0%, transparent);
+        backdrop-filter: blur(0.1px);
+        -webkit-backdrop-filter: blur(0.1px);
+        transition:
+            background 250ms var(--ease-spring),
+            backdrop-filter 250ms var(--ease-spring),
+            -webkit-backdrop-filter 250ms var(--ease-spring);
+    }
+
+    .materialize-blur[data-state="open"] {
+        background: color-mix(in srgb, var(--background) 55%, transparent);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        transition-duration: 400ms;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .materialize-blur,
+        .materialize-blur[data-state="open"] {
+            transition-duration: 200ms;
+        }
     }
 
     /*

@@ -11,13 +11,13 @@
     "orientation": "portrait-primary",
     "icons": [
         {
-            "src": "/lampara-icon.png",
+            "src": "/lampara-icon-white.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "/lampara-icon.png",
+            "src": "/lampara-icon-white.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"

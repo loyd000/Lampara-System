@@ -4,7 +4,9 @@ const OFFLINE_URL = "/offline.html";
 // that change on every publish, so a cached shell points at dead chunks.
 const urlsToCache = [
     OFFLINE_URL,
-    "/lampara-icon.png",
+    // The icon site.webmanifest actually points at — cached so the OS can
+    // still resolve the installed app's icon with no connectivity.
+    "/lampara-icon-white.png",
     "/site.webmanifest",
 ];
 

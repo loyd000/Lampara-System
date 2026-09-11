@@ -23,7 +23,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Lampara" />
-    <link rel="apple-touch-icon" href="/lampara-icon.png" />
+    <!--
+      White, not the plain black lampara-icon.png the in-app <img> tags use
+      (those get a `dark:invert` CSS filter at render time — icons in a
+      manifest/home-screen slot don't get CSS applied to them, so whichever
+      color is baked into the file is what's shown, on whatever wallpaper
+      the user has). Black-on-transparent was invisible against a dark
+      wallpaper, which is also why theme_color/background_color below are
+      already dark — the PWA is designed dark-first.
+    -->
+    <link rel="apple-touch-icon" href="/lampara-icon-white.png" />
 
     <!--
       iOS launch splash screens. Unlike Android, iOS generates nothing from the
