@@ -21,10 +21,24 @@
  * `model` and `max_tokens` are fixed here, not taken from the request body:
  * a client that sent its own values could otherwise pick a pricier model or
  * a bigger output cap than this assistant is supposed to cost.
+ *
+ * Deliberately uses the `(req: VercelRequest, res: VercelResponse)` handler
+ * shape (Node.js's own `IncomingMessage`/`ServerResponse`, typed via
+ * `@vercel/node`) rather than the Fetch-API `(request: Request) => Response`
+ * style — the latter looked cleaner but Vercel's own function-build step
+ * resolved a `Request` type without `.method`/`.headers`/`.json()` on it,
+ * which is the officially-typed, first-party signature instead.
+ *
+ * Auth is checked with plain `fetch()` calls straight to Supabase's REST
+ * endpoints rather than `@supabase/supabase-js` — not for any deep reason,
+ * just that the SDK's `SupabaseAuthClient` type failed to resolve correctly
+ * under Vercel's isolated build (a `getUser` that plainly exists came back
+ * as "does not exist on type"), and this is one dependency's worth of
+ * surface area less to fight for a two-request auth check.
  */
 import process from "node:process";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@supabase/supabase-js";
 
 const MODEL = "claude-haiku-4-5";
 const MAX_TOKENS = 1024;
@@ -39,13 +53,6 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 const ALLOWED_ROLES = new Set(["superadmin", "admin"]);
 
-function jsonResponse(status: number, body: unknown): Response {
-    return new Response(JSON.stringify(body), {
-        status,
-        headers: { "content-type": "application/json" },
-    });
-}
-
 /**
  * Confirms the bearer token is a live Supabase session for an
  * admin/superadmin. This re-checks what `AgentFab.tsx` already gates client
@@ -54,25 +61,34 @@ function jsonResponse(status: number, body: unknown): Response {
  * this URL from spending the Anthropic budget on someone this app never
  * meant to give it to.
  */
-async function authenticate(authHeader: string | null): Promise<boolean> {
-    if (!authHeader?.startsWith("Bearer ") || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
-    const accessToken = authHeader.slice("Bearer ".length);
+async function authenticate(authHeader: string | string[] | undefined): Promise<boolean> {
+    const headerValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+    if (!headerValue?.startsWith("Bearer ") || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+    const accessToken = headerValue.slice("Bearer ".length);
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: false },
-        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    const authHeaders = {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+    };
+
+    // Validates the JWT against Supabase's own Auth server — the only way to
+    // confirm a token server-side without holding the JWT signing secret.
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders });
+    if (!userRes.ok) return false;
+    const user = (await userRes.json().catch(() => null)) as { id?: string } | null;
+    if (!user?.id) return false;
+
+    // RLS scopes this to the caller's own row, same as every other query in
+    // this app — this is just that same "am I an admin" check `calendar.ts`
+    // and others already make, over raw PostgREST instead of supabase-js.
+    const roleRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}&select=role`, {
+        headers: authHeaders,
     });
+    if (!roleRes.ok) return false;
+    const rows = (await roleRes.json().catch(() => null)) as { role?: string }[] | null;
+    const role = rows?.[0]?.role;
 
-    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
-    if (userError || !userData.user) return false;
-
-    const { data: profile } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", userData.user.id)
-        .maybeSingle<{ role: string }>();
-
-    return Boolean(profile && ALLOWED_ROLES.has(profile.role));
+    return Boolean(role && ALLOWED_ROLES.has(role));
 }
 
 type ProxyRequestBody = {
@@ -81,29 +97,28 @@ type ProxyRequestBody = {
     tools?: Anthropic.Tool[];
 };
 
-export default async function handler(request: Request): Promise<Response> {
-    if (request.method !== "POST") {
-        return jsonResponse(405, { error: "Method not allowed." });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+    if (req.method !== "POST") {
+        res.status(405).json({ error: "Method not allowed." });
+        return;
     }
     if (!ANTHROPIC_API_KEY) {
-        return jsonResponse(501, {
+        res.status(501).json({
             error: "ANTHROPIC_API_KEY is not set on the server — add it in Vercel's project settings.",
         });
+        return;
     }
 
-    const authorized = await authenticate(request.headers.get("authorization"));
+    const authorized = await authenticate(req.headers.authorization);
     if (!authorized) {
-        return jsonResponse(401, { error: "Sign in as an admin to use the AI assistant." });
+        res.status(401).json({ error: "Sign in as an admin to use the AI assistant." });
+        return;
     }
 
-    let body: ProxyRequestBody;
-    try {
-        body = (await request.json()) as ProxyRequestBody;
-    } catch {
-        return jsonResponse(400, { error: "Invalid JSON body." });
-    }
-    if (!Array.isArray(body.messages) || body.messages.length === 0) {
-        return jsonResponse(400, { error: '"messages" must be a non-empty array.' });
+    const body = req.body as ProxyRequestBody | undefined;
+    if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
+        res.status(400).json({ error: '"messages" must be a non-empty array.' });
+        return;
     }
 
     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
@@ -116,10 +131,10 @@ export default async function handler(request: Request): Promise<Response> {
             messages: body.messages,
             tools: body.tools,
         });
-        return jsonResponse(200, { content: message.content, stop_reason: message.stop_reason });
+        res.status(200).json({ content: message.content, stop_reason: message.stop_reason });
     } catch (err) {
         const status = err instanceof Anthropic.APIError ? (err.status ?? 502) : 502;
         const message = err instanceof Error ? err.message : "Claude request failed.";
-        return jsonResponse(status, { error: message });
+        res.status(status).json({ error: message });
     }
 }
