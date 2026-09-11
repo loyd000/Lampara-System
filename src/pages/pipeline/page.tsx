@@ -172,6 +172,7 @@ export default function PipelinePage() {
                                             <div
                                                 key={stage}
                                                 className="shrink-0 w-52 flex flex-col"
+                                                data-stage={stage}
                                                 onDragOver={canMoveStage ? (e) => { e.preventDefault(); setDragOver(stage); } : undefined}
                                                 onDragLeave={canMoveStage ? () => setDragOver(null) : undefined}
                                                 onDrop={canMoveStage ? () => handleDrop(stage) : undefined}
@@ -206,6 +207,8 @@ export default function PipelinePage() {
                                                             onClick={() => navigate(`/leads/${lead._id}`)}
                                                             onMoveTo={(nextStage) => moveLead(lead._id, nextStage)}
                                                             isDragging={dragging === lead._id}
+                                                            onTouchDragOver={canMoveStage ? setDragOver : undefined}
+                                                            onTouchDrop={canMoveStage ? (s) => handleDrop(s) : undefined}
                                                         />
                                                     ))}
                                                     {cards.length === 0 && !isOver && (
@@ -248,6 +251,8 @@ function PipelineCard({
     onClick,
     onMoveTo,
     isDragging,
+    onTouchDragOver,
+    onTouchDrop,
 }: {
     lead: EnrichedLead;
     canMoveStage: boolean;
@@ -256,6 +261,8 @@ function PipelineCard({
     onClick: () => void;
     onMoveTo: (stage: Stage) => void;
     isDragging: boolean;
+    onTouchDragOver?: (stage: Stage | null) => void;
+    onTouchDrop?: (stage: Stage) => void;
 }) {
     const now = useNow();
     const daysSinceActivity = Math.floor(
@@ -263,11 +270,103 @@ function PipelineCard({
     );
     const isStale = daysSinceActivity >= 7;
 
+    // Touch drag state — local so one card's drag doesn't bleed into another.
+    const touchDragging = useRef(false);
+    const ghostRef = useRef<HTMLDivElement | null>(null);
+    const cardRef = useRef<HTMLDivElement | null>(null);
+
+    /**
+     * Resolve which pipeline column (if any) is under the current pointer
+     * position. We walk up from `elementFromPoint` looking for a `data-stage`
+     * attribute that was stamped onto each column div.
+     */
+    function stageFromPoint(x: number, y: number): Stage | null {
+        // Hide the ghost so it doesn't shadow itself in the hit test.
+        const ghost = ghostRef.current;
+        if (ghost) ghost.style.display = "none";
+        const el = document.elementFromPoint(x, y);
+        if (ghost) ghost.style.display = "";
+        if (!el) return null;
+        const col = el.closest("[data-stage]") as HTMLElement | null;
+        return (col?.dataset.stage as Stage | undefined) ?? null;
+    }
+
+    function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        if (!canMoveStage) return;
+        // Only respond to primary button / first touch.
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        // Let mouse drag fall through to the native HTML5 DnD.
+        if (e.pointerType === "mouse") return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        touchDragging.current = true;
+        onDragStart();
+
+        // Clone the card as a floating ghost.
+        const card = cardRef.current;
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        const ghost = card.cloneNode(true) as HTMLDivElement;
+        ghost.style.cssText = [
+            `position:fixed`,
+            `left:${rect.left}px`,
+            `top:${rect.top}px`,
+            `width:${rect.width}px`,
+            `pointer-events:none`,
+            `opacity:0.85`,
+            `z-index:9999`,
+            `transform:scale(1.04)`,
+            `transition:transform 0.1s`,
+            `border-radius:12px`,
+            `box-shadow:0 8px 32px rgba(0,0,0,0.18)`,
+        ].join(";");
+        document.body.appendChild(ghost);
+        ghostRef.current = ghost;
+
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
+        function onMove(me: PointerEvent) {
+            if (!touchDragging.current) return;
+            const gx = me.clientX - offsetX;
+            const gy = me.clientY - offsetY;
+            if (ghost) {
+                ghost.style.left = `${gx}px`;
+                ghost.style.top = `${gy}px`;
+            }
+            const stage = stageFromPoint(me.clientX, me.clientY);
+            onTouchDragOver?.(stage);
+        }
+
+        function onUp(ue: PointerEvent) {
+            touchDragging.current = false;
+            ghost.remove();
+            ghostRef.current = null;
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            window.removeEventListener("pointercancel", onUp);
+
+            const stage = stageFromPoint(ue.clientX, ue.clientY);
+            onTouchDragOver?.(null);
+            if (stage) {
+                onTouchDrop?.(stage);
+            }
+            onDragEnd();
+        }
+
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
+    }
+
     return (
         <div
+            ref={cardRef}
             draggable={canMoveStage}
             onDragStart={canMoveStage ? onDragStart : undefined}
             onDragEnd={canMoveStage ? onDragEnd : undefined}
+            onPointerDown={handlePointerDown}
             onClick={onClick}
             className={cn(
                 "bg-card rounded-xl p-3 shadow-2xs transition-all select-none",

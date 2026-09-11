@@ -51,6 +51,9 @@ export function DateRangePicker({
     const [anchor, setAnchor] = useState<string | null>(null);
     const [hover, setHover] = useState<string | null>(null);
     const [dragging, setDragging] = useState(false);
+    // Ref so the pointermove handler can read dragging without a stale closure.
+    const draggingRef = React.useRef(false);
+    const anchorRef = React.useRef<string | null>(null);
 
     // Releasing outside the grid still ends the drag; without this the next
     // hover anywhere in the month would keep redrawing the range.
@@ -58,6 +61,7 @@ export function DateRangePicker({
         if (!dragging) return;
         function endDrag() {
             setDragging(false);
+            draggingRef.current = false;
         }
         window.addEventListener("pointerup", endDrag);
         window.addEventListener("pointercancel", endDrag);
@@ -87,17 +91,22 @@ export function DateRangePicker({
         onChange(ordered(anchor, day));
     }
 
-    function handlePointerDown(day: string) {
+    function handlePointerDown(day: string, e: React.PointerEvent) {
         // Second click of a two-click selection completes it.
         if (anchor && !dragging) {
             selectTo(day);
             setAnchor(null);
+            anchorRef.current = null;
             setHover(null);
             return;
         }
+        // Prevent the parent dialog from scrolling while selecting days on mobile.
+        e.preventDefault();
         setAnchor(day);
+        anchorRef.current = day;
         setHover(day);
         setDragging(true);
+        draggingRef.current = true;
         // Commit immediately, so releasing without moving is a valid one-day
         // range rather than nothing at all.
         onChange({ start: day, end: day });
@@ -111,12 +120,34 @@ export function DateRangePicker({
         if (dragging) selectTo(day);
     }
 
+    /**
+     * On mobile, `pointerenter` is unreliable after releasePointerCapture — the
+     * browser may not re-hit-test intermediate elements. We use pointermove on
+     * the grid container instead, resolving which day button the finger is
+     * currently over via `elementFromPoint`.
+     */
+    function handleGridPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+        if (!draggingRef.current || !anchorRef.current) return;
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        // Walk up to find the nearest button with a data-day attribute.
+        const btn = el?.closest("button[data-day]") as HTMLButtonElement | null;
+        if (!btn) return;
+        const day = btn.dataset.day;
+        if (!day) return;
+        setHover(day);
+        // Sync React state anchor so selectTo works, then commit.
+        setAnchor(anchorRef.current);
+        selectTo(day);
+    }
+
     function handlePointerUp(day: string) {
         if (!dragging) return;
         setDragging(false);
+        draggingRef.current = false;
         if (day !== anchor) {
             selectTo(day);
             setAnchor(null);
+            anchorRef.current = null;
             setHover(null);
         }
         // Released on the day it started: treat it as the first of two clicks
@@ -168,7 +199,7 @@ export function DateRangePicker({
 
             {/* `touch-none` so dragging across the grid selects days instead of
                 scrolling the dialog on a phone. */}
-            <div className="grid grid-cols-7 touch-none">
+            <div className="grid grid-cols-7 touch-none" onPointerMove={handleGridPointerMove}>
                 {days.map((date) => {
                     const key = format(date, "yyyy-MM-dd");
                     const inMonth = isSameMonth(date, month);
@@ -180,6 +211,7 @@ export function DateRangePicker({
                         <button
                             key={key}
                             type="button"
+                            data-day={key}
                             onPointerDown={(e) => {
                                 // Touch implicitly captures the pointer to the
                                 // element it went down on, which stops
@@ -192,7 +224,7 @@ export function DateRangePicker({
                                 } catch {
                                     /* nothing was captured; carry on */
                                 }
-                                handlePointerDown(key);
+                                handlePointerDown(key, e);
                             }}
                             onPointerEnter={() => handlePointerEnter(key)}
                             onPointerUp={() => handlePointerUp(key)}
