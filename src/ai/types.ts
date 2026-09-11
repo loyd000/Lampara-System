@@ -40,6 +40,11 @@ export type AgentToolDeclaration = {
     name: string;
     description: string;
     input_schema: Record<string, unknown>;
+    /** Set only on the last tool in the registry (see tools/index.ts) —
+     * Anthropic's prompt caching marks the END of a cacheable span, so one
+     * breakpoint after the full (static, identical on every call) tool list
+     * is enough to cache the whole thing. */
+    cache_control?: { type: "ephemeral"; ttl?: "5m" | "1h" };
 };
 
 export type AgentTool = {

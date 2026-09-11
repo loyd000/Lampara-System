@@ -92,7 +92,10 @@ async function authenticate(authHeader: string | string[] | undefined): Promise<
 }
 
 type ProxyRequestBody = {
-    system?: string;
+    // A plain string still works (Anthropic accepts either), but the client
+    // sends the array form so it can attach a cache_control breakpoint —
+    // see the comment on callProxy in src/ai/agent.ts.
+    system?: string | Anthropic.TextBlockParam[];
     messages?: Anthropic.MessageParam[];
     tools?: Anthropic.Tool[];
 };

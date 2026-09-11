@@ -9,6 +9,16 @@
  * tools/read-tools.ts) — the proxy only relays the raw "what should happen
  * next" call to Claude and hands its response back untouched. This module
  * runs the multi-round tool-calling loop on top of that single-call proxy.
+ *
+ * Prompt caching: the system prompt and the tool list (see tools/index.ts)
+ * are cached with a 1-hour breakpoint each — both are effectively static
+ * across a whole day for one user, so this is a straightforward win. The
+ * conversation history gets its own breakpoint too, rebuilt fresh on every
+ * call — the actual biggest cost driver here isn't repeat *questions*
+ * (nothing here recognises "you asked this before" and skips the model; a
+ * project's data changes constantly, so every question still gets a real
+ * answer from a real tool call) but the *same* question's own multi-round
+ * tool-calling loop resending its growing history on every round.
  */
 import { supabase } from "@/lib/supabase/client.ts";
 import { AGENT_TOOLS, AGENT_TOOL_DECLARATIONS } from "./tools/index.ts";
@@ -41,9 +51,22 @@ export class AgentApiError extends Error {
 // (see types.ts for the same reasoning on tool declarations). This is JSON
 // over `fetch`, so duck-typing the shape is all that's actually required.
 
-type TextBlock = { type: "text"; text: string };
-type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: Record<string, unknown> };
-type ToolResultBlock = { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean };
+type CacheControl = { type: "ephemeral"; ttl?: "5m" | "1h" };
+type TextBlock = { type: "text"; text: string; cache_control?: CacheControl };
+type ToolUseBlock = {
+    type: "tool_use";
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    cache_control?: CacheControl;
+};
+type ToolResultBlock = {
+    type: "tool_result";
+    tool_use_id: string;
+    content: string;
+    is_error?: boolean;
+    cache_control?: CacheControl;
+};
 type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
 
 export type AgentMessage = {
@@ -60,9 +83,53 @@ type ProxyResponseBody = {
 export type AgentTurnResult = {
     text: string;
     /** The full message history including this turn — pass back in as-is on
-     * the next call so Claude keeps the thread. */
+     * the next call so Claude keeps the thread. Never carries the
+     * wire-only `cache_control` markers `withHistoryCacheBreakpoint` adds;
+     * those are rebuilt fresh for each outgoing request instead. */
     history: AgentMessage[];
 };
+
+function stripCacheControl(block: ContentBlock): ContentBlock {
+    return { ...block, cache_control: undefined };
+}
+
+/**
+ * Returns a wire copy of `messages` with exactly one cache breakpoint: the
+ * last content block of the last message. Anthropic caches everything up to
+ * and including a marked block, so as a tool-calling loop's history grows
+ * round by round, each subsequent call only pays full input price for
+ * what's new since the previous one, instead of the whole (growing)
+ * conversation every time.
+ *
+ * Always strips any breakpoints from earlier rounds first rather than
+ * accumulating one per round — Anthropic allows at most 4 cache_control
+ * breakpoints per request, and this one plus the tools' and system's would
+ * exceed that on a long enough chain otherwise. `messages` itself (the
+ * conversation history returned to the caller and kept in the panel's ref)
+ * is never mutated — these markers only ever exist on the copy sent over
+ * the wire.
+ */
+function withHistoryCacheBreakpoint(messages: AgentMessage[]): AgentMessage[] {
+    const wire: AgentMessage[] = messages.map((m) => ({
+        role: m.role,
+        content: typeof m.content === "string" ? m.content : m.content.map(stripCacheControl),
+    }));
+
+    const last = wire[wire.length - 1];
+    if (!last) return wire;
+
+    if (typeof last.content === "string") {
+        last.content = [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }];
+        return wire;
+    }
+    if (last.content.length === 0) return wire;
+
+    const lastIndex = last.content.length - 1;
+    last.content = last.content.map((block, i) =>
+        i === lastIndex ? { ...block, cache_control: { type: "ephemeral" } } : block,
+    );
+    return wire;
+}
 
 async function callProxy(messages: AgentMessage[], system: string): Promise<ContentBlock[]> {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -79,7 +146,15 @@ async function callProxy(messages: AgentMessage[], system: string): Promise<Cont
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({ system, messages, tools: AGENT_TOOL_DECLARATIONS }),
+            body: JSON.stringify({
+                // Identical for a given user on a given day (see
+                // prompts.ts) — a 1-hour breakpoint means the first
+                // question of the morning keeps this warm for the rest of
+                // the day, not just the next few minutes.
+                system: [{ type: "text", text: system, cache_control: { type: "ephemeral", ttl: "1h" } }],
+                messages: withHistoryCacheBreakpoint(messages),
+                tools: AGENT_TOOL_DECLARATIONS,
+            }),
         });
     } catch {
         throw new AgentApiError("Couldn't reach the AI assistant — check your connection and try again.");
