@@ -22,6 +22,7 @@
  * a client that sent its own values could otherwise pick a pricier model or
  * a bigger output cap than this assistant is supposed to cost.
  */
+import process from "node:process";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 

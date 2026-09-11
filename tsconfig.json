@@ -8,7 +8,7 @@
             "path": "./tsconfig.node.json"
         },
         {
-            "path": "./tsconfig.api.json"
+            "path": "./api/tsconfig.json"
         }
     ],
     "compilerOptions": {
@@ -16,6 +16,20 @@
             "@/*": [
                 "./src/*"
             ]
-        }
+        },
+        // Vercel's Node.js function builder compiles api/*.ts using THIS
+        // file's compilerOptions directly — it does not follow TS project
+        // references (nor does it honor "paths" above; api/agent.ts avoids
+        // the "@/*" alias for that reason). Without these, it failed with
+        // "Cannot find name 'process'" and cascading errors inside
+        // @supabase/supabase-js's own .d.ts files. api/tsconfig.json (used by
+        // `tsc -b` locally, which Vercel ignores) duplicates these on
+        // purpose — see the comment there.
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "skipLibCheck": true,
+        "types": ["node"]
     }
 }

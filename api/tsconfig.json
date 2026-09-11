@@ -1,0 +1,24 @@
+{
+    // This is what `tsc -b` (see package.json's "build" script and the
+    // local verification loop) actually type-checks api/ against, via the
+    // project reference in the root tsconfig.json. Vercel's own Node.js
+    // function builder does NOT use this file — it doesn't follow project
+    // references at all — so the same settings are duplicated onto the
+    // root tsconfig.json's own compilerOptions too. Keep the two in sync.
+    "compilerOptions": {
+        "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.api.tsbuildinfo",
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "skipLibCheck": true,
+        "incremental": true,
+        "allowImportingTsExtensions": true,
+        "verbatimModuleSyntax": true,
+        "moduleDetection": "force",
+        "noEmit": true,
+        "strict": true,
+        "types": ["node"]
+    },
+    "include": ["."]
+}
