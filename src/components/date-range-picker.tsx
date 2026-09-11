@@ -86,38 +86,37 @@ export function DateRangePicker({
         ? ordered(anchor, hover ?? anchor)
         : value;
 
-    function selectTo(day: string) {
-        if (!anchor) return;
-        onChange(ordered(anchor, day));
+    function selectTo(anchorDay: string, targetDay: string) {
+        onChange(ordered(anchorDay, targetDay));
     }
 
     function handlePointerDown(day: string, e: React.PointerEvent) {
-        // Second click of a two-click selection completes it.
-        if (anchor && !dragging) {
-            selectTo(day);
+        // If we have a pending first-click anchor (no drag, just waiting for
+        // the second tap) and the user taps a *different* day, complete the
+        // range rather than starting over.
+        if (anchor && !dragging && day !== anchor) {
+            onChange(ordered(anchor, day));
             setAnchor(null);
             anchorRef.current = null;
             setHover(null);
             return;
         }
-        // Prevent the parent dialog from scrolling while selecting days on mobile.
+        // Every other pointerdown (fresh start, or re-tapping the anchor day)
+        // always begins a brand-new selection.
         e.preventDefault();
         setAnchor(day);
         anchorRef.current = day;
         setHover(day);
         setDragging(true);
         draggingRef.current = true;
-        // Commit immediately, so releasing without moving is a valid one-day
-        // range rather than nothing at all.
+        // Commit immediately so releasing without moving is a valid one-day range.
         onChange({ start: day, end: day });
     }
 
     function handlePointerEnter(day: string) {
-        if (!anchor) return;
+        if (!anchorRef.current || !draggingRef.current) return;
         setHover(day);
-        // Only a live drag writes through; a hover between two clicks is a
-        // preview, and committing it would make the value follow the mouse.
-        if (dragging) selectTo(day);
+        selectTo(anchorRef.current, day);
     }
 
     /**
@@ -129,30 +128,33 @@ export function DateRangePicker({
     function handleGridPointerMove(e: React.PointerEvent<HTMLDivElement>) {
         if (!draggingRef.current || !anchorRef.current) return;
         const el = document.elementFromPoint(e.clientX, e.clientY);
-        // Walk up to find the nearest button with a data-day attribute.
         const btn = el?.closest("button[data-day]") as HTMLButtonElement | null;
         if (!btn) return;
         const day = btn.dataset.day;
         if (!day) return;
         setHover(day);
-        // Sync React state anchor so selectTo works, then commit.
-        setAnchor(anchorRef.current);
-        selectTo(day);
+        selectTo(anchorRef.current, day);
     }
 
     function handlePointerUp(day: string) {
         if (!dragging) return;
         setDragging(false);
         draggingRef.current = false;
-        if (day !== anchor) {
-            selectTo(day);
-            setAnchor(null);
-            anchorRef.current = null;
-            setHover(null);
+
+        if (day === anchor) {
+            // Released on the same day: "first click" of a two-click flow.
+            // Keep anchor set so the next tap completes the range.
+            return;
         }
-        // Released on the day it started: treat it as the first of two clicks
-        // and keep waiting, so the range can still be extended by clicking.
+
+        // Released on a different day: drag is complete.
+        if (anchor) selectTo(anchor, day);
+        setAnchor(null);
+        anchorRef.current = null;
+        setHover(null);
     }
+
+
 
     return (
         // `...rest` reaches the DOM: `FormControl` (a Radix Slot) clones its

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     useActivateCustomer,
     useDeleteInstallation,
@@ -86,6 +86,10 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [rescheduleOpen, setRescheduleOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [earlyStartOpen, setEarlyStartOpen] = useState(false);
+    // Tracks whether the auto-start effect has already fired for this
+    // installation so it doesn't re-trigger on every render.
+    const autoStartedRef = useRef(false);
     // Counted when the confirm dialog opens rather than watched continuously —
     // it is only ever read to word one sentence.
     const [ticketsAtRisk, setTicketsAtRisk] = useState<number | null>(null);
@@ -108,6 +112,32 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const canWork = canEdit || isCrew;
 
     const isUnlocked = canScheduleInstallation(stage);
+
+    // Auto-start: when today is the scheduled date and the installation is
+    // still "scheduled", move it to in_progress without any user action.
+    useEffect(() => {
+        if (!installation || installation.status !== "scheduled" || !canWork) return;
+        if (autoStartedRef.current) return;
+        const today = new Date().toISOString().slice(0, 10);
+        if (today !== installation.scheduledDate) return;
+        autoStartedRef.current = true;
+        void updateStatus({ installationId: installation._id, status: "in_progress" })
+            .then(() => toast.success("Installation started automatically — today is the scheduled date."))
+            .catch(() => { autoStartedRef.current = false; });
+    }, [installation, canWork, updateStatus]);
+
+    // Wrapper around handleStatusChange("in_progress") that checks whether
+    // today is actually the scheduled date before proceeding.
+    function handleStartInstallation() {
+        if (!installation) return;
+        const today = new Date().toISOString().slice(0, 10);
+        if (today !== installation.scheduledDate) {
+            // Off-schedule: ask for confirmation first.
+            setEarlyStartOpen(true);
+            return;
+        }
+        void handleStatusChange("in_progress");
+    }
 
     async function handleStatusChange(status: "scheduled" | "in_progress" | "completed" | "on_hold") {
         if (!installation) return;
@@ -280,7 +310,7 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                                         {installation.status === "scheduled" && (
                                             <Button size="sm" variant="outline" className="h-8 text-xs"
                                                 disabled={changingStatus}
-                                                onClick={() => handleStatusChange("in_progress")}>
+                                                onClick={handleStartInstallation}>
                                                 <Zap className="w-3 h-3 mr-1" />Start Installation
                                             </Button>
                                         )}
@@ -485,6 +515,41 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Off-schedule start warning */}
+            <AlertDialog open={earlyStartOpen} onOpenChange={setEarlyStartOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Start installation early?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {installation && (() => {
+                                const today = new Date().toISOString().slice(0, 10);
+                                const scheduled = installation.scheduledDate;
+                                const isEarly = today < scheduled;
+                                const scheduledFormatted = new Date(`${scheduled}T00:00:00`).toLocaleDateString(undefined, {
+                                    weekday: "long", month: "long", day: "numeric", year: "numeric",
+                                });
+                                return isEarly
+                                    ? `This installation is scheduled for ${scheduledFormatted}. Starting it today means it will begin ahead of schedule.`
+                                    : `This installation was scheduled for ${scheduledFormatted}. Starting it now means it is beginning after its scheduled date.`;
+                            })()}
+                            {" "}Are you sure you want to start it now?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Go Back</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                setEarlyStartOpen(false);
+                                void handleStatusChange("in_progress");
+                            }}
+                        >
+                            Start Anyway
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
+
