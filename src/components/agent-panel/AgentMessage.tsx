@@ -6,11 +6,11 @@ import type { AgentChatMessage } from "@/ai/types.ts";
 
 /**
  * Deliberately not the `@tailwindcss/typography` `prose` classes — those
- * assume an article's worth of width and bring their own color variables
- * that would fight the bubble's `text-primary-foreground` /
- * `text-secondary-foreground`. These overrides just render plain elements
- * with tight, chat-sized spacing and no explicit color, so they inherit
- * whatever the bubble around them already set.
+ * assume an article's worth of width and bring their own color variables.
+ * These overrides just render plain elements with tight, chat-sized spacing
+ * and no explicit color, so they inherit whatever `text-foreground` the row
+ * around them already set — there's no bubble background to inherit from
+ * any more, just floating text.
  */
 const MARKDOWN_COMPONENTS: Components = {
     p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -27,32 +27,40 @@ const MARKDOWN_COMPONENTS: Components = {
             {children}
         </a>
     ),
-    // A chat bubble is not an article — a heading here is just an emphasised
-    // line, not a size jump.
+    // A floating line of text is not an article — a heading here is just an
+    // emphasised line, not a size jump.
     h1: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
     h2: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
     h3: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
 };
 
+/**
+ * No bubble, no fill color — a user turn and an AI turn are told apart by
+ * alignment and a weight/color shift instead: the user's own words sit
+ * right-aligned and slightly muted, the AI's response left-aligned at full
+ * strength with the small sparkle mark, so a single line still reads
+ * correctly even out of context.
+ */
 export default function AgentMessage({ message }: { message: AgentChatMessage }) {
     const isUser = message.role === "user";
 
+    if (isUser) {
+        return (
+            <div className="flex justify-end">
+                <p className="max-w-[85%] text-right text-[15px] leading-relaxed break-words whitespace-pre-wrap text-foreground/70">
+                    {message.text}
+                </p>
+            </div>
+        );
+    }
+
     return (
-        <div className={cn("flex gap-2", isUser && "justify-end")}>
-            {!isUser && (
-                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary">
-                    <Sparkles className="size-3 text-muted-foreground" />
-                </div>
-            )}
-            <div
-                className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm break-words",
-                    isUser
-                        ? "rounded-br-sm bg-primary text-primary-foreground whitespace-pre-wrap"
-                        : "rounded-bl-sm bg-secondary text-secondary-foreground",
-                )}
-            >
-                {isUser ? message.text : <ReactMarkdown components={MARKDOWN_COMPONENTS}>{message.text}</ReactMarkdown>}
+        <div className="flex items-start gap-2.5">
+            <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/8">
+                <Sparkles className="size-3 text-muted-foreground" />
+            </div>
+            <div className="max-w-[85%] pt-0.5 text-[15px] leading-relaxed break-words text-foreground">
+                <ReactMarkdown components={MARKDOWN_COMPONENTS}>{message.text}</ReactMarkdown>
             </div>
         </div>
     );

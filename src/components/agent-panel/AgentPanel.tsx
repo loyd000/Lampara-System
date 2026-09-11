@@ -15,13 +15,18 @@ const SUGGESTIONS = [
 ];
 
 /**
- * Desktop: right-side drawer, pinned to the viewport edge. Mobile: a bottom
- * sheet instead — a right-edge drawer at 400px would eat most of a phone
- * screen sideways, where a sheet only has to give up height.
+ * A full-screen floating overlay, not a drawer — the app behind it blurs
+ * (see `DialogPrimitive.Overlay` below), and the conversation itself has no
+ * card, panel or bubble background: it's just text and a floating input
+ * pill sitting on that blur. One layout for mobile and desktop, unlike the
+ * old edge-anchored bottom-sheet/side-panel split.
  *
- * Built on the raw Radix Dialog primitive (not `ui/dialog.tsx`'s
- * `DialogContent`) because that component hard-codes a centered, capped-width
- * layout — this panel is edge-anchored and full-height instead.
+ * Still a real Radix Dialog underneath — losing the visible box is a visual
+ * choice, not a structural one. Focus trapping and Escape-to-close keep
+ * working exactly as before. Click-outside-to-close needs its own handler
+ * here (see `handleBackdropClick`) because Content now spans the full
+ * viewport, so Radix's own "outside Content" detection has nothing to
+ * detect — every click technically lands inside Content's bounding box.
  */
 export default function AgentPanel({
     open,
@@ -49,130 +54,150 @@ export default function AgentPanel({
         void send(value);
     }
 
+    function handleBackdropClick(event: React.MouseEvent<HTMLDivElement>) {
+        if (event.target === event.currentTarget) onOpenChange(false);
+    }
+
     return (
         <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay
-                    className="fixed inset-0 z-50 bg-black/40 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+                    className="fixed inset-0 z-50 bg-background/55 backdrop-blur-xl data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
                 />
                 <DialogPrimitive.Content
                     className={cn(
-                        "glass-modal fixed inset-x-0 bottom-0 z-50 flex h-[80vh] flex-col rounded-t-2xl border-t border-border shadow-lg outline-none duration-200",
-                        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-                        "md:inset-x-auto md:inset-y-0 md:right-0 md:bottom-auto md:h-full md:w-[400px] md:rounded-t-none md:rounded-l-2xl md:border-t-0 md:border-l",
+                        "fixed inset-0 z-50 outline-none duration-200",
+                        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+                        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
                     )}
                 >
-                    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
-                        <DialogPrimitive.Title className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                            <Sparkles className="size-4 text-muted-foreground" />
-                            Lampara AI
-                        </DialogPrimitive.Title>
-                        <div className="flex items-center gap-1">
-                            {messages.length > 0 && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={clear}
-                                    aria-label="Clear conversation"
-                                >
-                                    <Trash2 className="size-4" />
-                                </Button>
-                            )}
-                            <DialogPrimitive.Close asChild>
-                                <Button type="button" variant="ghost" size="icon-sm" aria-label="Close">
-                                    <X className="size-4" />
-                                </Button>
-                            </DialogPrimitive.Close>
-                        </div>
-                    </div>
+                    <DialogPrimitive.Title className="sr-only">Lampara AI</DialogPrimitive.Title>
                     <DialogPrimitive.Description className="sr-only">
                         Ask the Lampara AI assistant about projects, schedules and pipeline
                         stages, or have it create and schedule things for you — it always
                         describes what it's about to do and waits for confirmation first.
                     </DialogPrimitive.Description>
 
-                    <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                        {messages.length === 0 ? (
-                            briefingReady ? (
-                                // The daily briefing failed to load (or came back
-                                // empty) — fall back to the static welcome state
-                                // rather than leave the panel looking stuck.
-                                <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                                    <div className="flex size-10 items-center justify-center rounded-full bg-secondary">
-                                        <Sparkles className="size-5 text-muted-foreground" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-medium text-foreground">Ask about your projects</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            It can look things up and take action — always asking first.
-                                        </p>
-                                    </div>
-                                    <SuggestionList onPick={submit} />
-                                </div>
-                            ) : (
-                                <div className="flex h-full items-center justify-center">
-                                    <span className="flex gap-1">
-                                        <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                                        <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                                        <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
-                                    </span>
-                                </div>
-                            )
-                        ) : (
-                            <>
-                                {messages.map((message) => (
-                                    <AgentMessage key={message.id} message={message} />
-                                ))}
-                                {/* Only the opening briefing is showing so far —
-                                    the suggestions are still a useful shortcut. */}
-                                {!hasUserMessage && <SuggestionList onPick={submit} />}
-                            </>
+                    {/* Floating chrome — bare icon buttons, no enclosing header bar. */}
+                    <div className="absolute top-5 right-5 z-10 flex items-center gap-1">
+                        {messages.length > 0 && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="rounded-full"
+                                onClick={clear}
+                                aria-label="Clear conversation"
+                            >
+                                <Trash2 className="size-4" />
+                            </Button>
                         )}
-                        {isThinking && (
-                            <div className="flex items-center gap-2 pl-8 text-xs text-muted-foreground">
-                                <span className="flex gap-1">
-                                    <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                                    <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                                    <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
-                                </span>
-                                Thinking…
-                            </div>
-                        )}
-                        {error && (
-                            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                                {error}
-                            </div>
-                        )}
+                        <DialogPrimitive.Close asChild>
+                            <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-label="Close">
+                                <X className="size-4" />
+                            </Button>
+                        </DialogPrimitive.Close>
                     </div>
 
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            submit();
-                        }}
-                        className="flex shrink-0 items-end gap-2 border-t border-border p-3"
+                    <div
+                        className="relative flex h-full flex-col items-center justify-end px-4 pt-16 pb-28"
+                        onClick={handleBackdropClick}
                     >
-                        <Textarea
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    submit();
-                                }
+                        <div
+                            ref={listRef}
+                            className="mask-fade-y w-full max-w-lg space-y-5 overflow-y-auto"
+                            style={{ maxHeight: "65vh" }}
+                        >
+                            {messages.length === 0 ? (
+                                briefingReady ? (
+                                    // The daily briefing failed to load (or came back
+                                    // empty) — fall back to the static welcome state
+                                    // rather than leave the panel looking stuck.
+                                    <div className="flex flex-col items-center gap-4 py-10 text-center">
+                                        <div className="flex size-10 items-center justify-center rounded-full bg-foreground/8">
+                                            <Sparkles className="size-5 text-muted-foreground" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium text-foreground">Ask about your projects</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                It can look things up and take action — always asking first.
+                                            </p>
+                                        </div>
+                                        <SuggestionList onPick={submit} />
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-center py-10">
+                                        <ThinkingDots />
+                                    </div>
+                                )
+                            ) : (
+                                <>
+                                    {messages.map((message) => (
+                                        <AgentMessage key={message.id} message={message} />
+                                    ))}
+                                    {/* Only the opening briefing is showing so far —
+                                        the suggestions are still a useful shortcut. */}
+                                    {!hasUserMessage && <SuggestionList onPick={submit} />}
+                                </>
+                            )}
+                            {isThinking && (
+                                <div className="pl-8">
+                                    <ThinkingDots />
+                                </div>
+                            )}
+                            {error && (
+                                <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                                    {error}
+                                </div>
+                            )}
+                        </div>
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                submit();
                             }}
-                            placeholder="Ask about a project or schedule…"
-                            rows={1}
-                            className="min-h-9 max-h-32 resize-none py-2"
-                        />
-                        <Button type="submit" size="icon" disabled={isThinking || !input.trim()} aria-label="Send message">
-                            <Send className="size-4" />
-                        </Button>
-                    </form>
+                            className="glass-modal mt-5 flex w-full max-w-lg items-end gap-2 rounded-full border border-border/60 p-2 shadow-lg"
+                        >
+                            <Textarea
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        submit();
+                                    }
+                                }}
+                                placeholder="Ask about a project or schedule…"
+                                rows={1}
+                                className="min-h-9 max-h-32 resize-none border-none bg-transparent px-3 py-1.5 shadow-none focus-visible:ring-0"
+                            />
+                            <Button
+                                type="submit"
+                                size="icon"
+                                className="shrink-0 rounded-full"
+                                disabled={isThinking || !input.trim()}
+                                aria-label="Send message"
+                            >
+                                <Send className="size-4" />
+                            </Button>
+                        </form>
+                    </div>
                 </DialogPrimitive.Content>
             </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
+    );
+}
+
+function ThinkingDots() {
+    return (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="flex gap-1">
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
+            </span>
+        </span>
     );
 }
 
@@ -184,7 +209,7 @@ function SuggestionList({ onPick }: { onPick: (text: string) => void }) {
                     key={suggestion}
                     type="button"
                     onClick={() => onPick(suggestion)}
-                    className="rounded-md border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    className="rounded-full border border-border/60 px-3 py-2 text-left text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:bg-foreground/5 hover:text-foreground"
                 >
                     {suggestion}
                 </button>
