@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils.ts";
 interface ThemeToggleProps {
     className?: string;
     variant?: "ghost" | "outline" | "secondary";
-    size?: "icon-sm" | "icon" | "sm";
+    size?: "icon-sm" | "icon" | "icon-lg" | "sm";
     align?: "start" | "center" | "end";
 }
 

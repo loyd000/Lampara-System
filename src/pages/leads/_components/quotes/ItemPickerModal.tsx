@@ -9,6 +9,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog.tsx";
@@ -131,7 +132,12 @@ export default function ItemPickerModal({
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="sm:max-w-[620px] max-h-[85vh] flex flex-col p-0 overflow-hidden">
+            <DialogContent
+                // `gap-0` overrides the base `gap-4`: the header and the tab
+                // strip each carry their own `border-b`, so the base gap left
+                // a blank 16px band between two rules instead of one clean one.
+                className="sm:max-w-[620px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
+            >
                 <DialogHeader className="p-5 pb-3 border-b">
                     <DialogTitle className="text-base font-semibold">
                         Add Items to Quote
@@ -244,6 +250,11 @@ export default function ItemPickerModal({
                                 </div>
                             ))
                         )}
+                        <DialogFooter className="pt-3">
+                            <Button type="button" variant="ghost" onClick={onClose}>
+                                Cancel
+                            </Button>
+                        </DialogFooter>
                     </TabsContent>
 
                     {/* ── Tab 2: Custom Item ──────────────────────── */}
@@ -278,7 +289,7 @@ export default function ItemPickerModal({
                                         value={qty}
                                         onWheel={(e) => e.currentTarget.blur()}
                                         onChange={(e) => setQty(e.target.value)}
-                                        className="h-10 text-xs"
+                                        className="h-9 text-xs"
                                         required
                                     />
                                 </div>
@@ -292,16 +303,19 @@ export default function ItemPickerModal({
                                         value={unit}
                                         onChange={(e) => setUnit(e.target.value)}
                                         placeholder="pc"
-                                        className="h-8 text-xs"
+                                        className="h-9 text-xs"
                                         required
                                     />
-                                    <div className="flex flex-wrap gap-1 mt-1">
+                                    {/* h-8, the app's standard compact-control
+                                        size — was a ~16px chip, well under any
+                                        usable touch target. */}
+                                    <div className="flex flex-wrap gap-1.5 mt-1.5">
                                         {COMMON_UNITS.slice(0, 4).map((u) => (
                                             <button
                                                 type="button"
                                                 key={u}
                                                 onClick={() => setUnit(u)}
-                                                className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground"
+                                                className="h-8 px-2.5 text-xs rounded-md bg-muted hover:bg-muted/80 text-muted-foreground"
                                             >
                                                 {u}
                                             </button>
@@ -323,7 +337,7 @@ export default function ItemPickerModal({
                                         value={unitPrice}
                                         onWheel={(e) => e.currentTarget.blur()}
                                         onChange={(e) => setUnitPrice(e.target.value)}
-                                        className="h-10 text-xs"
+                                        className="h-9 text-xs"
                                         required
                                     />
                                 </div>
@@ -337,26 +351,15 @@ export default function ItemPickerModal({
                                 </span>
                             </div>
 
-                            <div className="pt-2 flex justify-end gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 text-xs"
-                                    onClick={onClose}
-                                >
+                            <DialogFooter className="pt-2">
+                                <Button type="button" variant="ghost" onClick={onClose}>
                                     Cancel
                                 </Button>
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    disabled={!desc.trim()}
-                                    className="h-8 text-xs font-medium"
-                                >
-                                    <Plus className="w-3.5 h-3.5 mr-1" />
+                                <Button type="submit" disabled={!desc.trim()}>
+                                    <Plus className="w-3.5 h-3.5 mr-1.5" />
                                     Add to Quote
                                 </Button>
-                            </div>
+                            </DialogFooter>
                         </form>
                     </TabsContent>
                 </Tabs>

@@ -94,7 +94,12 @@ export default function PipelinePage() {
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0">
+            {/* p-6, no border-b: the board below needs full viewport
+                width for its columns, so it can't sit inside the house
+                max-w-7xl container like every other page — but the header
+                itself can still use the house p-6 rhythm and drop the rule
+                no other page header has. */}
+            <div className="flex items-center justify-between p-6 shrink-0">
                 <div>
                     <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Pipeline</h1>
                     <p className="text-sm text-muted-foreground mt-1.5">
@@ -105,7 +110,7 @@ export default function PipelinePage() {
                                 : `${totalActive} active · drag cards to move stages`}
                     </p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)} size="sm">
+                <Button onClick={() => setCreateOpen(true)}>
                     <Plus className="w-4 h-4 mr-1.5" />New Lead
                 </Button>
             </div>
@@ -115,12 +120,26 @@ export default function PipelinePage() {
                 what the eye clusters; every column still shares one drag surface, so
                 a card can move straight from "New Lead" to "Cancelled" in one drop. */}
             {leads === undefined ? (
-                <div className="flex gap-6 overflow-x-auto p-6">
-                    {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group) => (
-                        <div key={group} className="flex gap-3">
-                            {STAGE_GROUPS[group].map((s) => (
-                                <Skeleton key={s} className="h-96 w-52 flex-shrink-0 rounded-lg" />
-                            ))}
+                // Mirrors the loaded board's own wrapper classes exactly — a
+                // skeleton with no group header and no border-l landed at a
+                // different x and y than the real columns once data arrived.
+                <div className="flex gap-6 overflow-x-auto p-6 flex-1 min-h-0 items-start">
+                    {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group, groupIndex) => (
+                        <div
+                            key={group}
+                            className={cn(
+                                "flex flex-col gap-2.5 shrink-0",
+                                groupIndex > 0 && "border-l border-border/60 pl-6",
+                            )}
+                        >
+                            <div className="flex items-baseline gap-2 px-1">
+                                <Skeleton className="h-3 w-20" />
+                            </div>
+                            <div className="flex gap-3 items-start">
+                                {STAGE_GROUPS[group].map((s) => (
+                                    <Skeleton key={s} className="h-96 w-52 shrink-0 rounded-lg" />
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -133,7 +152,7 @@ export default function PipelinePage() {
                             <div
                                 key={group}
                                 className={cn(
-                                    "flex flex-col gap-2.5 flex-shrink-0",
+                                    "flex flex-col gap-2.5 shrink-0",
                                     groupIndex > 0 && "border-l border-border/60 pl-6",
                                 )}
                             >
@@ -152,7 +171,7 @@ export default function PipelinePage() {
                                         return (
                                             <div
                                                 key={stage}
-                                                className="flex-shrink-0 w-52 flex flex-col"
+                                                className="shrink-0 w-52 flex flex-col"
                                                 onDragOver={canMoveStage ? (e) => { e.preventDefault(); setDragOver(stage); } : undefined}
                                                 onDragLeave={canMoveStage ? () => setDragOver(null) : undefined}
                                                 onDrop={canMoveStage ? () => handleDrop(stage) : undefined}
@@ -163,7 +182,7 @@ export default function PipelinePage() {
                                                     isOver && "bg-secondary",
                                                 )}>
                                                     <div className="flex items-center gap-2">
-                                                        <Badge className={`${STAGE_COLORS[stage]} text-[11px] font-semibold px-2 py-0.5 rounded-md`}>
+                                                        <Badge className={`${STAGE_COLORS[stage]} font-semibold px-2 py-0.5 rounded-md`}>
                                                             {STAGE_LABELS[stage]}
                                                         </Badge>
                                                     </div>
@@ -263,7 +282,7 @@ function PipelineCard({
                     {lead.firstName} {lead.lastName}
                 </p>
                 {isStale && (
-                    <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
                 )}
             </div>
 

@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
+    Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
+} from "@/components/ui/empty.tsx";
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -33,7 +36,6 @@ import {
     CheckCircle2,
     XCircle,
     Upload,
-    FileText,
     ExternalLink,
     ArrowRight,
     Clock,
@@ -211,7 +213,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                     </div>
                 </CardHeader>
 
-                <CardContent className="p-5">
+                <CardContent className="p-4">
                     {isLoading ? (
                         <div className="space-y-3">
                             <Skeleton className="h-6 w-48" />
@@ -239,29 +241,29 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                             </Button>
                         </div>
                     ) : !contract ? (
-                        /* Empty state when no contract exists yet */
-                        <div className="text-center py-10 px-4">
-                            <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
-                                <FileBadge2 className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-sm font-semibold text-foreground">
-                                No Contract Created Yet
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
-                                Contracts are created from approved solar proposals. Go to the
-                                Quotes tab, approve a quote, and click <strong>"Create Contract"</strong> to
-                                initiate this lead's legal agreement.
-                            </p>
+                        <Empty className="py-8">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <FileBadge2 className="size-6" />
+                                </EmptyMedia>
+                                <EmptyTitle>No Contract Created Yet</EmptyTitle>
+                                <EmptyDescription>
+                                    Contracts are created from approved solar proposals. Go to
+                                    the Quotes tab, approve a quote, and click{" "}
+                                    <strong>"Create Contract"</strong> to initiate this lead's
+                                    legal agreement.
+                                </EmptyDescription>
+                            </EmptyHeader>
                             <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={goToQuotes}
-                                className="mt-4 text-xs h-8"
+                                className="text-xs h-8"
                             >
                                 Go to Quotes
                                 <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                             </Button>
-                        </div>
+                        </Empty>
                     ) : (
                         /* Active contract details */
                         <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6 lg:space-y-0">
@@ -269,9 +271,12 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                 and one-off actions. On a wide screen they sit beside it
                                 instead of stacking below and leaving half the row empty. */}
                             <div className="space-y-5 min-w-0">
-                                {/* Contract Details — feeds the generated contract PDF */}
+                                {/* Contract Details — feeds the generated contract PDF.
+                                    Alone in this column, so no border here — one
+                                    would double up against the outer Card's own edge.
+                                    Padding only, no box. */}
                                 {details && (
-                                    <div className="space-y-3 p-4 rounded-lg border">
+                                    <div className="space-y-3 p-4">
                                         <div className="flex items-center justify-between">
                                             <label className="text-xs font-semibold text-foreground block">
                                                 Contract Details
@@ -285,7 +290,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Homeowner Name</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     value={details.homeownerName}
                                                     disabled={!canEdit}
                                                     onChange={(e) =>
@@ -296,7 +301,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Phone Number</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     value={details.phoneNumber}
                                                     disabled={!canEdit}
                                                     onChange={(e) =>
@@ -307,7 +312,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1 sm:col-span-2">
                                                 <Label className="text-[11px]">Site Address</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     value={details.siteAddress}
                                                     disabled={!canEdit}
                                                     onChange={(e) =>
@@ -335,7 +340,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                                 </Label>
                                                 <Input
                                                     className={cn(
-                                                        "h-10 sm:h-9 text-xs",
+                                                        "h-9 text-xs",
                                                         needsSystemSize &&
                                                             "border-amber-400 bg-amber-50 focus-visible:ring-amber-400/40 dark:border-amber-600 dark:bg-amber-950/30",
                                                     )}
@@ -359,7 +364,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Contract Price (₱)</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     type="number"
                                                     inputMode="decimal"
                                                     step="0.01"
@@ -379,7 +384,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1 sm:col-span-2">
                                                 <Label className="text-[11px]">Panel Line</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     placeholder="( 12 PCS )  TIER 1 610-630 WATTS"
                                                     value={details.panelLine}
                                                     disabled={!canEdit}
@@ -391,7 +396,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1 sm:col-span-2">
                                                 <Label className="text-[11px]">Inverter Line</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     placeholder="( 1 PC/S )  SOLIS S6-EH1P6K L-PRO/PLUS"
                                                     value={details.inverterLine}
                                                     disabled={!canEdit}
@@ -403,7 +408,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1 sm:col-span-2">
                                                 <Label className="text-[11px]">Battery Line</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     placeholder="( 1 PC/S )  PYLONTECH 51.2V 314AH"
                                                     value={details.batteryLine}
                                                     disabled={!canEdit}
@@ -415,7 +420,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Prepared By</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     value={details.preparedByName}
                                                     disabled={!canEdit}
                                                     onChange={(e) =>
@@ -426,7 +431,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                             <div className="space-y-1">
                                                 <Label className="text-[11px]">Contract Date</Label>
                                                 <Input
-                                                    className="h-10 sm:h-9 text-xs"
+                                                    className="h-9 text-xs"
                                                     type="date"
                                                     value={details.contractDate}
                                                     disabled={!canEdit}
@@ -438,11 +443,14 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                         </div>
 
                                         {canEdit && (
-                                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                            // `justify-between` split two related
+                                            // save actions to opposite edges; both
+                                            // now sit together on the left.
+                                            <div className="flex flex-wrap items-center gap-2 pt-1">
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    className="h-9 text-xs"
+                                                    className="h-8 text-xs"
                                                     onClick={handleSaveDetails}
                                                     disabled={isSavingDetails}
                                                 >
@@ -452,6 +460,9 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                                     details={details}
                                                     firstName={lead.firstName}
                                                     lastName={lead.lastName}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-8 text-xs"
                                                 />
                                             </div>
                                         )}
@@ -462,7 +473,7 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
 
                             <div className="space-y-5 min-w-0">
                                 {/* Meta Grid */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 p-4 rounded-lg bg-muted/20 border text-xs">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 p-4 rounded-lg bg-muted/20 text-xs">
                                     <div>
                                         <span className="text-muted-foreground font-medium block">
                                             Associated Proposal
@@ -517,13 +528,13 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                 </div>
 
                                 {/* Document Section */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 border-t border-border pt-4">
                                     <label className="text-xs font-semibold text-foreground block">
                                         Contract Document
                                     </label>
 
                                     {contract.documentUrl ? (
-                                        <div className="flex items-center justify-between p-3.5 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
+                                        <div className="flex items-center justify-between p-3.5 rounded-lg hover:bg-muted/20 transition-colors">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
                                                     <FileCheck className="w-4 h-4" />
@@ -599,22 +610,20 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
 
                                 {/* Actions Bar */}
                                 {canEdit && (
-                                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t">
-                                        <div>
-                                            {contract.status === "pending_signature" && (
-                                                <Button
-                                                    size="sm"
-                                                    onClick={handleSign}
-                                                    disabled={isSigning}
-                                                    className="h-8 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                >
-                                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                                                    {isSigning ? "Updating…" : "Mark Contract as Signed"}
-                                                </Button>
-                                            )}
-                                        </div>
+                                    <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                                        {contract.status === "pending_signature" && (
+                                            <Button
+                                                size="sm"
+                                                onClick={handleSign}
+                                                disabled={isSigning}
+                                                className="h-8 text-xs font-medium"
+                                            >
+                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                {isSigning ? "Updating…" : "Mark Contract as Signed"}
+                                            </Button>
+                                        )}
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="ml-auto flex items-center gap-2">
                                             {contract.status === "pending_signature" && (
                                                 <AlertDialog
                                                     open={cancelDialogOpen}

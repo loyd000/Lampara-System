@@ -45,7 +45,7 @@ export default function AuthCallback() {
 
     if (failed) {
         return (
-            <div className="flex flex-col items-center justify-center h-svh gap-6 px-4">
+            <div className="flex flex-col items-center justify-center h-screen gap-6 px-4">
                 <div className="flex flex-col items-center gap-2 text-center">
                     <p className="text-destructive font-medium">Something went wrong</p>
                     <p className="text-sm text-muted-foreground max-w-md">
@@ -53,7 +53,7 @@ export default function AuthCallback() {
                             "We couldn't complete sign-in. The link may have expired or already been used."}
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="secondary" onClick={() => navigate("/", { replace: true })}>
                         Return home
                     </Button>
@@ -64,7 +64,7 @@ export default function AuthCallback() {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center h-svh gap-4">
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
             <Spinner className="size-8" />
             <p className="text-sm text-muted-foreground">Signing you in…</p>
         </div>

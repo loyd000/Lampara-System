@@ -57,22 +57,26 @@ export default function NotificationPreferencesCard() {
 
     return (
         <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 border-b">
                 <CardTitle className="flex items-center gap-2 text-base">
                     <Bell className="w-4 h-4 text-muted-foreground" />
                     Email Notifications
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="divide-y">
                 {isLoading || !prefs ? (
                     <div className="space-y-3">
                         {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
                     </div>
                 ) : (
                     ROWS.map((row) => (
-                        <div
+                        // A <label> wrapping the Switch: the whole row is the hit
+                        // area, not just the 32x18px control. `<button>` (what
+                        // Radix Switch renders) is a labelable element, so a click
+                        // anywhere in the row forwards to it like a native checkbox.
+                        <label
                             key={row.key}
-                            className="flex items-center justify-between gap-3 py-2 border-b last:border-0"
+                            className="flex items-center justify-between gap-3 py-3 cursor-pointer"
                         >
                             <div className="min-w-0">
                                 <p className="text-sm font-medium text-foreground">{row.label}</p>
@@ -81,9 +85,8 @@ export default function NotificationPreferencesCard() {
                             <Switch
                                 checked={prefs[row.key]}
                                 onCheckedChange={(checked) => void handleToggle(row.key, checked)}
-                                aria-label={row.label}
                             />
-                        </div>
+                        </label>
                     ))
                 )}
             </CardContent>

@@ -50,8 +50,14 @@ export default function AppLayout() {
                     <div className="flex h-screen overflow-hidden bg-background">
                         <AppSidebar />
                         <div className="flex flex-1 flex-col overflow-hidden">
-                            {/* Mobile top bar */}
-                            <div className="glass-nav flex md:hidden items-center justify-between px-4 py-3 border-b border-border sticky top-0 z-40">
+                            {/* Mobile top bar. Plain `bg-background`, not the
+                                glass treatment: this bar is a sibling of <main>
+                                (the actual scroll container) in a flex-col
+                                layout, so it never has scrolling content
+                                passing under it — `backdrop-filter` had nothing
+                                to blur, and `sticky top-0 z-40` were both inert
+                                since the bar never moves regardless. */}
+                            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border bg-background">
                                 <div className="flex items-center gap-2">
                                     <img
                                         src="/lampara-icon.png"
@@ -60,16 +66,21 @@ export default function AppLayout() {
                                     />
                                     <span className="font-bold text-sm tracking-tight text-foreground">{COMPANY_NAME}</span>
                                 </div>
+                                {/* size-11 (44px) — the WCAG touch-target minimum.
+                                    These were size-10 (40px) via a className
+                                    override on top of the `icon` (36px) variant,
+                                    rather than the `icon-lg` variant that already
+                                    means 40px — same visible size, wrong reason. */}
                                 <div className="flex items-center gap-1.5">
                                     <NavLink
                                         to="/profile"
-                                        className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0"
+                                        className="size-11 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0"
                                         aria-label="My profile"
                                     >
                                         {(currentUser?.name ?? currentUser?.email ?? "U").charAt(0).toUpperCase()}
                                     </NavLink>
-                                    <ThemeToggle size="icon" className="size-10" />
-                                    <SignOutButton className="size-10" />
+                                    <ThemeToggle size="icon-lg" className="size-11" />
+                                    <SignOutButton className="size-11" />
                                 </div>
                             </div>
                             {/*

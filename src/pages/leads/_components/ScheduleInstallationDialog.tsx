@@ -11,7 +11,7 @@ import type { Id, Installation } from "@/lib/supabase/types.ts";
 import { ROLE_LABELS } from "@/lib/constants.ts";
 import { toast } from "sonner";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import {
     Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -140,6 +140,9 @@ export default function ScheduleInstallationDialog({
                     <DialogTitle>
                         {editing ? "Reschedule Installation" : "Schedule Installation"}
                     </DialogTitle>
+                    <DialogDescription>
+                        Set the installation dates and assign the crew.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -171,11 +174,22 @@ export default function ScheduleInstallationDialog({
                         <FormField control={form.control} name="crewIds" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Assign Crew</FormLabel>
-                                <div className="space-y-2 rounded-md border p-3 max-h-40 overflow-y-auto">
+                                {/* No inner scroller: the dialog itself already
+                                    scrolls (max-h-[90vh] overflow-y-auto), and a
+                                    scroller nested inside a scroller traps the
+                                    touch drag gesture on a phone. */}
+                                <div className="space-y-1 rounded-md border p-2">
                                     {crew.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground">No technicians found</p>
+                                        <p className="text-xs text-muted-foreground p-1">No technicians found</p>
                                     ) : crew.map((u) => (
-                                        <div key={u._id} className="flex items-center gap-2">
+                                        // The whole row is the label, not just the
+                                        // text beside a 16px checkbox — py-2 takes
+                                        // the hit area to a real thumb-sized target.
+                                        <label
+                                            key={u._id}
+                                            htmlFor={u._id}
+                                            className="flex items-center gap-2 py-2 px-1 rounded-sm cursor-pointer hover:bg-muted/40"
+                                        >
                                             <Checkbox
                                                 id={u._id}
                                                 checked={field.value.includes(u._id)}
@@ -187,11 +201,11 @@ export default function ScheduleInstallationDialog({
                                                     }
                                                 }}
                                             />
-                                            <label htmlFor={u._id} className="text-sm cursor-pointer">
+                                            <span className="text-sm">
                                                 {u.name ?? u.email}
                                                 {u.role !== "field" && <span className="text-muted-foreground text-xs ml-1">({ROLE_LABELS[u.role]})</span>}
-                                            </label>
-                                        </div>
+                                            </span>
+                                        </label>
                                     ))}
                                 </div>
                                 <FormMessage />

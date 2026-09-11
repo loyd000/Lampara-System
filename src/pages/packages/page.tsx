@@ -224,7 +224,9 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                     <button
                         type="button"
                         onClick={onToggleExpand}
-                        className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                        // Was a 20px target (p-0.5 around a size-4 icon) beside
+                        // size-9 (36px) action buttons in the same row.
+                        className="shrink-0 size-9 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
                         aria-label={expanded ? "Collapse" : "Expand"}
                     >
                         {expanded ? (
@@ -340,7 +342,7 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="size-9 text-muted-foreground hover:text-emerald-600"
+                                            className="size-9 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
                                             disabled={busy}
                                             onClick={onToggleActive}
                                         >
@@ -356,14 +358,14 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
 
                 {/* Expanded: line items table */}
                 {expanded && pkg.items.length > 0 && (
-                    <div className="border-t border-border/50 bg-muted/20 px-4 py-3 overflow-x-auto">
+                    <div className="border-t border-border/50 bg-muted/20 -mx-3 px-4 py-3 overflow-x-auto">
                         <table className="w-full text-sm min-w-[420px]">
                             <thead>
                                 <tr className="text-xs text-muted-foreground border-b border-border/40">
-                                    <th className="text-left pb-2 font-medium w-8">#</th>
-                                    <th className="text-left pb-2 font-medium w-1/3">Name</th>
-                                    <th className="text-left pb-2 font-medium">Description</th>
-                                    <th className="text-right pb-2 font-medium w-28">Quantity</th>
+                                    <th className="text-left px-3 pb-2 font-medium w-8">#</th>
+                                    <th className="text-left px-3 pb-2 font-medium w-1/3">Name</th>
+                                    <th className="text-left px-3 pb-2 font-medium">Description</th>
+                                    <th className="text-right px-3 pb-2 font-medium w-28">Quantity</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -372,14 +374,14 @@ function PackageCard({ pkg, expanded, onToggleExpand, onEdit, onToggleActive, bu
                                         key={item._id}
                                         className="border-b border-border/20 last:border-0"
                                     >
-                                        <td className="py-2 text-muted-foreground">{i + 1}</td>
-                                        <td className="py-2 font-medium text-foreground">
+                                        <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                                        <td className="px-3 py-2 font-medium text-foreground">
                                             {item.name || item.description}
                                         </td>
-                                        <td className="py-2 text-muted-foreground text-xs">
+                                        <td className="px-3 py-2 text-muted-foreground text-xs">
                                             {item.name ? item.description : "—"}
                                         </td>
-                                        <td className="py-2 text-right tabular-nums font-medium">
+                                        <td className="px-3 py-2 text-right tabular-nums font-medium">
                                             {item.qty} {item.unit}
                                         </td>
                                     </tr>

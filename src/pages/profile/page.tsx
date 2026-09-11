@@ -104,7 +104,7 @@ export default function ProfilePage() {
 
             {/* Identity */}
             <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 border-b">
                     <CardTitle className="flex items-center gap-2 text-base">
                         <UserIcon className="w-4 h-4 text-muted-foreground" />
                         Account
@@ -112,7 +112,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-5">
                     <div className="flex items-center gap-3">
-                        <div className="size-14 rounded-full bg-secondary text-foreground flex items-center justify-center font-bold text-lg border border-border shrink-0">
+                        <div className="size-14 rounded-xl bg-secondary text-foreground flex items-center justify-center font-bold text-lg border border-border shrink-0">
                             {(currentUser.name ?? currentUser.email ?? "U").charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
@@ -120,7 +120,7 @@ export default function ProfilePage() {
                                 {currentUser.name ?? "No name set"}
                             </p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <Badge variant="secondary" className="text-[11px]">
+                                <Badge variant="secondary">
                                     {ROLE_LABELS[currentUser.role] ?? currentUser.role}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground">
@@ -159,7 +159,7 @@ export default function ProfilePage() {
 
             {/* Password */}
             <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 border-b">
                     <CardTitle className="flex items-center gap-2 text-base">
                         <KeyRound className="w-4 h-4 text-muted-foreground" />
                         Change Password

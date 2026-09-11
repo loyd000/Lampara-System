@@ -204,12 +204,12 @@ export default function QuotesTab({
                                                 </span>
                                             </span>
                                             {isApproved ? (
-                                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
+                                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 gap-1 font-semibold">
                                                     <Lock className="w-2.5 h-2.5" />
                                                     Approved
                                                 </Badge>
                                             ) : (
-                                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
+                                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-semibold">
                                                     In Progress
                                                 </Badge>
                                             )}
@@ -271,7 +271,7 @@ export default function QuotesTab({
                                                             : "View Contract"}
                                                     </Button>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                                                    <Badge variant="outline" className="text-muted-foreground">
                                                         Contract on v{contract.quoteVersion}
                                                     </Badge>
                                                 )

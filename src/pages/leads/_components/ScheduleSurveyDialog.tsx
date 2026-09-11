@@ -6,7 +6,7 @@ import type { Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
 import { INSPECTION_LABEL, ROLE_LABELS } from "@/lib/constants.ts";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import {
     Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -79,6 +79,9 @@ export default function ScheduleSurveyDialog({
             <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Schedule {INSPECTION_LABEL}</DialogTitle>
+                    <DialogDescription>
+                        Book a site visit and assign a technician.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

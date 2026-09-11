@@ -265,7 +265,7 @@ function DocumentRow({ file, leadId }: { file: LeadFileEntry; leadId: Id<"leads"
                 </p>
             </div>
             {file.url && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
+                <Button variant="ghost" size="icon-sm" className="shrink-0" asChild>
                     <a
                         href={file.url}
                         target="_blank"
@@ -319,10 +319,14 @@ function RemoveButton({
                     type="button"
                     aria-label={`Remove ${file.name}`}
                     className={cn(
-                        "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity",
+                        // Visible by default on touch — there is no hover on a
+                        // phone, so this was previously unreachable there.
+                        "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 transition-opacity",
                         floating
-                            ? "absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow-sm"
-                            : "shrink-0 rounded-md p-1.5 text-destructive hover:bg-destructive/10",
+                            ? "absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1 shadow-sm"
+                            // p-2 around a 14px icon is ~32px — the same size
+                            // as the download button beside it.
+                            : "shrink-0 rounded-md p-2 text-destructive hover:bg-destructive/10",
                     )}
                 >
                     <Trash2 className={floating ? "w-3 h-3" : "w-3.5 h-3.5"} />

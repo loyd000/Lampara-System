@@ -22,7 +22,6 @@ const PipelinePage = lazy(() => import("./pages/pipeline/page.tsx"));
 const CalendarPage = lazy(() => import("./pages/calendar/page.tsx"));
 const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
 const TeamPage = lazy(() => import("./pages/team/page.tsx"));
-const ReportsPage = lazy(() => import("./pages/reports/page.tsx"));
 const PackagesPage = lazy(() => import("./pages/packages/page.tsx"));
 
 function RouteFallback() {
@@ -54,14 +53,6 @@ export default function App() {
                                     <Route path="/calendar" element={<CalendarPage />} />
                                     <Route path="/leads" element={<LeadsPage />} />
                                     <Route path="/leads/:id" element={<LeadDetailPage />} />
-                                    <Route
-                                        path="/reports"
-                                        element={
-                                            <RequireRole roles={["superadmin", "admin"]}>
-                                                <ReportsPage />
-                                            </RequireRole>
-                                        }
-                                    />
                                     <Route
                                         path="/packages"
                                         element={

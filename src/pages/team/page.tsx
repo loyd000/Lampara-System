@@ -152,7 +152,7 @@ export default function TeamPage() {
                                     <Card key={user._id} className="border-amber-200/60 dark:border-amber-800/40">
                                         <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3">
                                             <div className="flex items-center gap-3 min-w-0">
-                                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
+                                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm shrink-0 border border-border">
                                                     {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -173,7 +173,7 @@ export default function TeamPage() {
                                                             setPendingRole((prev) => ({ ...prev, [user._id]: v as UserRole }))
                                                         }
                                                     >
-                                                        <SelectTrigger className="w-28 h-8 text-xs">
+                                                        <SelectTrigger className="w-32 h-9 text-xs">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -184,7 +184,6 @@ export default function TeamPage() {
                                                     </Select>
                                                     <Button
                                                         size="sm"
-                                                        className="h-8"
                                                         disabled={busyId === user._id}
                                                         onClick={() => void handleApprove(user)}
                                                     >
@@ -195,7 +194,7 @@ export default function TeamPage() {
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                className="h-8 text-destructive hover:text-destructive"
+                                                                className="text-destructive hover:text-destructive"
                                                                 disabled={busyId === user._id}
                                                             >
                                                                 Decline
@@ -222,7 +221,7 @@ export default function TeamPage() {
                                                     </AlertDialog>
                                                 </div>
                                             ) : (
-                                                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                                                <Badge variant="secondary" className="text-xs shrink-0">
                                                     Pending
                                                 </Badge>
                                             )}
@@ -245,7 +244,7 @@ export default function TeamPage() {
                                     <Card key={user._id} className={!user.isActive ? "opacity-60" : undefined}>
                                         <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3">
                                             <div className="flex items-center gap-3 min-w-0">
-                                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border">
+                                                <div className="size-10 rounded-md bg-secondary text-foreground flex items-center justify-center font-bold text-sm shrink-0 border border-border">
                                                     {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -257,7 +256,7 @@ export default function TeamPage() {
                                                 </div>
                                             </div>
                                             {isSuperadmin && !isSelf ? (
-                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                <div className="flex items-center gap-1.5 shrink-0">
                                                     <Select value={user.role} onValueChange={(v) => handleRoleChange(user._id, v)}>
                                                         <SelectTrigger className="w-32 h-9 text-xs">
                                                             <SelectValue />
@@ -281,7 +280,7 @@ export default function TeamPage() {
                                                     </Button>
                                                 </div>
                                             ) : (
-                                                <Badge className={`${ROLE_COLORS[user.role]} flex items-center gap-1 text-xs flex-shrink-0`}>
+                                                <Badge className={`${ROLE_COLORS[user.role]} flex items-center gap-1 text-xs shrink-0`}>
                                                     {ROLE_ICONS[user.role]}{ROLE_LABELS[user.role]}
                                                 </Badge>
                                             )}

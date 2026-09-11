@@ -6,7 +6,6 @@ import { useAddSurveyPhotos, useDeleteSurveyPhoto } from "@/lib/supabase/hooks.t
 import type { Id, SurveyPhoto, SurveyPhotoCategory } from "@/lib/supabase/types.ts";
 import { SURVEY_PHOTO_SLOTS } from "@/lib/constants.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { cn } from "@/lib/utils.ts";
 
 /**
  * The photo half of the Site Ocular Report.
@@ -112,7 +111,11 @@ function Slot({
     }
 
     return (
-        <div className="rounded-lg border p-3">
+        // `bg-card shadow-sm`, not a hard border: these slots sit bare on the
+        // page (not nested inside another bordered Card), so a soft shadow —
+        // the same weight the Card primitive itself uses — reads as a panel
+        // without the harder boxed-in look a border line gives.
+        <div className="rounded-lg bg-card shadow-sm p-4">
             <div className="flex items-start justify-between gap-3 mb-2.5">
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{label}</p>
@@ -135,7 +138,7 @@ function Slot({
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-9 text-xs"
+                                className="h-8 text-xs"
                                 onClick={() => inputRef.current?.click()}
                                 disabled={uploading || full}
                                 title={full ? `This slot already holds ${max}` : undefined}
@@ -153,12 +156,9 @@ function Slot({
             </div>
 
             {photos.length === 0 ? (
-                <div
-                    className={cn(
-                        "flex items-center gap-2 rounded-md border border-dashed px-3 py-4",
-                        "text-xs text-muted-foreground",
-                    )}
-                >
+                // No dashed box nested inside the slot's own panel — the panel
+                // already provides the boundary; this is just its empty state.
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
                     <ImageOff className="w-3.5 h-3.5 opacity-50" />
                     {editable ? "No photo yet" : "Not provided"}
                 </div>

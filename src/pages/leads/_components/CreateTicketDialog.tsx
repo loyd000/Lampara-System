@@ -5,7 +5,7 @@ import { useCreateTicket, useUsers } from "@/lib/supabase/hooks.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import {
     Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -92,6 +92,9 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
             <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New Service Ticket</DialogTitle>
+                    <DialogDescription>
+                        Log a service or warranty issue for this installation.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -113,7 +116,10 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
                             </FormItem>
                         )} />
 
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* Stacks below sm — the only dialog in the app with a hard
+                            two-column grid, which squeezed Priority and Assign To
+                            into ~150px columns on a phone. */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FormField control={form.control} name="priority" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Priority</FormLabel>
@@ -163,7 +169,7 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
                                             onCheckedChange={field.onChange}
                                         />
                                     </FormControl>
-                                    <FormLabel className="!mt-0 cursor-pointer">Warranty-related issue</FormLabel>
+                                    <FormLabel className="cursor-pointer">Warranty-related issue</FormLabel>
                                 </div>
                             </FormItem>
                         )} />

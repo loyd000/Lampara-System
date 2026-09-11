@@ -159,7 +159,6 @@ export default function LeadsPage() {
                 {hasActiveFilters && (
                     <Button
                         variant="ghost"
-                        size="sm"
                         className="text-muted-foreground"
                         onClick={() => {
                             setStageFilter("all");
@@ -206,7 +205,7 @@ export default function LeadsPage() {
                         ) : leads.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="p-0">
-                                    <Empty className="border-none py-14">
+                                    <Empty className="border-none py-14 md:py-14">
                                         <EmptyHeader>
                                             <EmptyMedia variant="icon">
                                                 <User className="size-6" />
@@ -244,7 +243,7 @@ export default function LeadsPage() {
                                         <td className="px-4 py-3">
                                             <p className="font-semibold text-foreground">{lead.firstName} {lead.lastName}</p>
                                             {isStale && (
-                                                <span className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                                                <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
                                                     <AlertTriangle className="w-2.5 h-2.5" />No activity {daysOld}d
                                                 </span>
                                             )}
@@ -268,13 +267,13 @@ export default function LeadsPage() {
                                                 : "—"}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <Badge className={cn(STAGE_COLORS[lead.stage], "text-[11px] font-semibold")}>
+                                            <Badge className={cn(STAGE_COLORS[lead.stage], "font-semibold")}>
                                                 {STAGE_LABELS[lead.stage]}
                                             </Badge>
                                         </td>
                                         <td className={cn(
                                             "px-4 py-3 text-xs hidden md:table-cell",
-                                            isStale ? "text-amber-600 font-medium" : "text-muted-foreground",
+                                            isStale ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground",
                                         )}>
                                             {daysOld === 0 ? "Today" : daysOld === 1 ? "Yesterday" : `${daysOld}d ago`}
                                         </td>

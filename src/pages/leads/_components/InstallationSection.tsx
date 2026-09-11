@@ -14,7 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Wrench, Plus, Camera, CheckSquare, Square, X, CheckCircle2, Zap, PauseCircle, CalendarClock, Trash2 } from "lucide-react";
+import {
+    Empty, EmptyHeader, EmptyMedia, EmptyTitle,
+} from "@/components/ui/empty.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Wrench, Plus, Camera, CheckSquare, Square, CheckCircle2, Zap, PauseCircle, CalendarClock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { canScheduleInstallation } from "@/lib/constants.ts";
 import { toast } from "sonner";
@@ -39,10 +43,10 @@ type Props = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-    scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    on_hold: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+    scheduled: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+    in_progress: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    completed: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+    on_hold: "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30",
 };
 
 /**
@@ -192,20 +196,20 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
 
     return (
         <>
-            <Card className={cn(!isUnlocked && "opacity-60")}>
-                <CardHeader className="pb-3">
+            <Card>
+                <CardHeader className="pb-3 border-b">
                     <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                             <Wrench className="w-4 h-4 text-muted-foreground" />Installation
                         </CardTitle>
                         {isUnlocked && canEdit && !installation && (
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setScheduleOpen(true)}>
+                            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setScheduleOpen(true)}>
                                 <Plus className="w-3.5 h-3.5 mr-1" />Schedule
                             </Button>
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 space-y-3">
                     {!isUnlocked ? (
                         <p className="text-xs text-muted-foreground">Installation is scheduled once the contract is signed.</p>
                     ) : installationQuery.isError ? (
@@ -214,23 +218,27 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
                             onRetry={() => void installationQuery.refetch()}
                         />
                     ) : installation === undefined ? (
-                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-28 w-full rounded-lg" />
                     ) : installation === null ? (
-                        <div className="text-center py-4">
-                            <Wrench className="w-6 h-6 text-muted-foreground/30 mx-auto mb-1" />
-                            <p className="text-xs text-muted-foreground">No installation scheduled yet</p>
+                        <Empty className="py-8">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <Wrench className="size-6" />
+                                </EmptyMedia>
+                                <EmptyTitle>No Installation Scheduled Yet</EmptyTitle>
+                            </EmptyHeader>
                             {canEdit && (
-                                <Button size="sm" variant="ghost" className="mt-2 text-xs h-7" onClick={() => setScheduleOpen(true)}>
-                                    <Plus className="w-3 h-3 mr-1" />Schedule installation
+                                <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => setScheduleOpen(true)}>
+                                    <Plus className="w-3.5 h-3.5 mr-1" />Schedule installation
                                 </Button>
                             )}
-                        </div>
+                        </Empty>
                     ) : (
                         <>
                             {/* Status + date */}
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                    <Badge className={cn(STATUS_BADGE[installation.status], "text-[10px]")}>
+                                    <Badge className={STATUS_BADGE[installation.status]}>
                                         {STATUS_LABEL[installation.status]}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">
@@ -260,58 +268,70 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
 
                             {/* Status actions */}
                             {canWork && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {installation.status === "scheduled" && (
-                                        <Button size="sm" variant="outline" className="h-9 text-xs"
-                                            disabled={changingStatus}
-                                            onClick={() => handleStatusChange("in_progress")}>
-                                            <Zap className="w-3 h-3 mr-1" />Start Installation
-                                        </Button>
-                                    )}
-                                    {installation.status === "in_progress" && (
-                                        <>
-                                            <Button size="sm" variant="outline" className="h-9 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
+                                // Delete lives in its own `ml-auto` sibling rather
+                                // than inside this wrapping row: with enough status
+                                // buttons to wrap onto a second line, `ml-auto`
+                                // inside the same row pushed it to the end of
+                                // *whichever* line it landed on — sometimes right
+                                // beside "Activate as Customer" rather than at the
+                                // true end of the cluster.
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        {installation.status === "scheduled" && (
+                                            <Button size="sm" variant="outline" className="h-8 text-xs"
                                                 disabled={changingStatus}
-                                                onClick={() => handleStatusChange("completed")}>
-                                                <CheckCircle2 className="w-3 h-3 mr-1" />Mark Complete
+                                                onClick={() => handleStatusChange("in_progress")}>
+                                                <Zap className="w-3 h-3 mr-1" />Start Installation
                                             </Button>
-                                            <Button size="sm" variant="ghost" className="h-9 text-xs"
+                                        )}
+                                        {installation.status === "in_progress" && (
+                                            <>
+                                                <Button size="sm" variant="outline" className="h-8 text-xs text-emerald-600 dark:text-emerald-400 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-900/20"
+                                                    disabled={changingStatus}
+                                                    onClick={() => handleStatusChange("completed")}>
+                                                    <CheckCircle2 className="w-3 h-3 mr-1" />Mark Complete
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-8 text-xs"
+                                                    disabled={changingStatus}
+                                                    onClick={() => handleStatusChange("on_hold")}>
+                                                    <PauseCircle className="w-3 h-3 mr-1" />Pause
+                                                </Button>
+                                            </>
+                                        )}
+                                        {installation.status === "on_hold" && (
+                                            <Button size="sm" variant="outline" className="h-8 text-xs"
                                                 disabled={changingStatus}
-                                                onClick={() => handleStatusChange("on_hold")}>
-                                                <PauseCircle className="w-3 h-3 mr-1" />Pause
+                                                onClick={() => handleStatusChange("in_progress")}>
+                                                <Zap className="w-3 h-3 mr-1" />Resume
                                             </Button>
-                                        </>
-                                    )}
-                                    {installation.status === "on_hold" && (
-                                        <Button size="sm" variant="outline" className="h-9 text-xs"
-                                            disabled={changingStatus}
-                                            onClick={() => handleStatusChange("in_progress")}>
-                                            <Zap className="w-3 h-3 mr-1" />Resume
-                                        </Button>
-                                    )}
-                                    {installation.status === "completed" && stage !== "active_customer" && canEdit && (
-                                        <Button size="sm" className="h-9 text-xs"
-                                            disabled={activating}
-                                            onClick={handleActivateCustomer}>
-                                            <CheckCircle2 className="w-3 h-3 mr-1" />Activate as Customer
-                                        </Button>
-                                    )}
+                                        )}
+                                        {installation.status === "completed" && stage !== "active_customer" && canEdit && (
+                                            <Button size="sm" className="h-8 text-xs"
+                                                disabled={activating}
+                                                onClick={handleActivateCustomer}>
+                                                <CheckCircle2 className="w-3 h-3 mr-1" />Activate as Customer
+                                            </Button>
+                                        )}
 
-                                    {/* Changing the job, as opposed to working it:
-                                        running the schedule is `canEdit`, not
-                                        something the crew on site does. */}
-                                    {canEdit && (
-                                        <>
-                                            <Button size="sm" variant="outline" className="h-9 text-xs"
+                                        {/* Changing the job, as opposed to working it:
+                                            running the schedule is `canEdit`, not
+                                            something the crew on site does. */}
+                                        {canEdit && (
+                                            <Button size="sm" variant="outline" className="h-8 text-xs"
                                                 onClick={() => setRescheduleOpen(true)}>
                                                 <CalendarClock className="w-3 h-3 mr-1" />Reschedule
                                             </Button>
+                                        )}
+                                    </div>
+
+                                    {canEdit && (
+                                        <div className="ml-auto flex items-center gap-2 shrink-0">
                                             <Button size="sm" variant="ghost"
-                                                className="h-9 text-xs ml-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                className="h-8 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 onClick={openDeleteDialog}>
                                                 <Trash2 className="w-3 h-3 mr-1" />Delete
                                             </Button>
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -346,15 +366,20 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
 
                                 {canWork && installation.status !== "completed" && (
                                     <div className="flex gap-2 mt-2">
-                                        <input
+                                        {/* The house Input, not a hand-rolled
+                                            one — this bypassed the app's
+                                            focus-visible:ring-[3px] token and
+                                            sat a size off from the button
+                                            beside it. */}
+                                        <Input
                                             type="text"
                                             value={newItem}
                                             onChange={(e) => setNewItem(e.target.value)}
                                             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddItem(); } }}
                                             placeholder="Add material item…"
-                                            className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                                            className="flex-1 min-w-0 h-8 text-xs"
                                         />
-                                        <Button size="sm" variant="ghost" className="h-9 px-2 text-xs"
+                                        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs"
                                             onClick={handleAddItem} disabled={!newItem.trim() || addingItem}>
                                             <Plus className="w-3 h-3" />
                                         </Button>

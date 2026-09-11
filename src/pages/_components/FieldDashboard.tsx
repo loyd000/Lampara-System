@@ -334,7 +334,7 @@ function JobCard({ job, onClick, tone }: {
         >
             {/* Kind icon */}
             <div className={cn(
-                "p-2.5 rounded-lg flex-shrink-0",
+                "p-2.5 rounded-lg shrink-0",
                 job.done
                     ? "bg-emerald-100 dark:bg-emerald-900/30"
                     : isInspection
@@ -349,17 +349,17 @@ function JobCard({ job, onClick, tone }: {
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-sm truncate min-w-0">{job.customerName}</p>
-                    <Badge variant="secondary" className="text-[10px] font-medium">
+                    <Badge variant="secondary" className="font-medium">
                         {isInspection ? INSPECTION_LABEL_SHORT : "Installation"}
                     </Badge>
-                    <Badge className={cn(job.statusClass, "text-[10px]")}>
+                    <Badge className={job.statusClass}>
                         {job.statusLabel}
                     </Badge>
                 </div>
 
                 {job.address && (
                     <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
                         <p className="text-xs text-muted-foreground truncate">{job.address}</p>
                     </div>
                 )}

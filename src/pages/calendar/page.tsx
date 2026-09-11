@@ -118,10 +118,10 @@ export default function CalendarPage() {
                     </ToggleGroup>
                     <Button size="sm" variant="outline" onClick={goToday}>Today</Button>
                     <div className="flex items-center gap-1">
-                        <Button size="icon" variant="ghost" className="size-9" onClick={goPrev} aria-label="Previous">
+                        <Button size="icon-sm" variant="ghost" onClick={goPrev} aria-label="Previous">
                             <ChevronLeft className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="size-9" onClick={goNext} aria-label="Next">
+                        <Button size="icon-sm" variant="ghost" onClick={goNext} aria-label="Next">
                             <ChevronRight className="w-4 h-4" />
                         </Button>
                     </div>
@@ -142,7 +142,7 @@ export default function CalendarPage() {
 
             {/* Grid */}
             {isLoading ? (
-                <Skeleton className="h-[60vh] w-full rounded-lg" />
+                <Skeleton className="h-[60vh] w-full rounded-xl" />
             ) : view === "month" ? (
                 <MonthGrid days={days} anchor={anchor} events={events ?? []} onOpen={openEvent} />
             ) : (

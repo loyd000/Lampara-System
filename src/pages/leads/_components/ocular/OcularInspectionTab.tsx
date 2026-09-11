@@ -299,16 +299,16 @@ export default function OcularInspectionTab({
                                             })}
                                         </span>
                                         {survey.completedAt ? (
-                                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
+                                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 gap-1 font-semibold">
                                                 <CheckCircle2 className="w-2.5 h-2.5" />
                                                 Completed
                                             </Badge>
                                         ) : isCancelled ? (
-                                            <Badge variant="secondary" className="text-[10px] font-semibold">
+                                            <Badge variant="secondary" className="font-semibold">
                                                 Cancelled
                                             </Badge>
                                         ) : (
-                                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
+                                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-semibold">
                                                 {progress ?? "Scheduled"}
                                             </Badge>
                                         )}
@@ -493,7 +493,7 @@ function StatusBar({
                             <Button
                                 size="sm"
                                 variant={survey.completedAt ? "ghost" : "default"}
-                                className="h-9 text-xs"
+                                className="h-8 text-xs"
                                 disabled={busy}
                                 onClick={() =>
                                     void run(
@@ -571,7 +571,7 @@ function ConfirmButton({
                     size="sm"
                     variant={variant}
                     disabled={disabled}
-                    className={cn("h-9 text-xs", destructive && "text-destructive hover:text-destructive")}
+                    className={cn("h-8 text-xs", destructive && "text-destructive hover:text-destructive")}
                 >
                     {icon}
                     {label}

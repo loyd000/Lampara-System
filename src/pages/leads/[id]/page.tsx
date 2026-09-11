@@ -309,7 +309,7 @@ export default function LeadDetailPage() {
                         )}
                     </p>
                 </div>
-                <div className="flex items-center flex-wrap gap-2 flex-shrink-0">
+                <div className="flex items-center flex-wrap gap-2 shrink-0">
                     {canEdit && (
                         <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
                             <Pencil className="w-3.5 h-3.5 mr-1.5" />
@@ -374,7 +374,7 @@ export default function LeadDetailPage() {
                 {/* Overview — a spec sheet, not a wall of cards. Labels in a
                     narrow rail, values in a readable column, hairlines instead
                     of boxes. Nothing here is repeated from the header. */}
-                <TabsContent value="overview" className="mt-6">
+                <TabsContent value="overview" className="mt-4">
                     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] gap-8 lg:gap-12 items-start">
                         <dl className="divide-y divide-border">
                             <DetailRow label="Phone">
@@ -510,29 +510,25 @@ export default function LeadDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="installation" className="mt-4">
-                    <div className="max-w-2xl">
-                        <InstallationSection
-                            leadId={lead._id}
-                            stage={lead.stage}
-                            canEdit={canEdit}
-                        />
-                    </div>
+                    <InstallationSection
+                        leadId={lead._id}
+                        stage={lead.stage}
+                        canEdit={canEdit}
+                    />
                 </TabsContent>
 
                 <TabsContent value="maintenance" className="mt-4">
-                    <div className="max-w-2xl">
-                        <ServiceTicketsSection
-                            leadId={lead._id}
-                            stage={lead.stage}
-                            canEdit={canEdit}
-                        />
-                    </div>
+                    <ServiceTicketsSection
+                        leadId={lead._id}
+                        stage={lead.stage}
+                        canEdit={canEdit}
+                    />
                 </TabsContent>
 
                 {/* Activity history — full height, not a 420px well */}
                 <TabsContent value="activity" className="mt-4">
-                    <Card className="max-w-3xl">
-                        <CardHeader className="pb-3">
+                    <Card>
+                        <CardHeader className="pb-3 border-b">
                             <CardTitle className="flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-muted-foreground" />
                                 Activity History

@@ -189,11 +189,13 @@ function NoteRow({ note }: { note: LeadNoteEntry }) {
                 </p>
 
                 {note.isOwn && !editing && (
-                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    // Visible by default on touch — there is no hover on a
+                    // phone, so an author had no way at all to reach these.
+                    // Fades in on hover only once a pointer is available.
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                         <Button
                             variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
+                            size="icon-sm"
                             aria-label="Edit note"
                             onClick={() => {
                                 setDraft(note.body);
@@ -244,8 +246,8 @@ function DeleteNoteButton({ onConfirm }: { onConfirm: () => void }) {
             <AlertDialogTrigger asChild>
                 <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive"
                     aria-label="Delete note"
                 >
                     <Trash2 className="w-3 h-3" />

@@ -4,6 +4,7 @@ import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 
 /**
@@ -32,11 +33,17 @@ export default function CancelLeadDialog({
     leadName?: string;
 }) {
     const [reason, setReason] = useState("");
+    // A guard against a double-tap firing onConfirm twice before the close
+    // animation has a chance to make the button unclickable for real.
+    const [confirming, setConfirming] = useState(false);
 
     function close(next: boolean) {
         onOpenChange(next);
-        // Clear a beat after the close animation, not during it.
-        if (!next) setTimeout(() => setReason(""), 200);
+        if (!next) {
+            setConfirming(false);
+            // Clear a beat after the close animation, not during it.
+            setTimeout(() => setReason(""), 200);
+        }
     }
 
     return (
@@ -49,20 +56,26 @@ export default function CancelLeadDialog({
                         Cancelled. Say why — this is the only place that reason lives.
                     </DialogDescription>
                 </DialogHeader>
-                <Textarea
-                    autoFocus
-                    placeholder="Reason (optional, but worth leaving one)"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="min-h-[88px] text-sm"
-                />
+                <div className="space-y-1.5">
+                    <Label htmlFor="cancel-reason">Reason</Label>
+                    <Textarea
+                        id="cancel-reason"
+                        autoFocus
+                        placeholder="Optional, but worth leaving one"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        className="min-h-[88px] text-sm"
+                    />
+                </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => close(false)}>
                         Back
                     </Button>
                     <Button
                         variant="destructive"
+                        disabled={confirming}
                         onClick={() => {
+                            setConfirming(true);
                             onConfirm(reason.trim() || undefined);
                             close(false);
                         }}

@@ -4,7 +4,7 @@ import { useCreateContract } from "@/lib/supabase/hooks.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 
@@ -56,13 +56,12 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
             <DialogContent className="sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Create Contract</DialogTitle>
+                    <DialogDescription>
+                        This creates a contract based on the approved quote. Fill in the
+                        details and generate the PDF from the Contracts tab; the lead moves
+                        to <strong>Contract Signed</strong> once you mark it signed there.
+                    </DialogDescription>
                 </DialogHeader>
-
-                <p className="text-sm text-muted-foreground">
-                    This creates a contract based on the approved quote. Fill in the
-                    details and generate the PDF from the Contracts tab; the lead moves
-                    to <strong>Contract Signed</strong> once you mark it signed there.
-                </p>
 
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={onClose}>

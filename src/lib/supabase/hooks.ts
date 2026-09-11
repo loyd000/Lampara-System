@@ -880,22 +880,10 @@ export function useReorderPackages() {
     });
 }
 
+// The Reports page is gone for now; only the dashboard's own stat strip
+// still reads this one.
 export function usePipelineSummary() {
     return useQuery({ queryKey: ["reports", "pipeline"], queryFn: reportsApi.pipelineSummary });
-}
-
-export function useQuotesRevenueSummary() {
-    return useQuery({
-        queryKey: ["reports", "revenue"],
-        queryFn: reportsApi.quotesRevenueSummary,
-    });
-}
-
-export function useInstallationsSummary() {
-    return useQuery({
-        queryKey: ["reports", "installations"],
-        queryFn: reportsApi.installationsSummary,
-    });
 }
 
 // ─── Calendar ─────────────────────────────────────────────────────────────

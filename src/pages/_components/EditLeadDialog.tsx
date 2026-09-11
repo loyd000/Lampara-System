@@ -7,7 +7,7 @@ import { useUpdateLead, useUpdateProperty, useUsers } from "@/lib/supabase/hooks
 import type { Doc, Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import {
     Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -72,6 +72,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
     const assignableReps = users?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const [phAddress, setPhAddress] = useState<PhAddressValue>(() => phAddressFromProperty(property));
+    const [addressError, setAddressError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     // Controlled, so a validation failure can bring the offending tab forward.
     const [tab, setTab] = useState<"contact" | "property">("contact");
@@ -110,6 +111,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             propertyNotes: property?.notes ?? "",
         });
         setPhAddress(phAddressFromProperty(property));
+        setAddressError(null);
     }
 
     /**
@@ -125,14 +127,15 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
 
     async function onSubmit(values: FormValues) {
         if (property) {
-            const addressError = validatePhAddress(phAddress);
-            if (addressError) {
+            const err = validatePhAddress(phAddress);
+            if (err) {
                 // The address lives on the Property tab; showing this while the
                 // Contact tab is open is the same invisible-error problem.
                 setTab("property");
-                toast.error(addressError);
+                setAddressError(err);
                 return;
             }
+            setAddressError(null);
         }
 
         setSubmitting(true);
@@ -180,6 +183,9 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Edit Lead — {lead.firstName} {lead.lastName}</DialogTitle>
+                    <DialogDescription>
+                        Update contact details and property information for this lead.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
@@ -230,7 +236,14 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                             <TabsContent value="property" className="space-y-3 pt-2">
                                 {property ? (
                                     <>
-                                        <PhilippineAddressFields value={phAddress} onChange={setPhAddress} />
+                                        <PhilippineAddressFields
+                                            value={phAddress}
+                                            onChange={(v) => {
+                                                setPhAddress(v);
+                                                setAddressError(null);
+                                            }}
+                                            error={addressError}
+                                        />
                                         <FormField control={form.control} name="propertyType" render={({ field }) => (
                                             <FormItem><FormLabel>Property Type</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>

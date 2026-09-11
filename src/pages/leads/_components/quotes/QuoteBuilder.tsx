@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     ArrowLeft,
+    ArrowLeftRight,
     CheckCircle2,
     Copy,
     Lock,
@@ -325,12 +326,12 @@ export default function QuoteBuilder({
                                 </span>
                             </h2>
                             {isApproved ? (
-                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] gap-1 font-semibold">
+                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 gap-1 font-semibold">
                                     <Lock className="w-2.5 h-2.5" />
                                     Approved
                                 </Badge>
                             ) : (
-                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] gap-1 font-semibold">
+                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 gap-1 font-semibold">
                                     In Progress
                                 </Badge>
                             )}
@@ -391,7 +392,7 @@ export default function QuoteBuilder({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 text-xs font-medium text-amber-600 border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/20"
+                                    className="h-8 text-xs font-medium text-amber-600 dark:text-amber-400 border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/20"
                                     disabled={reopening}
                                 >
                                     <Unlock className="w-3.5 h-3.5 mr-1.5" />
@@ -604,6 +605,16 @@ export default function QuoteBuilder({
                 </div>
 
                 <div className="rounded-lg border overflow-hidden bg-card shadow-sm">
+                    {/* The seven fixed-width columns total ~768px, so on a
+                        phone this table is entirely off-screen scroll with
+                        nothing to say so — Unit Price and Total just aren't
+                        visible until someone thinks to swipe. */}
+                    {items.length > 0 && (
+                        <p className="sm:hidden flex items-center gap-1.5 px-3 py-2 text-[11px] text-muted-foreground border-b bg-muted/20">
+                            <ArrowLeftRight className="size-3" />
+                            Scroll sideways for price and total
+                        </p>
+                    )}
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs border-collapse">
                             <thead>
@@ -643,13 +654,14 @@ export default function QuoteBuilder({
                                 ) : (
                                     items.map((item, idx) => {
                                         const lineTotal = lineTotalPhp(item.qty, item.unitPricePhp);
+                                        // No zebra stripe here — bg-muted/5 read as
+                                        // identical to the row beneath it in both
+                                        // themes; `divide-y` on the tbody already
+                                        // separates every row.
                                         return (
                                             <tr
                                                 key={item.id}
-                                                className={cn(
-                                                    "hover:bg-muted/20 transition-colors",
-                                                    idx % 2 === 1 && "bg-muted/5",
-                                                )}
+                                                className="hover:bg-muted/20 transition-colors"
                                             >
                                                 <td className="py-2.5 px-3 text-center text-muted-foreground font-mono text-[11px]">
                                                     {idx + 1}
@@ -747,9 +759,9 @@ export default function QuoteBuilder({
                                                 {editable && (
                                                     <td className="py-2 px-3 text-center">
                                                         <Button
-                                                            size="icon"
+                                                            size="icon-sm"
                                                             variant="ghost"
-                                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                            className="text-muted-foreground hover:text-destructive"
                                                             onClick={() => handleDeleteItem(item.id)}
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />

@@ -14,7 +14,6 @@
 
 import { supabase, toAppError } from "../client.ts";
 import type { LeadStage } from "../database.types.ts";
-import type { Id } from "../types.ts";
 
 export type PipelineSummary = {
     stageCounts: Record<string, number>;
@@ -25,38 +24,18 @@ export type PipelineSummary = {
     staleLeads: { _id: string; name: string; stage: LeadStage; daysStale: number }[];
 };
 
-export type RevenueSummary = {
-    pipelineValue: number;
-    closedValue: number;
-    avgDealSize: number;
-    totalQuotes: number;
-    acceptedQuotes: number;
-    financingMix: Record<string, number>;
-};
-
-export type InstallationsSummary = {
-    total: number;
-    byStatus: Record<string, number>;
-    openServiceTickets: number;
-};
-
 /**
- * The RPCs return `jsonb`, which supabase-js cannot narrow on its own, so the
- * shape is asserted here. It is defined by the `jsonb_build_object` calls in
+ * The Reports page (revenue, installations, stale-leads breakdown) is gone for
+ * now — `quotesRevenueSummary`/`installationsSummary` and the
+ * `report_revenue_summary`/`report_installations_summary` RPCs they called
+ * are unused but deliberately left in the database (see 0007) rather than
+ * dropped, so bringing the page back later doesn't need a migration.
+ * `pipelineSummary` stays: the dashboard's own stat strip still reads it.
+ *
+ * The RPC returns `jsonb`, which supabase-js cannot narrow on its own, so the
+ * shape is asserted here. It is defined by the `jsonb_build_object` call in
  * 0007 — change one and change the other.
  */
-async function callReport<T>(
-    fn:
-        | "report_pipeline_summary"
-        | "report_revenue_summary"
-        | "report_installations_summary",
-    failureMessage: string,
-): Promise<T> {
-    const { data, error } = await supabase.rpc(fn);
-    if (error) throw toAppError(error, failureMessage);
-    return data as T;
-}
-
 export function pipelineSummary(): Promise<PipelineSummary> {
     return callReport<PipelineSummary>(
         "report_pipeline_summary",
@@ -64,16 +43,11 @@ export function pipelineSummary(): Promise<PipelineSummary> {
     );
 }
 
-export function quotesRevenueSummary(): Promise<RevenueSummary> {
-    return callReport<RevenueSummary>(
-        "report_revenue_summary",
-        "Failed to load revenue report",
-    );
-}
-
-export function installationsSummary(): Promise<InstallationsSummary> {
-    return callReport<InstallationsSummary>(
-        "report_installations_summary",
-        "Failed to load installations report",
-    );
+async function callReport<T>(
+    fn: "report_pipeline_summary",
+    failureMessage: string,
+): Promise<T> {
+    const { data, error } = await supabase.rpc(fn);
+    if (error) throw toAppError(error, failureMessage);
+    return data as T;
 }

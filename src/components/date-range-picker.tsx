@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
     addMonths,
@@ -35,11 +36,11 @@ export function DateRangePicker({
     value,
     onChange,
     className,
+    ...rest
 }: {
     value: DateRange;
     onChange: (range: DateRange) => void;
-    className?: string;
-}) {
+} & React.ComponentProps<"div">) {
     const [month, setMonth] = useState(() =>
         value.start ? parseISO(value.start) : new Date(),
     );
@@ -123,7 +124,11 @@ export function DateRangePicker({
     }
 
     return (
-        <div className={cn("rounded-lg border bg-card p-2 select-none", className)}>
+        // `...rest` reaches the DOM: `FormControl` (a Radix Slot) clones its
+        // child and injects `id`/`aria-invalid`/`aria-describedby`, and without
+        // a place for them to land, the FormLabel's `htmlFor` pointed at
+        // nothing and a validation error was never announced.
+        <div className={cn("rounded-lg border bg-card p-2 select-none", className)} {...rest}>
             <div className="flex items-center justify-between px-1 pb-1.5">
                 <Button
                     type="button"

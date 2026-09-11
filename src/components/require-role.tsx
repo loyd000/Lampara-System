@@ -10,7 +10,7 @@ import type { UserRole } from "@/lib/supabase/types.ts";
  * still renders for anyone who types the URL. This is the check that actually
  * refuses, and it belongs at the route so the page's own hooks never run: a
  * guard placed *inside* a page still fires that page's queries before it gets
- * to redirect, which for `/reports` means firing the revenue RPCs on behalf of
+ * to redirect, which for `/packages` means firing package queries on behalf of
  * someone who isn't allowed to read them.
  *
  * Not a security boundary on its own — RLS and the RPCs' own `security invoker`

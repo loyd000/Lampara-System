@@ -35,10 +35,18 @@ export default function PhilippineAddressFields({
     value,
     onChange,
     disabled,
+    error,
 }: {
     value: PhAddressValue;
     onChange: (value: PhAddressValue) => void;
     disabled?: boolean;
+    /**
+     * `validatePhAddress`'s message, shown inline instead of a toast — every
+     * other field in the surrounding form shows its error next to the field,
+     * so "Province is required" popping up at the top-right of the screen
+     * with nothing on the form itself highlighted was the odd one out.
+     */
+    error?: string | null;
 }) {
     const [provinces, setProvinces] = useState<PhProvince[] | null>(null);
     const [cities, setCities] = useState<PhCityMun[] | null>(null);
@@ -238,6 +246,8 @@ export default function PhilippineAddressFields({
                     />
                 </div>
             </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
     );
 }

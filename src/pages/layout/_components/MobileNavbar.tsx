@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 import { cn } from "@/lib/utils.ts";
-import { LayoutDashboard, Users, KanbanSquare, UserCog, BarChart3, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Users, KanbanSquare, UserCog, Package, CalendarDays } from "lucide-react";
 
 export default function MobileNav() {
     const { data: currentUser } = useCurrentUser();
@@ -12,7 +12,9 @@ export default function MobileNav() {
         { label: "Pipeline", to: "/pipeline", icon: KanbanSquare },
         { label: "Leads", to: "/leads", icon: Users },
         { label: "Calendar", to: "/calendar", icon: CalendarDays },
-        ...(["superadmin", "admin"].includes(role) ? [{ label: "Reports", to: "/reports", icon: BarChart3 }] : []),
+        // Packages matches the desktop sidebar and the route's own
+        // RequireRole: superadmin only, not admin.
+        ...(role === "superadmin" ? [{ label: "Packages", to: "/packages", icon: Package }] : []),
         ...(["superadmin", "admin"].includes(role) ? [{ label: "Team", to: "/team", icon: UserCog }] : []),
     ];
 
@@ -25,11 +27,16 @@ export default function MobileNav() {
                 <NavLink key={item.to} to={item.to} end={item.to === "/"} className="min-w-0 flex-1">
                     {({ isActive }) => (
                         <div className={cn(
-                            "flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium tracking-tight transition-colors cursor-pointer",
+                            "flex flex-col items-center gap-0.5 py-2.5 px-1 text-[10px] font-medium tracking-tight transition-colors cursor-pointer",
                             isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60",
                         )}>
                             <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.25 : 1.75} />
-                            {item.label}
+                            {/* Six tabs can share under 50px each on a small phone.
+                                Without this a label like "Calendar" wraps to two
+                                lines and grows the whole bar, shifting every icon. */}
+                            <span className="w-full truncate text-center leading-none">
+                                {item.label}
+                            </span>
                         </div>
                     )}
                 </NavLink>

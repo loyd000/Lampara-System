@@ -188,8 +188,14 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            {/*
+              The whole dialog used to scroll as one block, so with a dozen
+              line items both the title and the Cancel/Save footer scrolled
+              out of reach. Now only the body between them scrolls —
+              ItemPickerModal already does this and is the pattern to match.
+            */}
+            <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <DialogHeader className="p-6 pb-4 border-b">
                     <DialogTitle>{existing ? "Edit Package" : "New Package"}</DialogTitle>
                     <DialogDescription>
                         {existing
@@ -198,7 +204,8 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {/* ── Header fields ───────────────────────────────── */}
                     <div className="grid gap-4 sm:grid-cols-3">
                         <div className="space-y-1.5 sm:col-span-3">
@@ -295,7 +302,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                         </div>
 
                         {/* Column headers — hidden on mobile */}
-                        <div className="hidden sm:grid sm:grid-cols-[1.3fr_2fr_150px_36px] gap-2.5 text-xs font-medium text-muted-foreground px-1">
+                        <div className="hidden sm:grid sm:grid-cols-[1.3fr_2fr_170px_36px] gap-2.5 text-xs font-medium text-muted-foreground px-1">
                             <span>
                                 Name <span className="text-destructive">*</span>
                             </span>
@@ -308,7 +315,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                             {items.map((item, idx) => (
                                 <div
                                     key={item.key}
-                                    className="grid grid-cols-1 sm:grid-cols-[1.3fr_2fr_150px_36px] gap-2.5 items-start rounded-lg border border-border/50 p-2.5 bg-muted/20 hover:bg-muted/35 transition-colors"
+                                    className="grid grid-cols-1 sm:grid-cols-[1.3fr_2fr_170px_36px] gap-2.5 items-start rounded-lg border border-border/50 p-2.5 bg-muted/20 hover:bg-muted/35 transition-colors"
                                 >
                                     <div className="space-y-1 sm:space-y-0">
                                         <span className="text-[11px] font-medium text-muted-foreground sm:hidden">
@@ -364,7 +371,12 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                                                         qty: Number(e.target.value) || 0,
                                                     })
                                                 }
-                                                className="text-sm w-20 text-center"
+                                                // flex-1/min-w-0 rather than a
+                                                // fixed width: the two inputs
+                                                // used to total exactly the
+                                                // track width, leaving no slack
+                                                // for a focus ring.
+                                                className="text-sm flex-1 min-w-0 text-center"
                                             />
                                             <Input
                                                 placeholder="pc"
@@ -372,7 +384,7 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                                                 onChange={(e) =>
                                                     updateItem(item.key, { unit: e.target.value })
                                                 }
-                                                className="text-sm w-16 text-center"
+                                                className="text-sm flex-1 min-w-0 text-center"
                                                 list="package-common-units"
                                             />
                                         </div>
@@ -415,8 +427,10 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                         </Button>
                     </div>
 
+                </div>
+
                     {/* ── Footer ──────────────────────────────────────── */}
-                    <DialogFooter>
+                    <DialogFooter className="p-6 pt-4 border-t">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={isBusy}>
                             Cancel
                         </Button>

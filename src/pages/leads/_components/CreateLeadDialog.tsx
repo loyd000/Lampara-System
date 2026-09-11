@@ -6,7 +6,7 @@ import { useCreateLead, useUsers } from "@/lib/supabase/hooks.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import { toast } from "sonner";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import {
     Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -17,6 +17,8 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Separator } from "@/components/ui/separator.tsx";
 import PhilippineAddressFields from "@/components/ph-address-fields.tsx";
 import {
     composeLegacyAddress,
@@ -48,6 +50,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
     const assignableReps = users?.filter(u => ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const [phAddress, setPhAddress] = useState<PhAddressValue>(EMPTY_PH_ADDRESS);
+    const [addressError, setAddressError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     const form = useForm<FormValues>({
@@ -61,14 +64,16 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
     function resetAll() {
         form.reset();
         setPhAddress(EMPTY_PH_ADDRESS);
+        setAddressError(null);
     }
 
     async function onSubmit(values: FormValues) {
-        const addressError = validatePhAddress(phAddress);
-        if (addressError) {
-            toast.error(addressError);
+        const err = validatePhAddress(phAddress);
+        if (err) {
+            setAddressError(err);
             return;
         }
+        setAddressError(null);
 
         setSubmitting(true);
         try {
@@ -110,6 +115,9 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>New Lead</DialogTitle>
+                    <DialogDescription>
+                        Add a new lead and their property to the pipeline.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -142,8 +150,16 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                 <FormMessage /></FormItem>
                         )} />
 
-                        <p className="text-sm font-semibold text-muted-foreground pt-1">Property / Site</p>
-                        <PhilippineAddressFields value={phAddress} onChange={setPhAddress} />
+                        <Separator />
+                        <Label className="text-sm font-semibold">Property / Site</Label>
+                        <PhilippineAddressFields
+                            value={phAddress}
+                            onChange={(v) => {
+                                setPhAddress(v);
+                                setAddressError(null);
+                            }}
+                            error={addressError}
+                        />
 
                         <FormField control={form.control} name="propertyType" render={({ field }) => (
                             <FormItem><FormLabel>Property Type</FormLabel>
