@@ -13,6 +13,7 @@ import AppSidebar from "./_components/AppSidebar.tsx";
 import MobileNav from "./_components/MobileNavbar.tsx";
 import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
 import GlobalSearch from "@/components/global-search.tsx";
+import AgentFab from "@/components/agent-panel/AgentFab.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
 import { BarChart3, Users, ClipboardCheck, Zap, Sparkles } from "lucide-react";
 
@@ -108,6 +109,7 @@ export default function AppLayout() {
                         <MobileNav />
                         <IosInstallPrompt />
                         <GlobalSearch />
+                        <AgentFab />
                     </div>
                 </AccountGate>
             </Authenticated>

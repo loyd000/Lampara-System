@@ -40,4 +40,13 @@ export default defineConfig([
             "react-refresh/only-export-components": "off",
         },
     },
+    {
+        // Vercel serverless functions — Node, not browser. `supabase/` (the
+        // Deno edge functions) gets the same treatment via globalIgnores
+        // above; this is the equivalent for api/.
+        files: ["api/**"],
+        languageOptions: {
+            globals: globals.node,
+        },
+    },
 ]);
