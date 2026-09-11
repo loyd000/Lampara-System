@@ -314,14 +314,14 @@
             to bottom,
             transparent 0,
             black 40px,
-            black calc(100% - 56px),
+            black calc(100% - 20px),
             transparent 100%
         );
         mask-image: linear-gradient(
             to bottom,
             transparent 0,
             black 40px,
-            black calc(100% - 56px),
+            black calc(100% - 20px),
             transparent 100%
         );
     }

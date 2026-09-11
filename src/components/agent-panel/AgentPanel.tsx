@@ -8,12 +8,6 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { cn } from "@/lib/utils.ts";
 import AgentMessage from "./AgentMessage.tsx";
 
-const SUGGESTIONS = [
-    "What's scheduled this week?",
-    "List projects in Contract Signed",
-    "Find a project by name",
-];
-
 /**
  * A full-screen floating overlay, not a drawer — the app behind it blurs
  * (see `DialogPrimitive.Overlay` below), and the conversation itself has no
@@ -38,10 +32,6 @@ export default function AgentPanel({
     const { messages, send, clear, isThinking, error, briefingReady } = useAgent();
     const [input, setInput] = useState("");
     const listRef = useRef<HTMLDivElement>(null);
-    // True once the opening briefing message is showing but the user hasn't
-    // actually asked anything yet — the suggestion buttons stay useful in
-    // that state, not just on a completely blank panel.
-    const hasUserMessage = messages.some((message) => message.role === "user");
 
     useEffect(() => {
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -123,7 +113,6 @@ export default function AgentPanel({
                                                 It can look things up and take action — always asking first.
                                             </p>
                                         </div>
-                                        <SuggestionList onPick={submit} />
                                     </div>
                                 ) : (
                                     <div className="flex items-center justify-center py-10">
@@ -131,14 +120,7 @@ export default function AgentPanel({
                                     </div>
                                 )
                             ) : (
-                                <>
-                                    {messages.map((message) => (
-                                        <AgentMessage key={message.id} message={message} />
-                                    ))}
-                                    {/* Only the opening briefing is showing so far —
-                                        the suggestions are still a useful shortcut. */}
-                                    {!hasUserMessage && <SuggestionList onPick={submit} />}
-                                </>
+                                messages.map((message) => <AgentMessage key={message.id} message={message} />)
                             )}
                             {isThinking && (
                                 <div className="pl-8">
@@ -198,22 +180,5 @@ function ThinkingDots() {
                 <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
             </span>
         </span>
-    );
-}
-
-function SuggestionList({ onPick }: { onPick: (text: string) => void }) {
-    return (
-        <div className="flex w-full flex-col gap-1.5">
-            {SUGGESTIONS.map((suggestion) => (
-                <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => onPick(suggestion)}
-                    className="rounded-full border border-border/60 px-3 py-2 text-left text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:bg-foreground/5 hover:text-foreground"
-                >
-                    {suggestion}
-                </button>
-            ))}
-        </div>
     );
 }
