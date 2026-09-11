@@ -12,15 +12,26 @@
  * click; the confirmation *is* the model choosing not to call the tool yet.
  */
 import { z } from "zod";
-import { getLeadById, getProperties, updateStage } from "@/lib/supabase/queries/leads.ts";
+import { createLead, getLeadById, getProperties, updateStage } from "@/lib/supabase/queries/leads.ts";
 import { createQuote, saveQuote, type QuoteItemInput } from "@/lib/supabase/queries/quotes.ts";
 import { listActivePackages } from "@/lib/supabase/queries/packages.ts";
 import { scheduleSurvey } from "@/lib/supabase/queries/surveys.ts";
 import { createInstallation } from "@/lib/supabase/queries/installations.ts";
 import { addLeadNote, NOTE_MAX_LENGTH } from "@/lib/supabase/queries/lead-notes.ts";
+import {
+    composeLegacyAddress,
+    listBarangays,
+    listCities,
+    listProvinces,
+    validatePhAddress,
+    type PhAddressValue,
+} from "@/lib/ph-address.ts";
 import { STAGES, STAGE_LABELS, canScheduleInstallation, type Stage } from "@/lib/constants.ts";
 import type { Id, PackageWithItems } from "@/lib/supabase/types.ts";
+import type { PropertyType } from "@/lib/supabase/database.types.ts";
 import type { AgentTool } from "../types.ts";
+
+const PROPERTY_TYPES: PropertyType[] = ["residential", "commercial", "industrial"];
 
 function formatError(message: string): { error: string } {
     return { error: message };
@@ -84,6 +95,132 @@ function quoteItemsForPackage(pkg: PackageWithItems): QuoteItemInput[] {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// ─── create_project ─────────────────────────────────────────────────────────
+
+const createProjectArgs = z.object({
+    firstName: z.string().trim().min(1),
+    lastName: z.string().trim().min(1),
+    phone: z.string().trim().min(1),
+    email: z.string().trim().email().optional(),
+    referredBy: z.string().trim().min(1).optional(),
+    notes: z.string().trim().min(1).optional(),
+    propertyType: z.enum(PROPERTY_TYPES as [PropertyType, ...PropertyType[]]),
+    province: z.string().trim().min(1),
+    cityMunicipality: z.string().trim().min(1),
+    barangay: z.string().trim().min(1),
+    streetName: z.string().trim().min(1).optional(),
+    houseUnitBlockLot: z.string().trim().min(1).optional(),
+    subdivision: z.string().trim().min(1).optional(),
+    zipCode: z
+        .string()
+        .trim()
+        .regex(/^\d{4}$/, "Expected a 4-digit ZIP code")
+        .optional(),
+});
+
+export const createProjectTool: AgentTool = {
+    declaration: {
+        name: "create_project",
+        description:
+            "Creates a new project (lead) with contact info and a Philippine " +
+            "address. `province`, `cityMunicipality` and `barangay` must be " +
+            "the REAL names from the PSGC province → city/municipality → " +
+            "barangay hierarchy — the same data the app's own address picker " +
+            "uses — and the call fails with a specific error naming which " +
+            "level didn't resolve (e.g. a barangay that isn't actually part " +
+            "of that city). If you're not confident of the exact spelling, " +
+            "say so and ask the user to confirm rather than guessing.",
+        input_schema: {
+            type: "object",
+            properties: {
+                firstName: { type: "string" },
+                lastName: { type: "string" },
+                phone: { type: "string" },
+                email: { type: "string" },
+                referredBy: { type: "string", description: "Who referred this lead, if known." },
+                notes: { type: "string" },
+                propertyType: { type: "string", enum: PROPERTY_TYPES },
+                province: { type: "string", description: 'Exact province name, e.g. "Metro Manila" or "Cebu".' },
+                cityMunicipality: { type: "string", description: "Exact city/municipality name." },
+                barangay: { type: "string", description: "Exact barangay name." },
+                streetName: { type: "string" },
+                houseUnitBlockLot: { type: "string", description: "House/unit/block & lot number." },
+                subdivision: { type: "string" },
+                zipCode: { type: "string", description: "4-digit ZIP code, if known." },
+            },
+            required: ["firstName", "lastName", "phone", "propertyType", "province", "cityMunicipality", "barangay"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = createProjectArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const args = parsed.data;
+
+        // Resolve and verify the address cascade against the same PSGC
+        // dataset src/components/ph-address-fields.tsx's dropdowns are built
+        // from — a project made here can't end up with, say, a barangay that
+        // doesn't actually belong to the given city, the way a free-typed
+        // field could.
+        const provinces = await listProvinces();
+        const province = provinces.find((p) => p.name.toLowerCase() === args.province.toLowerCase());
+        if (!province) {
+            return formatError(
+                `"${args.province}" isn't a recognised province. Examples: ${provinces
+                    .slice(0, 6)
+                    .map((p) => p.name)
+                    .join(", ")}...`,
+            );
+        }
+
+        const cities = await listCities(province.code);
+        const city = cities.find((c) => c.name.toLowerCase() === args.cityMunicipality.toLowerCase());
+        if (!city) {
+            return formatError(`"${args.cityMunicipality}" isn't a recognised city/municipality in ${province.name}.`);
+        }
+
+        const barangays = await listBarangays(city.code);
+        const barangay = barangays.find((b) => b.name.toLowerCase() === args.barangay.toLowerCase());
+        if (!barangay) {
+            return formatError(`"${args.barangay}" isn't a recognised barangay in ${city.name}, ${province.name}.`);
+        }
+
+        const addressValue: PhAddressValue = {
+            houseUnitBlockLot: args.houseUnitBlockLot ?? "",
+            streetName: args.streetName ?? "",
+            subdivision: args.subdivision ?? "",
+            barangay: barangay.name,
+            cityMunicipality: city.name,
+            province: province.name,
+            zipCode: args.zipCode ?? "",
+        };
+        const addressError = validatePhAddress(addressValue);
+        if (addressError) return formatError(addressError);
+
+        try {
+            const leadId = await createLead({
+                firstName: args.firstName,
+                lastName: args.lastName,
+                phone: args.phone,
+                email: args.email,
+                referredBy: args.referredBy,
+                notes: args.notes,
+                propertyType: args.propertyType,
+                ...composeLegacyAddress(addressValue),
+                houseUnitBlockLot: addressValue.houseUnitBlockLot || undefined,
+                streetName: addressValue.streetName || undefined,
+                subdivision: addressValue.subdivision || undefined,
+                barangay: addressValue.barangay,
+                cityMunicipality: addressValue.cityMunicipality,
+                province: addressValue.province,
+                zipCode: addressValue.zipCode || undefined,
+            });
+            return { projectId: leadId, navigateTo: `/projects/${leadId}` };
+        } catch (err) {
+            return formatError(err instanceof Error ? err.message : "Failed to create the project.");
+        }
+    },
+};
 
 // ─── create_quote ───────────────────────────────────────────────────────────
 

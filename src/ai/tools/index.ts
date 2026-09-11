@@ -12,6 +12,7 @@ import {
 } from "./read-tools.ts";
 import {
     addLeadNoteTool,
+    createProjectTool,
     createQuoteTool,
     navigateTool,
     scheduleInspectionTool,
@@ -30,6 +31,7 @@ export const AGENT_TOOLS: Record<string, AgentTool> = {
     [getOcularReportTool.declaration.name]: getOcularReportTool,
     [listTicketsTool.declaration.name]: listTicketsTool,
     [getPipelineSummaryTool.declaration.name]: getPipelineSummaryTool,
+    [createProjectTool.declaration.name]: createProjectTool,
     [createQuoteTool.declaration.name]: createQuoteTool,
     [scheduleInspectionTool.declaration.name]: scheduleInspectionTool,
     [scheduleInstallationTool.declaration.name]: scheduleInstallationTool,
