@@ -1,6 +1,17 @@
 import type { AgentTool } from "../types.ts";
-import { getProjectTool, getScheduleTool, getTeamTool, listPackagesTool, listProjectsTool } from "./read-tools.ts";
 import {
+    getContractTool,
+    getOcularReportTool,
+    getPipelineSummaryTool,
+    getProjectTool,
+    getScheduleTool,
+    getTeamTool,
+    listPackagesTool,
+    listProjectsTool,
+    listTicketsTool,
+} from "./read-tools.ts";
+import {
+    addLeadNoteTool,
     createQuoteTool,
     navigateTool,
     scheduleInspectionTool,
@@ -15,10 +26,15 @@ export const AGENT_TOOLS: Record<string, AgentTool> = {
     [getScheduleTool.declaration.name]: getScheduleTool,
     [listPackagesTool.declaration.name]: listPackagesTool,
     [getTeamTool.declaration.name]: getTeamTool,
+    [getContractTool.declaration.name]: getContractTool,
+    [getOcularReportTool.declaration.name]: getOcularReportTool,
+    [listTicketsTool.declaration.name]: listTicketsTool,
+    [getPipelineSummaryTool.declaration.name]: getPipelineSummaryTool,
     [createQuoteTool.declaration.name]: createQuoteTool,
     [scheduleInspectionTool.declaration.name]: scheduleInspectionTool,
     [scheduleInstallationTool.declaration.name]: scheduleInstallationTool,
     [updateProjectStageTool.declaration.name]: updateProjectStageTool,
+    [addLeadNoteTool.declaration.name]: addLeadNoteTool,
     [navigateTool.declaration.name]: navigateTool,
 };
 

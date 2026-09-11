@@ -17,6 +17,7 @@ import { createQuote, saveQuote, type QuoteItemInput } from "@/lib/supabase/quer
 import { listActivePackages } from "@/lib/supabase/queries/packages.ts";
 import { scheduleSurvey } from "@/lib/supabase/queries/surveys.ts";
 import { createInstallation } from "@/lib/supabase/queries/installations.ts";
+import { addLeadNote, NOTE_MAX_LENGTH } from "@/lib/supabase/queries/lead-notes.ts";
 import { STAGES, STAGE_LABELS, canScheduleInstallation, type Stage } from "@/lib/constants.ts";
 import type { Id, PackageWithItems } from "@/lib/supabase/types.ts";
 import type { AgentTool } from "../types.ts";
@@ -306,6 +307,44 @@ export const scheduleInstallationTool: AgentTool = {
             return { installationId, navigateTo: `/projects/${leadId}?tab=installation` };
         } catch (err) {
             return formatError(err instanceof Error ? err.message : "Failed to schedule the installation.");
+        }
+    },
+};
+
+// ─── add_lead_note ──────────────────────────────────────────────────────────
+
+const addLeadNoteArgs = z.object({
+    projectId: z.string().min(1),
+    body: z.string().trim().min(1).max(NOTE_MAX_LENGTH),
+});
+
+export const addLeadNoteTool: AgentTool = {
+    declaration: {
+        name: "add_lead_note",
+        description:
+            `Adds a note to a project's timeline (up to ${NOTE_MAX_LENGTH} ` +
+            "characters). Notes are additive — this never edits or removes " +
+            "anything — but still confirm the exact wording with the user " +
+            "before adding one.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+                body: { type: "string", description: "The note's text." },
+            },
+            required: ["projectId", "body"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = addLeadNoteArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const { projectId, body } = parsed.data;
+
+        try {
+            const noteId = await addLeadNote({ leadId: projectId as Id<"leads">, body });
+            return { noteId, navigateTo: `/projects/${projectId}` };
+        } catch (err) {
+            return formatError(err instanceof Error ? err.message : "Failed to add the note.");
         }
     },
 };

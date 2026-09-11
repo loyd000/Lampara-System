@@ -15,11 +15,29 @@ import { z } from "zod";
 import { getLeadById, getProperties, listEnrichedLeads, searchLeads } from "@/lib/supabase/queries/leads.ts";
 import { listQuotesForLead } from "@/lib/supabase/queries/quotes.ts";
 import { getInstallationForLead } from "@/lib/supabase/queries/installations.ts";
+import { getContractForLead } from "@/lib/supabase/queries/contracts.ts";
 import { listCalendarEvents } from "@/lib/supabase/queries/calendar.ts";
 import { listActivePackages } from "@/lib/supabase/queries/packages.ts";
 import { listUsers } from "@/lib/supabase/queries/users.ts";
-import { STAGES, STAGE_LABELS, type Stage } from "@/lib/constants.ts";
-import type { UserRole } from "@/lib/supabase/database.types.ts";
+import { listSurveysForLead } from "@/lib/supabase/queries/surveys.ts";
+import { listAllTickets, listTicketsForLead, searchTickets } from "@/lib/supabase/queries/service-tickets.ts";
+import { pipelineSummary } from "@/lib/supabase/queries/reports.ts";
+import {
+    STAGES,
+    STAGE_LABELS,
+    ROOF_TYPE_LABELS,
+    ORIENTATION_LABELS,
+    MOUNTING_LABELS,
+    USAGE_HABIT_LABELS,
+    SYSTEM_CAPACITY_LABELS,
+    PACKAGE_TYPE_LABELS,
+    BATTERY_OPTION_LABELS,
+    PANEL_OPTION_LABELS,
+    TICKET_STATUS_LABELS,
+    TICKET_PRIORITY_LABELS,
+    type Stage,
+} from "@/lib/constants.ts";
+import type { TicketStatus, UserRole } from "@/lib/supabase/database.types.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import type { AgentTool } from "../types.ts";
 
@@ -268,6 +286,238 @@ export const getTeamTool: AgentTool = {
                 id: u._id,
                 name: u.name ?? u.email ?? "Unnamed",
                 role: u.role,
+            })),
+        };
+    },
+};
+
+// ─── get_contract ───────────────────────────────────────────────────────────
+
+const getContractArgs = z.object({
+    projectId: z.string().min(1),
+});
+
+export const getContractTool: AgentTool = {
+    declaration: {
+        name: "get_contract",
+        description:
+            "A project's contract status — pending signature, signed (with " +
+            "date), or cancelled — and which quote it's based on. Useful for " +
+            "explaining why schedule_installation is or isn't available yet.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+            },
+            required: ["projectId"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = getContractArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+
+        const contract = await getContractForLead(parsed.data.projectId as Id<"leads">);
+        if (!contract) return { exists: false };
+
+        return {
+            exists: true,
+            status: contract.status,
+            signedAt: contract.signedAt ?? null,
+            quoteVersion: contract.quoteVersion,
+            systemSizeKw: contract.systemSizeKw ?? null,
+        };
+    },
+};
+
+// ─── get_ocular_report ──────────────────────────────────────────────────────
+
+const getOcularReportArgs = z.object({
+    projectId: z.string().min(1),
+});
+
+export const getOcularReportTool: AgentTool = {
+    declaration: {
+        name: "get_ocular_report",
+        description:
+            "The most recent site ocular inspection's findings for a project: " +
+            "roof type/area/orientation, current electricity usage and bill, " +
+            "and the recommended system capacity/battery/panel option. Use " +
+            "this — together with list_packages — before suggesting a " +
+            "package. `completed` tells you whether the report is actually " +
+            "finished or still being filled in.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+            },
+            required: ["projectId"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = getOcularReportArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+
+        const surveys = await listSurveysForLead(parsed.data.projectId as Id<"leads">);
+        // Sorted newest-first, so the first row is the most recent visit.
+        const survey = surveys[0];
+        if (!survey) return { exists: false };
+
+        return {
+            exists: true,
+            completed: Boolean(survey.completedAt),
+            status: survey.status,
+            inspectionDate: survey.inspectionDate ?? null,
+            surveyor: survey.surveyorName,
+            roof: {
+                type: survey.roofType ? ROOF_TYPE_LABELS[survey.roofType] : null,
+                areaSqm: survey.roofAreaSqm ?? null,
+                orientation: survey.roofOrientation.map((o) => ORIENTATION_LABELS[o]),
+                mounting: survey.mounting.map((m) => MOUNTING_LABELS[m]),
+                ageYears: survey.roofAgeYears ?? null,
+                shadingNotes: survey.shadingNotes ?? null,
+            },
+            usage: {
+                habit: survey.usageHabit ? USAGE_HABIT_LABELS[survey.usageHabit] : null,
+                monthlyConsumptionKwh: survey.monthlyConsumptionKwh ?? null,
+                monthlyBillPhp: survey.monthlyBillPhp ?? null,
+            },
+            recommendedSystem: {
+                capacity: survey.systemCapacity ? SYSTEM_CAPACITY_LABELS[survey.systemCapacity] : null,
+                packageType: survey.packageType ? PACKAGE_TYPE_LABELS[survey.packageType] : null,
+                batteryOption: survey.batteryOption ? BATTERY_OPTION_LABELS[survey.batteryOption] : null,
+                panelOption: survey.panelOption ? PANEL_OPTION_LABELS[survey.panelOption] : null,
+                estimatedSystemSizeKw: survey.estimatedSystemSizeKw ?? null,
+            },
+            notes: survey.additionalNotes ?? survey.reportNotes ?? null,
+            photoCount: survey.photos.length,
+        };
+    },
+};
+
+// ─── list_tickets ───────────────────────────────────────────────────────────
+
+const TICKET_STATUSES: TicketStatus[] = ["open", "in_progress", "resolved", "closed"];
+
+const listTicketsArgs = z.object({
+    projectId: z.string().min(1).optional(),
+    status: z.enum(TICKET_STATUSES as [TicketStatus, ...TicketStatus[]]).optional(),
+    search: z.string().trim().min(1).optional(),
+});
+
+type NormalizedTicket = {
+    id: string;
+    projectId: string;
+    customerName: string | null;
+    title: string;
+    status: TicketStatus;
+    priority: string;
+    assignedTo: string | null;
+    warrantyRelated: boolean;
+};
+
+export const listTicketsTool: AgentTool = {
+    declaration: {
+        name: "list_tickets",
+        description:
+            "Lists service/maintenance tickets — company-wide by default, or " +
+            "narrowed to one project, a status, or a free-text search across " +
+            "title/description.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "Restrict to one project's tickets." },
+                status: { type: "string", enum: TICKET_STATUSES },
+                search: { type: "string", description: "Free-text search across ticket title/description." },
+            },
+        },
+    },
+    async run(rawArgs) {
+        const parsed = listTicketsArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const { projectId, status, search } = parsed.data;
+
+        let tickets: NormalizedTicket[];
+        if (search) {
+            const rows = await searchTickets(search);
+            tickets = rows
+                .filter((t) => !projectId || t.leadId === projectId)
+                .map((t) => ({
+                    id: t._id,
+                    projectId: t.leadId,
+                    customerName: t.customerName,
+                    title: t.title,
+                    status: t.status,
+                    priority: t.priority,
+                    assignedTo: null,
+                    warrantyRelated: t.warrantyRelated,
+                }));
+        } else if (projectId) {
+            const rows = await listTicketsForLead(projectId as Id<"leads">);
+            tickets = rows.map((t) => ({
+                id: t._id,
+                projectId: t.leadId,
+                customerName: null,
+                title: t.title,
+                status: t.status,
+                priority: t.priority,
+                assignedTo: t.assignedToName,
+                warrantyRelated: t.warrantyRelated,
+            }));
+        } else {
+            const rows = await listAllTickets();
+            tickets = rows.map((t) => ({
+                id: t._id,
+                projectId: t.leadId,
+                customerName: t.customerName,
+                title: t.title,
+                status: t.status,
+                priority: t.priority,
+                assignedTo: null,
+                warrantyRelated: t.warrantyRelated,
+            }));
+        }
+        if (status) tickets = tickets.filter((t) => t.status === status);
+
+        return {
+            count: tickets.length,
+            tickets: tickets.slice(0, LIST_LIMIT).map((t) => ({
+                ...t,
+                statusLabel: TICKET_STATUS_LABELS[t.status],
+                priorityLabel: TICKET_PRIORITY_LABELS[t.priority],
+            })),
+        };
+    },
+};
+
+// ─── get_pipeline_summary ───────────────────────────────────────────────────
+
+export const getPipelineSummaryTool: AgentTool = {
+    declaration: {
+        name: "get_pipeline_summary",
+        description:
+            "Aggregate pipeline numbers: how many projects are in each stage, " +
+            "total projects, how many converted to a signed contract, active " +
+            "customers, conversion rate, and which leads have gone stale. " +
+            "Good for \"how's the pipeline looking\" questions — use " +
+            "list_projects instead when you need actual project names.",
+        input_schema: { type: "object", properties: {} },
+    },
+    async run() {
+        const summary = await pipelineSummary();
+        return {
+            totalProjects: summary.totalLeads,
+            converted: summary.converted,
+            activeCustomers: summary.activeCustomers,
+            conversionRate: summary.conversionRate,
+            stageCounts: Object.fromEntries(
+                STAGES.map((stage) => [STAGE_LABELS[stage], summary.stageCounts[stage] ?? 0]),
+            ),
+            staleLeads: summary.staleLeads.map((lead) => ({
+                id: lead._id,
+                name: lead.name,
+                stage: lead.stage,
+                stageLabel: STAGE_LABELS[lead.stage],
+                daysStale: lead.daysStale,
             })),
         };
     },
