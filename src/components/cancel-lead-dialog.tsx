@@ -50,9 +50,9 @@ export default function CancelLeadDialog({
         <Dialog open={open} onOpenChange={close}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Cancel this lead?</DialogTitle>
+                    <DialogTitle>Cancel this project?</DialogTitle>
                     <DialogDescription>
-                        {leadName ? `${leadName} moves` : "This lead moves"} to Completed as
+                        {leadName ? `${leadName} moves` : "This project moves"} to Completed as
                         Cancelled. Say why — this is the only place that reason lives.
                     </DialogDescription>
                 </DialogHeader>
@@ -80,7 +80,7 @@ export default function CancelLeadDialog({
                             close(false);
                         }}
                     >
-                        Cancel Lead
+                        Cancel Project
                     </Button>
                 </DialogFooter>
             </DialogContent>

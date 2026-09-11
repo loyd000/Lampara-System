@@ -88,7 +88,7 @@ export default function CalendarPage() {
     }
 
     function openEvent(event: CalendarEvent) {
-        navigate(`/leads/${event.leadId}?tab=${eventTab(event)}`);
+        navigate(`/projects/${event.leadId}?tab=${eventTab(event)}`);
     }
 
     const heading = view === "month"

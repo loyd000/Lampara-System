@@ -109,7 +109,7 @@ export default function AdminDashboard({ user }: Props) {
             {/* Stat line — one unified panel, hairline-separated, not fragmented cards */}
             <Card className="py-0">
                 <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x">
-                    <StatCell title="Total Leads" value={stats?.total} icon={<Users className="w-4 h-4" />} />
+                    <StatCell title="Total Projects" value={stats?.total} icon={<Users className="w-4 h-4" />} />
                     <StatCell title="Active Pipeline" value={stats?.active} icon={<TrendingUp className="w-4 h-4" />} />
                     <StatCell title="Contracts Signed" value={stats?.contracts} icon={<ClipboardList className="w-4 h-4" />} />
                     <StatCell title="Installations" value={stats?.installs} icon={<SunMedium className="w-4 h-4" />} />
@@ -120,14 +120,14 @@ export default function AdminDashboard({ user }: Props) {
                 {/* Recent Activity */}
                 <Card className="lg:col-span-2">
                     <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
-                        <CardTitle className="text-base">Recent Leads</CardTitle>
-                        <Button size="sm" variant="ghost" onClick={() => navigate("/leads")}>View all</Button>
+                        <CardTitle className="text-base">Recent Projects</CardTitle>
+                        <Button size="sm" variant="ghost" onClick={() => navigate("/projects")}>View all</Button>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
                         {recentLeads === undefined ? (
                             <div className="px-4 py-4 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
                         ) : recentLeads.length === 0 ? (
-                            <p className="px-4 py-8 text-muted-foreground text-sm">No leads yet.</p>
+                            <p className="px-4 py-8 text-muted-foreground text-sm">No projects yet.</p>
                         ) : (
                             <table className="w-full text-sm min-w-[380px]">
                                 <thead>
@@ -143,7 +143,7 @@ export default function AdminDashboard({ user }: Props) {
                                         <tr
                                             key={lead._id}
                                             className="border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
-                                            onClick={() => navigate(`/leads/${lead._id}`)}
+                                            onClick={() => navigate(`/projects/${lead._id}`)}
                                         >
                                             <td className="px-4 py-3.5 font-medium">{lead.firstName} {lead.lastName}</td>
                                             <td className="px-4 py-3.5 text-muted-foreground hidden sm:table-cell">{lead.phone}</td>
@@ -190,7 +190,7 @@ export default function AdminDashboard({ user }: Props) {
                                         <li
                                             key={`${event.kind}-${event.id}`}
                                             className="flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
-                                            onClick={() => navigate(`/leads/${event.leadId}?tab=${eventTab(event)}`)}
+                                            onClick={() => navigate(`/projects/${event.leadId}?tab=${eventTab(event)}`)}
                                         >
                                             <div
                                                 className={cn(

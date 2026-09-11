@@ -92,11 +92,11 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                 province: phAddress.province,
                 zipCode: phAddress.zipCode,
             });
-            toast.success("Lead created successfully");
+            toast.success("Project created successfully");
             resetAll();
             onClose();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed to create lead");
+            toast.error(e instanceof Error ? e.message : "Failed to create project");
         } finally {
             setSubmitting(false);
         }
@@ -114,9 +114,9 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
         >
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>New Lead</DialogTitle>
+                    <DialogTitle>New Project</DialogTitle>
                     <DialogDescription>
-                        Add a new lead and their property to the pipeline.
+                        Add a new project and their property to the system.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -180,7 +180,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => { resetAll(); onClose(); }}>Cancel</Button>
                             <Button type="submit" disabled={submitting}>
-                                {submitting ? "Creating…" : "Create Lead"}
+                                {submitting ? "Creating…" : "Create Project"}
                             </Button>
                         </DialogFooter>
                     </form>

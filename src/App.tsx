@@ -18,7 +18,6 @@ const AuthCallback = lazy(() => import("./pages/auth/Callback.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const LeadsPage = lazy(() => import("./pages/leads/page.tsx"));
 const LeadDetailPage = lazy(() => import("./pages/leads/[id]/page.tsx"));
-const PipelinePage = lazy(() => import("./pages/pipeline/page.tsx"));
 const CalendarPage = lazy(() => import("./pages/calendar/page.tsx"));
 const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
 const TeamPage = lazy(() => import("./pages/team/page.tsx"));
@@ -49,10 +48,9 @@ export default function App() {
                                 <Route path="/auth/callback" element={<AuthCallback />} />
                                 <Route element={<AppLayout />}>
                                     <Route path="/" element={<Index />} />
-                                    <Route path="/pipeline" element={<PipelinePage />} />
                                     <Route path="/calendar" element={<CalendarPage />} />
-                                    <Route path="/leads" element={<LeadsPage />} />
-                                    <Route path="/leads/:id" element={<LeadDetailPage />} />
+                                    <Route path="/projects" element={<LeadsPage />} />
+                                    <Route path="/projects/:id" element={<LeadDetailPage />} />
                                     <Route
                                         path="/packages"
                                         element={

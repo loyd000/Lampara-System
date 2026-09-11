@@ -76,11 +76,11 @@ export default function GlobalSearch() {
             open={open}
             onOpenChange={onOpenChange}
             title="Search"
-            description="Search leads and service tickets"
+            description="Search projects and service tickets"
             shouldFilter={false}
         >
             <CommandInput
-                placeholder="Search leads, phone numbers, tickets…"
+                placeholder="Search projects, phone numbers, tickets…"
                 value={query}
                 onValueChange={setQuery}
             />
@@ -99,12 +99,12 @@ export default function GlobalSearch() {
                 {noResults && <CommandEmpty>No results for "{query}".</CommandEmpty>}
 
                 {leads.length > 0 && (
-                    <CommandGroup heading="Leads">
+                    <CommandGroup heading="Projects">
                         {leads.map((lead) => (
                             <CommandItem
                                 key={lead._id}
                                 value={`lead-${lead._id}`}
-                                onSelect={() => go(`/leads/${lead._id}`)}
+                                onSelect={() => go(`/projects/${lead._id}`)}
                             >
                                 <User className="text-muted-foreground" />
                                 <div className="min-w-0 flex-1">
@@ -127,7 +127,7 @@ export default function GlobalSearch() {
                             <CommandItem
                                 key={ticket._id}
                                 value={`ticket-${ticket._id}`}
-                                onSelect={() => go(`/leads/${ticket.leadId}?tab=maintenance`)}
+                                onSelect={() => go(`/projects/${ticket.leadId}?tab=maintenance`)}
                             >
                                 <Wrench className="text-muted-foreground" />
                                 <div className="min-w-0 flex-1">

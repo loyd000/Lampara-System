@@ -197,10 +197,10 @@ export default function LeadDetailPage() {
         return (
             <div className="p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground">
                 <UserCircle className="w-10 h-10 opacity-30" />
-                <p>Lead not found.</p>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/leads")}>
+                <p>Project not found.</p>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
                     <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-                    Back to Leads
+                    Back to Projects
                 </Button>
             </div>
         );
@@ -251,7 +251,7 @@ export default function LeadDetailPage() {
     async function applyStageChange(stage: Stage, cancelledReason?: string) {
         try {
             await updateStage({ id: lead!._id, stage, cancelledReason });
-            toast.success(stage === "cancelled" ? "Lead cancelled" : `Moved to ${STAGE_LABELS[stage]}`);
+            toast.success(stage === "cancelled" ? "Project cancelled" : `Moved to ${STAGE_LABELS[stage]}`);
         } catch {
             toast.error("Failed to update stage");
         }
@@ -270,10 +270,10 @@ export default function LeadDetailPage() {
     async function handleDelete() {
         try {
             await deleteLead({ id: lead!._id });
-            toast.success("Lead deleted");
-            navigate("/leads");
+            toast.success("Project deleted");
+            navigate("/projects");
         } catch {
-            toast.error("Failed to delete lead");
+            toast.error("Failed to delete project");
         }
     }
 
@@ -330,7 +330,7 @@ export default function LeadDetailPage() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete this lead?</AlertDialogTitle>
+                                    <AlertDialogTitle>Delete this project?</AlertDialogTitle>
                                     <AlertDialogDescription>
                                         This will permanently remove {lead.firstName}{" "}
                                         {lead.lastName} and all associated data. This cannot be
@@ -343,7 +343,7 @@ export default function LeadDetailPage() {
                                         onClick={handleDelete}
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     >
-                                        Delete Lead
+                                        Delete Project
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
@@ -547,7 +547,7 @@ export default function LeadDetailPage() {
                                     </div>
                                 ) : activity.length === 0 ? (
                                     <p className="px-6 py-8 text-sm text-muted-foreground text-center">
-                                        No activity yet. Pipeline changes and every note written
+                                        No activity yet. Stage changes and every note written
                                         show up here.
                                     </p>
                                 ) : (

@@ -173,7 +173,7 @@ export default function FieldDashboard({ user }: Props) {
         (j) => j.completedAt && new Date(j.completedAt) >= thirtyDaysAgo,
     );
 
-    const open = (job: FieldJob) => navigate(`/leads/${job.leadId}`);
+    const open = (job: FieldJob) => navigate(`/projects/${job.leadId}`);
 
     if (inspectionsQuery.isError || installationsQuery.isError) {
         return <QueryError title="Couldn't load your jobs" onRetry={() => {

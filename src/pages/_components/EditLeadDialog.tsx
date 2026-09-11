@@ -169,10 +169,10 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                 });
             }
 
-            toast.success("Lead updated");
+            toast.success("Project updated");
             onClose();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed to update lead");
+            toast.error(e instanceof Error ? e.message : "Failed to update project");
         } finally {
             setSubmitting(false);
         }
@@ -182,9 +182,9 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Edit Lead — {lead.firstName} {lead.lastName}</DialogTitle>
+                    <DialogTitle>Edit Project — {lead.firstName} {lead.lastName}</DialogTitle>
                     <DialogDescription>
-                        Update contact details and property information for this lead.
+                        Update contact details and property information for this project.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -262,7 +262,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                     </>
                                 ) : (
                                     <p className="text-sm text-muted-foreground py-6 text-center">
-                                        This lead has no property on record yet.
+                                        This project has no property on record yet.
                                     </p>
                                 )}
                             </TabsContent>

@@ -96,7 +96,7 @@ export default function LeadsPage() {
             {/* Header */}
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Leads & Customers</h1>
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">Projects &amp; Customers</h1>
                     <p className="text-sm text-muted-foreground mt-1.5">
                         {countLabel}
                         {staleCount > 0 && (
@@ -107,7 +107,7 @@ export default function LeadsPage() {
                     </p>
                 </div>
                 <Button onClick={() => setCreateOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1.5" />New Lead
+                    <Plus className="w-4 h-4 mr-1.5" />New Project
                 </Button>
             </div>
 
@@ -211,17 +211,17 @@ export default function LeadsPage() {
                                                 <User className="size-6" />
                                             </EmptyMedia>
                                             <EmptyTitle>
-                                                {hasActiveFilters ? "No leads match your filters" : "No leads yet"}
+                                                {hasActiveFilters ? "No projects match your filters" : "No projects yet"}
                                             </EmptyTitle>
                                             <EmptyDescription>
                                                 {hasActiveFilters
                                                     ? "Try a different search, or clear a filter."
-                                                    : "New leads you add will show up here, ready to move through the pipeline."}
+                                                    : "New projects you add will show up here, ready to move through the stages."}
                                             </EmptyDescription>
                                         </EmptyHeader>
                                         {!hasActiveFilters && (
                                             <Button size="sm" onClick={() => setCreateOpen(true)}>
-                                                <Plus className="w-3.5 h-3.5 mr-1" />Create your first lead
+                                                <Plus className="w-3.5 h-3.5 mr-1" />Create your first project
                                             </Button>
                                         )}
                                     </Empty>
@@ -238,7 +238,7 @@ export default function LeadsPage() {
                                     <tr
                                         key={lead._id}
                                         className="border-b last:border-0 hover:bg-muted/25 cursor-pointer transition-colors"
-                                        onClick={() => navigate(`/leads/${lead._id}`)}
+                                        onClick={() => navigate(`/projects/${lead._id}`)}
                                     >
                                         <td className="px-4 py-3">
                                             <p className="font-semibold text-foreground">{lead.firstName} {lead.lastName}</p>

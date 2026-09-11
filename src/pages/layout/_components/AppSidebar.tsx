@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils.ts";
 import {
     LayoutDashboard,
     Users,
-    KanbanSquare,
     UserCog,
     Package,
     CalendarDays,
@@ -25,8 +24,7 @@ const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.userAgen
 
 const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
-    { label: "Pipeline", to: "/pipeline", icon: KanbanSquare },
-    { label: "Leads", to: "/leads", icon: Users },
+    { label: "Projects", to: "/projects", icon: Users },
     { label: "Calendar", to: "/calendar", icon: CalendarDays },
     { label: "Packages", to: "/packages", icon: Package, roles: ["superadmin"] },
     { label: "Team", to: "/team", icon: UserCog, roles: ["superadmin", "admin"] },
