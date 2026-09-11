@@ -18,7 +18,12 @@ const styles = StyleSheet.create({
         fontFamily: "Helvetica",
         fontSize: 8.5,
         color: C.ink,
-        lineHeight: 1.35,
+        // NOTE: no `lineHeight` here on purpose. In react-pdf 4.9 a lineHeight
+        // on the Page style is inherited by `fixed` children and makes a
+        // bottom-anchored one vanish from every page — silently, with no
+        // error. (Top-anchored fixed elements survive it, which is why this
+        // is easy to miss — see pageFooter below, which is bottom-anchored.)
+        // Prose line spacing lives on the text styles instead.
     },
 
     // ── Letterhead ────────────────────────────────────────────────────────
@@ -122,12 +127,14 @@ const styles = StyleSheet.create({
         fontSize: 8,
         color: "#475569",
         marginTop: 1,
+        lineHeight: 1.35,
     },
 
     introText: {
         fontSize: 8.5,
         marginBottom: 8,
         color: "#334155",
+        lineHeight: 1.35,
     },
     introBold: {
         fontFamily: "Helvetica-Bold",
@@ -273,6 +280,7 @@ const styles = StyleSheet.create({
         fontSize: 7.5,
         color: "#334155",
         marginBottom: 1.5,
+        lineHeight: 1.35,
     },
     signBox: {
         flex: 1,
@@ -343,6 +351,7 @@ const styles = StyleSheet.create({
         padding: 5,
         backgroundColor: "#FFFFFF",
         textAlign: "center",
+        lineHeight: 1.35,
     },
 
     pageFooter: {

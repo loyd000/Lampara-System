@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
 import { AgentApiError, AgentConfigError, runAgentTurn, type AgentMessage } from "@/ai/agent.ts";
+import { buildDailyBriefing } from "@/ai/briefing.ts";
 import type { AgentChatMessage } from "@/ai/types.ts";
 import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 
@@ -26,7 +27,45 @@ export function useAgent() {
     const [messages, setMessages] = useState<AgentChatMessage[]>([]);
     const [isThinking, setIsThinking] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Ticks up on every `clear()` so the briefing effect below re-fires for a
+    // fresh conversation — `user` alone doesn't change on clear.
+    const [briefingAttempt, setBriefingAttempt] = useState(0);
+    // False until the briefing fetch has settled (success or failure), so
+    // the panel knows whether "no messages yet" means "still loading" or
+    // "the briefing failed, fall back to the static empty state".
+    const [briefingReady, setBriefingReady] = useState(false);
     const historyRef = useRef<AgentMessage[]>([]);
+
+    // The opening message: today's schedule + which projects have gone
+    // quiet, computed directly (see briefing.ts) — not a Claude turn, so it
+    // never touches historyRef and costs nothing. Only ever fills messages
+    // while it's still empty, so it can't clobber a conversation already in
+    // progress if this re-fires for any reason.
+    useEffect(() => {
+        if (!user) return;
+        let cancelled = false;
+
+        buildDailyBriefing()
+            .then((text) => {
+                if (cancelled) return;
+                setMessages((prev) =>
+                    prev.length === 0 ? [{ id: nextMessageId(), role: "assistant", text }] : prev,
+                );
+            })
+            .catch((err: unknown) => {
+                // Best-effort: a failed briefing just means the panel falls
+                // back to its static empty state, not an error the user needs
+                // to see before they've asked anything.
+                console.warn("Daily briefing failed to load:", err);
+            })
+            .finally(() => {
+                if (!cancelled) setBriefingReady(true);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user, briefingAttempt]);
 
     const send = useCallback(
         async (text: string) => {
@@ -76,9 +115,11 @@ export function useAgent() {
         historyRef.current = [];
         setMessages([]);
         setError(null);
+        setBriefingReady(false);
+        setBriefingAttempt((n) => n + 1);
     }, []);
 
-    return { messages, send, clear, isThinking, error };
+    return { messages, send, clear, isThinking, error, briefingReady };
 }
 
 function errorMessageFor(err: unknown): string {

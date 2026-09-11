@@ -30,9 +30,13 @@ export default function AgentPanel({
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
-    const { messages, send, clear, isThinking, error } = useAgent();
+    const { messages, send, clear, isThinking, error, briefingReady } = useAgent();
     const [input, setInput] = useState("");
     const listRef = useRef<HTMLDivElement>(null);
+    // True once the opening briefing message is showing but the user hasn't
+    // actually asked anything yet — the suggestion buttons stay useful in
+    // that state, not just on a completely blank panel.
+    const hasUserMessage = messages.some((message) => message.role === "user");
 
     useEffect(() => {
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -84,36 +88,46 @@ export default function AgentPanel({
                     </div>
                     <DialogPrimitive.Description className="sr-only">
                         Ask the Lampara AI assistant about projects, schedules and pipeline
-                        stages. Read-only for now — it cannot create or change anything.
+                        stages, or have it create and schedule things for you — it always
+                        describes what it's about to do and waits for confirmation first.
                     </DialogPrimitive.Description>
 
                     <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
                         {messages.length === 0 ? (
-                            <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                                <div className="flex size-10 items-center justify-center rounded-full bg-secondary">
-                                    <Sparkles className="size-5 text-muted-foreground" />
+                            briefingReady ? (
+                                // The daily briefing failed to load (or came back
+                                // empty) — fall back to the static welcome state
+                                // rather than leave the panel looking stuck.
+                                <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                                    <div className="flex size-10 items-center justify-center rounded-full bg-secondary">
+                                        <Sparkles className="size-5 text-muted-foreground" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-foreground">Ask about your projects</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            It can look things up and take action — always asking first.
+                                        </p>
+                                    </div>
+                                    <SuggestionList onPick={submit} />
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium text-foreground">Ask about your projects</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Answers only for now — nothing gets created or changed.
-                                    </p>
+                            ) : (
+                                <div className="flex h-full items-center justify-center">
+                                    <span className="flex gap-1">
+                                        <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                                        <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                                        <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
+                                    </span>
                                 </div>
-                                <div className="flex w-full flex-col gap-1.5">
-                                    {SUGGESTIONS.map((suggestion) => (
-                                        <button
-                                            key={suggestion}
-                                            type="button"
-                                            onClick={() => submit(suggestion)}
-                                            className="rounded-md border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                                        >
-                                            {suggestion}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            )
                         ) : (
-                            messages.map((message) => <AgentMessage key={message.id} message={message} />)
+                            <>
+                                {messages.map((message) => (
+                                    <AgentMessage key={message.id} message={message} />
+                                ))}
+                                {/* Only the opening briefing is showing so far —
+                                    the suggestions are still a useful shortcut. */}
+                                {!hasUserMessage && <SuggestionList onPick={submit} />}
+                            </>
                         )}
                         {isThinking && (
                             <div className="flex items-center gap-2 pl-8 text-xs text-muted-foreground">
@@ -159,5 +173,22 @@ export default function AgentPanel({
                 </DialogPrimitive.Content>
             </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
+    );
+}
+
+function SuggestionList({ onPick }: { onPick: (text: string) => void }) {
+    return (
+        <div className="flex w-full flex-col gap-1.5">
+            {SUGGESTIONS.map((suggestion) => (
+                <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => onPick(suggestion)}
+                    className="rounded-md border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                    {suggestion}
+                </button>
+            ))}
+        </div>
     );
 }

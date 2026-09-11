@@ -2,10 +2,12 @@ import type { AgentContext } from "./types.ts";
 import { COMPANY_NAME } from "@/lib/constants.ts";
 
 /**
- * Phase 2 adds write tools (create_quote, schedule_inspection,
- * schedule_installation, update_project_stage) and navigate. Confirmation is
- * a prompt rule, not a code path: the model is told to describe the action
- * and wait for the user's next message rather than call a write tool in the
+ * Write tools (create_project, create_quote, approve_quote,
+ * mark_contract_signed, schedule_inspection, schedule_installation,
+ * reschedule_installation, create_ticket, add_lead_note,
+ * update_project_stage) plus navigate. Confirmation is a prompt rule (rule
+ * 5 below), not a code path: the model is told to describe the action and
+ * wait for the user's next message rather than call a write tool in the
  * same turn it proposed it. See src/ai/tools/write-tools.ts for the tools
  * themselves — none of them pause mid-call for a click.
  */
@@ -15,8 +17,9 @@ export function buildSystemPrompt(ctx: AgentContext): string {
 You have tools to look up projects (leads/customers), packages, the team,
 contracts, ocular inspection reports, service tickets, pipeline-wide stats,
 and the inspection/installation schedule — and tools to create a project,
-create a quote, schedule an inspection or installation, add a note, and
-change a project's stage.
+create and approve a quote, mark a contract signed, schedule or reschedule
+an inspection or installation, log a service ticket, add a note, and change
+a project's stage.
 
 Rules:
 1. Answer using only what your tools return — never invent a name, date,
@@ -27,13 +30,14 @@ Rules:
    directly).
 3. Keep answers concise and specific: names, dates, stages. Skip filler.
 4. Currency in this CRM is Philippine pesos (₱).
-5. Before calling create_project, create_quote, schedule_inspection,
-   schedule_installation, add_lead_note, or update_project_stage: describe
-   exactly what you're about to do — the person's name and address, or
-   package names and price, or date/time and technician, or the note's
-   wording, or the stage change and why — then stop and wait for the user's
-   next message. Only call the write tool once they've confirmed in that
-   reply. Never propose and execute in the same turn.
+5. Before calling any tool that creates, changes, schedules, or cancels
+   something: describe exactly what you're about to do — the concrete
+   details (a person's name and address, package names and price, date/time
+   and technician, the note's wording, the stage change and why, and so on)
+   — then stop and wait for the user's next message. Only call the tool once
+   they've confirmed in that reply. Never propose and execute in the same
+   turn. Pure lookups (anything starting with get_/list_) need no
+   confirmation.
 6. create_project needs the exact real province, city/municipality and
    barangay names — it validates them against the actual Philippine
    administrative hierarchy and fails clearly if one doesn't resolve. If

@@ -13,10 +13,22 @@
  */
 import { z } from "zod";
 import { createLead, getLeadById, getProperties, updateStage } from "@/lib/supabase/queries/leads.ts";
-import { createQuote, saveQuote, type QuoteItemInput } from "@/lib/supabase/queries/quotes.ts";
+import {
+    approveQuote,
+    createQuote,
+    listQuotesForLead,
+    saveQuote,
+    type QuoteItemInput,
+} from "@/lib/supabase/queries/quotes.ts";
 import { listActivePackages } from "@/lib/supabase/queries/packages.ts";
 import { scheduleSurvey } from "@/lib/supabase/queries/surveys.ts";
-import { createInstallation } from "@/lib/supabase/queries/installations.ts";
+import {
+    createInstallation,
+    getInstallationForLead,
+    rescheduleInstallation,
+} from "@/lib/supabase/queries/installations.ts";
+import { getContractForLead, markContractSigned } from "@/lib/supabase/queries/contracts.ts";
+import { createTicket } from "@/lib/supabase/queries/service-tickets.ts";
 import { addLeadNote, NOTE_MAX_LENGTH } from "@/lib/supabase/queries/lead-notes.ts";
 import {
     composeLegacyAddress,
@@ -28,10 +40,11 @@ import {
 } from "@/lib/ph-address.ts";
 import { STAGES, STAGE_LABELS, canScheduleInstallation, type Stage } from "@/lib/constants.ts";
 import type { Id, PackageWithItems } from "@/lib/supabase/types.ts";
-import type { PropertyType } from "@/lib/supabase/database.types.ts";
+import type { PropertyType, TicketPriority } from "@/lib/supabase/database.types.ts";
 import type { AgentTool } from "../types.ts";
 
 const PROPERTY_TYPES: PropertyType[] = ["residential", "commercial", "industrial"];
+const TICKET_PRIORITIES: TicketPriority[] = ["low", "medium", "high"];
 
 function formatError(message: string): { error: string } {
     return { error: message };
@@ -320,6 +333,87 @@ export const createQuoteTool: AgentTool = {
     },
 };
 
+// ─── approve_quote ──────────────────────────────────────────────────────────
+
+const approveQuoteArgs = z.object({
+    projectId: z.string().min(1),
+});
+
+export const approveQuoteTool: AgentTool = {
+    declaration: {
+        name: "approve_quote",
+        description:
+            "Approves a project's latest quote — locking it and moving the " +
+            "project to the Proposal Sent stage. Call get_project first to " +
+            "confirm which quote (version and total) you're about to approve.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+            },
+            required: ["projectId"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = approveQuoteArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const leadId = parsed.data.projectId as Id<"leads">;
+
+        const quotes = await listQuotesForLead(leadId);
+        // Sorted newest-first, so the first row is the latest version.
+        const latest = quotes[0];
+        if (!latest) return formatError("This project has no quote yet.");
+        if (latest.status === "approved") return formatError("This quote is already approved.");
+
+        try {
+            await approveQuote({ quoteId: latest._id as Id<"quotes"> });
+            return { quoteId: latest._id, version: latest.version, navigateTo: `/projects/${leadId}?tab=quotes` };
+        } catch (err) {
+            return formatError(err instanceof Error ? err.message : "Failed to approve the quote.");
+        }
+    },
+};
+
+// ─── mark_contract_signed ───────────────────────────────────────────────────
+
+const markContractSignedArgs = z.object({
+    projectId: z.string().min(1),
+});
+
+export const markContractSignedTool: AgentTool = {
+    declaration: {
+        name: "mark_contract_signed",
+        description:
+            "Marks a project's contract as signed and moves the project to " +
+            "the Contract Signed stage — the same milestone that unlocks " +
+            "schedule_installation. The project must already have a contract " +
+            "on file (check with get_contract); this doesn't create one.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+            },
+            required: ["projectId"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = markContractSignedArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const leadId = parsed.data.projectId as Id<"leads">;
+
+        const contract = await getContractForLead(leadId);
+        if (!contract) return formatError("This project has no contract yet — one has to be created in the app first.");
+        if (contract.status === "signed") return formatError("This contract is already marked signed.");
+
+        try {
+            await markContractSigned({ contractId: contract._id as Id<"contracts"> });
+            return { navigateTo: `/projects/${leadId}` };
+        } catch (err) {
+            return formatError(err instanceof Error ? err.message : "Failed to mark the contract signed.");
+        }
+    },
+};
+
 // ─── schedule_inspection ────────────────────────────────────────────────────
 
 const scheduleInspectionArgs = z.object({
@@ -444,6 +538,154 @@ export const scheduleInstallationTool: AgentTool = {
             return { installationId, navigateTo: `/projects/${leadId}?tab=installation` };
         } catch (err) {
             return formatError(err instanceof Error ? err.message : "Failed to schedule the installation.");
+        }
+    },
+};
+
+// ─── reschedule_installation ────────────────────────────────────────────────
+
+const rescheduleInstallationArgs = z.object({
+    projectId: z.string().min(1),
+    startDate: z.string().regex(DATE_RE, "Expected yyyy-mm-dd"),
+    endDate: z.string().regex(DATE_RE, "Expected yyyy-mm-dd").optional(),
+    crewIds: z.array(z.string().min(1)).min(1).optional(),
+});
+
+export const rescheduleInstallationTool: AgentTool = {
+    declaration: {
+        name: "reschedule_installation",
+        description:
+            "Moves an existing installation's dates and, optionally, its " +
+            "crew. If crewIds is omitted, the current crew stays as-is. The " +
+            "project's stage is left untouched — it's already at or past " +
+            "Install Scheduled. Fails if the project has no installation yet " +
+            "— use schedule_installation for that instead.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+                startDate: { type: "string", description: "yyyy-mm-dd, inclusive new start date." },
+                endDate: {
+                    type: "string",
+                    description: "yyyy-mm-dd, inclusive new end date. Defaults to a one-day job on startDate.",
+                },
+                crewIds: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Technician ids from get_team. Omit to keep the current crew unchanged.",
+                },
+            },
+            required: ["projectId", "startDate"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = rescheduleInstallationArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const { projectId, startDate, endDate, crewIds } = parsed.data;
+        const leadId = projectId as Id<"leads">;
+
+        const installation = await getInstallationForLead(leadId);
+        if (!installation) {
+            return formatError("This project has no installation scheduled yet — use schedule_installation instead.");
+        }
+
+        try {
+            await rescheduleInstallation({
+                installationId: installation._id as Id<"installations">,
+                scheduledDate: startDate,
+                scheduledEndDate: endDate,
+                assignedCrewIds: crewIds
+                    ? (crewIds as Id<"users">[])
+                    : installation.crewNames.map((c) => c.id as Id<"users">),
+            });
+            return { navigateTo: `/projects/${leadId}?tab=installation` };
+        } catch (err) {
+            return formatError(err instanceof Error ? err.message : "Failed to reschedule the installation.");
+        }
+    },
+};
+
+// ─── create_ticket ──────────────────────────────────────────────────────────
+
+const createTicketArgs = z.object({
+    projectId: z.string().min(1),
+    title: z.string().trim().min(1),
+    description: z.string().trim().min(1),
+    priority: z.enum(TICKET_PRIORITIES as [TicketPriority, ...TicketPriority[]]),
+    assignedToId: z.string().min(1).optional(),
+    warrantyRelated: z.boolean().optional(),
+    scheduledVisitDate: z.string().regex(DATE_RE, "Expected yyyy-mm-dd").optional(),
+    scheduledVisitTime: z.string().regex(TIME_RE, 'Expected 24-hour "HH:mm"').optional(),
+});
+
+export const createTicketTool: AgentTool = {
+    declaration: {
+        name: "create_ticket",
+        description:
+            "Logs a service/maintenance ticket against a project's " +
+            "installation. The project must already have an installation on " +
+            "file. Optionally assign a technician (get_team) and/or schedule " +
+            "a visit date and time now — both scheduledVisitDate and " +
+            "scheduledVisitTime are required together if either is given.",
+        input_schema: {
+            type: "object",
+            properties: {
+                projectId: { type: "string", description: "The project's id, from list_projects." },
+                title: { type: "string" },
+                description: { type: "string" },
+                priority: { type: "string", enum: TICKET_PRIORITIES },
+                assignedToId: { type: "string", description: "A technician's id, from get_team." },
+                warrantyRelated: { type: "boolean", description: "Defaults to false." },
+                scheduledVisitDate: { type: "string", description: "yyyy-mm-dd, if a visit is being scheduled now." },
+                scheduledVisitTime: { type: "string", description: '24-hour "HH:mm".' },
+            },
+            required: ["projectId", "title", "description", "priority"],
+        },
+    },
+    async run(rawArgs) {
+        const parsed = createTicketArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+        const {
+            projectId,
+            title,
+            description,
+            priority,
+            assignedToId,
+            warrantyRelated,
+            scheduledVisitDate,
+            scheduledVisitTime,
+        } = parsed.data;
+        const leadId = projectId as Id<"leads">;
+
+        const installation = await getInstallationForLead(leadId);
+        if (!installation) {
+            return formatError("This project has no installation on file yet — a ticket needs one to attach to.");
+        }
+
+        let scheduledVisitAt: string | undefined;
+        if (scheduledVisitDate || scheduledVisitTime) {
+            if (!scheduledVisitDate || !scheduledVisitTime) {
+                return formatError("scheduledVisitDate and scheduledVisitTime must be given together.");
+            }
+            const at = new Date(`${scheduledVisitDate}T${scheduledVisitTime}:00`);
+            if (Number.isNaN(at.getTime())) return formatError("That visit date/time didn't parse — check the values.");
+            scheduledVisitAt = at.toISOString();
+        }
+
+        try {
+            const ticketId = await createTicket({
+                leadId,
+                installationId: installation._id as Id<"installations">,
+                title,
+                description,
+                priority,
+                assignedToId: assignedToId as Id<"users"> | undefined,
+                scheduledVisitAt,
+                warrantyRelated: warrantyRelated ?? false,
+            });
+            return { ticketId, navigateTo: `/projects/${leadId}` };
+        } catch (err) {
+            return formatError(err instanceof Error ? err.message : "Failed to create the ticket.");
         }
     },
 };

@@ -35,7 +35,12 @@ export const s = StyleSheet.create({
         fontFamily: "Helvetica",
         fontSize: 8.5,
         color: C.ink,
-        lineHeight: 1.35,
+        // NOTE: no `lineHeight` here on purpose. In react-pdf 4.9 a lineHeight
+        // on the Page style is inherited by `fixed` children and makes a
+        // bottom-anchored one vanish from every page — silently, with no
+        // error. `footer` below is bottom-anchored (`header` survives it
+        // because it's top-anchored, which is exactly what made this easy to
+        // miss). Prose line spacing lives on the text styles instead.
     },
 
     // ── Running header, repeated on every page ────────────────────────────
@@ -95,7 +100,7 @@ export const s = StyleSheet.create({
         paddingBottom: 0.5,
         paddingLeft: 3,
     },
-    fillText: { fontSize: 8.5 },
+    fillText: { fontSize: 8.5, lineHeight: 1.35 },
 
     // ── Tick boxes ───────────────────────────────────────────────────────
     checkWrap: { flexDirection: "row", alignItems: "center", marginRight: 12 },
