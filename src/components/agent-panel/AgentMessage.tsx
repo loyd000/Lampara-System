@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { cn } from "@/lib/utils.ts";
 import type { AgentChatMessage } from "@/ai/types.ts";
@@ -32,6 +33,20 @@ const MARKDOWN_COMPONENTS: Components = {
     h1: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
     h2: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
     h3: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
+    // GFM tables (package comparisons, schedules) — a package comparison
+    // easily runs wider than the panel's own max-w-lg column, so the table
+    // scrolls horizontally on its own rather than forcing the whole panel
+    // to. Hairline row dividers, not a bordered grid — same "hairline, not
+    // a box" rule the rest of the panel follows.
+    table: ({ children }) => (
+        <div className="mb-2 overflow-x-auto last:mb-0">
+            <table className="w-full border-collapse text-left text-sm">{children}</table>
+        </div>
+    ),
+    thead: ({ children }) => <thead className="border-b border-current/15">{children}</thead>,
+    tbody: ({ children }) => <tbody className="divide-y divide-current/10">{children}</tbody>,
+    th: ({ children }) => <th className="py-1.5 pr-4 font-semibold whitespace-nowrap">{children}</th>,
+    td: ({ children }) => <td className="py-1.5 pr-4 align-top">{children}</td>,
 };
 
 /**
@@ -60,7 +75,9 @@ export default function AgentMessage({ message }: { message: AgentChatMessage })
                 <Sparkles className="size-3 text-muted-foreground" />
             </div>
             <div className="max-w-[85%] pt-0.5 text-[15px] leading-relaxed break-words text-foreground">
-                <ReactMarkdown components={MARKDOWN_COMPONENTS}>{message.text}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+                    {message.text}
+                </ReactMarkdown>
             </div>
         </div>
     );
