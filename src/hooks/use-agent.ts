@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
 import { AgentApiError, AgentConfigError, runAgentTurn, type AgentMessage } from "@/ai/agent.ts";
@@ -21,6 +22,7 @@ function nextMessageId(): string {
  */
 export function useAgent() {
     const { data: user } = useCurrentUser();
+    const navigate = useNavigate();
     const [messages, setMessages] = useState<AgentChatMessage[]>([]);
     const [isThinking, setIsThinking] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function useAgent() {
                     userName: user.name ?? user.email ?? "there",
                     userRole: user.role,
                     today: format(new Date(), "yyyy-MM-dd"),
+                    navigate,
                 });
                 historyRef.current = result.history;
                 setMessages((prev) => [
@@ -66,7 +69,7 @@ export function useAgent() {
                 setIsThinking(false);
             }
         },
-        [isThinking, user],
+        [isThinking, user, navigate],
     );
 
     const clear = useCallback(() => {

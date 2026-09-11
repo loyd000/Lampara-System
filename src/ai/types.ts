@@ -17,6 +17,10 @@ export type AgentContext = {
     /** yyyy-mm-dd, resolved once per conversation so "today"/"this week" mean
      * the same day throughout a multi-tool-call turn. */
     today: string;
+    /** React Router's navigate, threaded in from the panel so the `navigate`
+     * tool (write-tools.ts) can move the app after a write — a tool module
+     * has no component tree of its own to call `useNavigate()` from. */
+    navigate: (path: string) => void;
 };
 
 /** What a tool hands back to the model. Always JSON-serialisable — this is

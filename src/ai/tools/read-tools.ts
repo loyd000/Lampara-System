@@ -16,9 +16,14 @@ import { getLeadById, getProperties, listEnrichedLeads, searchLeads } from "@/li
 import { listQuotesForLead } from "@/lib/supabase/queries/quotes.ts";
 import { getInstallationForLead } from "@/lib/supabase/queries/installations.ts";
 import { listCalendarEvents } from "@/lib/supabase/queries/calendar.ts";
+import { listActivePackages } from "@/lib/supabase/queries/packages.ts";
+import { listUsers } from "@/lib/supabase/queries/users.ts";
 import { STAGES, STAGE_LABELS, type Stage } from "@/lib/constants.ts";
+import type { UserRole } from "@/lib/supabase/database.types.ts";
 import type { Id } from "@/lib/supabase/types.ts";
 import type { AgentTool } from "../types.ts";
+
+const ROLES: UserRole[] = ["superadmin", "admin", "field"];
 
 /** How many rows a list-style tool hands back to the model — a chat answer,
  * not a page dump. */
@@ -193,6 +198,76 @@ export const getScheduleTool: AgentTool = {
                 startDate: e.startDate,
                 endDate: e.endDate,
                 time: e.kind === "inspection" ? e.at : null,
+            })),
+        };
+    },
+};
+
+// ─── list_packages ──────────────────────────────────────────────────────────
+
+export const listPackagesTool: AgentTool = {
+    declaration: {
+        name: "list_packages",
+        description:
+            "Lists active solar system packages available to quote, with " +
+            "pricing and the line items each one adds. Call this before " +
+            "create_quote to find package ids and see what they cost.",
+        input_schema: { type: "object", properties: {} },
+    },
+    async run() {
+        const packages = await listActivePackages();
+        return {
+            count: packages.length,
+            packages: packages.map((pkg) => ({
+                id: pkg._id,
+                name: pkg.name,
+                designType: pkg.designType,
+                systemSizeKw: pkg.systemSizeKw ?? null,
+                basePricePhp: pkg.basePricePhp,
+                items: pkg.items.map((item) => ({
+                    description: item.name ? `${item.name} — ${item.description}` : item.description,
+                    qty: item.qty,
+                    unit: item.unit,
+                    unitPricePhp: item.unitPricePhp,
+                })),
+            })),
+        };
+    },
+};
+
+// ─── get_team ───────────────────────────────────────────────────────────────
+
+const getTeamArgs = z.object({
+    role: z.enum(ROLES as [UserRole, ...UserRole[]]).optional(),
+});
+
+export const getTeamTool: AgentTool = {
+    declaration: {
+        name: "get_team",
+        description:
+            'Lists active team members, optionally filtered by role ("field" ' +
+            "for technicians). Use this to find a technician's id before " +
+            "schedule_inspection or schedule_installation.",
+        input_schema: {
+            type: "object",
+            properties: {
+                role: { type: "string", enum: ROLES, description: "Restrict to one role." },
+            },
+        },
+    },
+    async run(rawArgs) {
+        const parsed = getTeamArgs.safeParse(rawArgs);
+        if (!parsed.success) return formatError(parsed.error.message);
+
+        const users = await listUsers();
+        const filtered = users.filter((u) => u.isActive && (!parsed.data.role || u.role === parsed.data.role));
+
+        return {
+            count: filtered.length,
+            team: filtered.map((u) => ({
+                id: u._id,
+                name: u.name ?? u.email ?? "Unnamed",
+                role: u.role,
             })),
         };
     },
