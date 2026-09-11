@@ -51,21 +51,14 @@ export default function AgentPanel({
     return (
         <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
             <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="materialize-blur fixed inset-0 z-50" />
+                <DialogPrimitive.Overlay
+                    className="fixed inset-0 z-50 bg-background/55 backdrop-blur-xl data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+                />
                 <DialogPrimitive.Content
                     className={cn(
-                        "fixed inset-0 z-50 outline-none",
-                        // Materializes in (blur+scale+opacity together, not
-                        // just a fade) rather than the old keyframe-based
-                        // animate-in/out — a CSS *transition* driven by
-                        // Radix's own data-state, so re-opening mid-close
-                        // reverses smoothly from wherever it currently is
-                        // instead of restarting a fixed keyframe from zero.
-                        "translate-y-3 scale-[0.98] opacity-0",
-                        "transition-[opacity,transform] duration-250 ease-[var(--ease-spring)]",
-                        "data-[state=open]:translate-y-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=open]:duration-400",
-                        // Reduced motion: cross-fade only, no travel.
-                        "motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-opacity motion-reduce:duration-200",
+                        "fixed inset-0 z-50 outline-none duration-200",
+                        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+                        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
                     )}
                 >
                     <DialogPrimitive.Title className="sr-only">Lampara AI</DialogPrimitive.Title>
