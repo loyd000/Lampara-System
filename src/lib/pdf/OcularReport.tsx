@@ -389,14 +389,17 @@ export function OcularReport({
                 </View>
 
                 {/* ── System package ─────────────────────────────────────
-                    Banded heading and table move as one block — both are
-                    short, fixed-size content that should never split
-                    mid-row. The Notes box below is deliberately its own,
-                    normally-wrapping block: `data.notes` is free text with no
-                    length cap, and a `wrap={false}` node react-pdf can't fit
-                    on the remaining page doesn't paginate, it just renders
-                    broken. */}
-                <View wrap={false}>
+                    Always its own page (`break`), not just "wherever it
+                    fits" — the previous page's roof/electrical table is
+                    dense enough that this block otherwise lands squeezed
+                    onto the bottom of it. Banded heading and table move as
+                    one block once there — both are short, fixed-size
+                    content that should never split mid-row. The Notes box
+                    below is deliberately its own, normally-wrapping block:
+                    `data.notes` is free text with no length cap, and a
+                    `wrap={false}` node react-pdf can't fit on the remaining
+                    page doesn't paginate, it just renders broken. */}
+                <View wrap={false} break>
                 <Band>SYSTEM PACAKAGE/DETAILS</Band>
 
                 <View style={s.table}>
