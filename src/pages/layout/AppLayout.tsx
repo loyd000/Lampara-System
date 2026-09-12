@@ -15,7 +15,7 @@ import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
 import GlobalSearch from "@/components/global-search.tsx";
 import AgentFab from "@/components/agent-panel/AgentFab.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
-import { BarChart3, Users, ClipboardCheck, Zap, Sparkles } from "lucide-react";
+import { BarChart3, Users, ClipboardCheck, Zap, Wrench } from "lucide-react";
 
 export default function AppLayout() {
     const { isAuthenticated } = useAuth();
@@ -139,9 +139,9 @@ const features = [
         description: "Schedule technicians, track materials, and manage completion photos",
     },
     {
-        icon: Sparkles,
-        title: "Customer Portal",
-        description: "Post-installation service tickets and warranty management",
+        icon: Wrench,
+        title: "Service & Warranty",
+        description: "Log and track post-installation service tickets and warranty claims",
     },
 ];
 
