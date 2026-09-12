@@ -24,6 +24,28 @@ top to bottom:
 | `0012_shared_report_editing.sql` | Shared editable ocular reports without an approval handoff |
 | `0013_roles_and_approval.sql` | Three roles (`superadmin`/`admin`/`field`), account approval, the `cancelled` lead stage |
 | `0014_lead_notes_and_files.sql` | `lead_notes`, `lead_files`, a 10 MB per-file bucket limit and the `leads/` storage prefix |
+| `0015_packages.sql` | `packages`/`package_items` — saved solar system bundles a quote can be built from |
+| `0016_quote_items.sql` | `quote_items`, `total_php`/`quotation_no`/`prepared_by_id` on quotes, simplified `in_progress`/`approved` status |
+| `0017_package_items_name.sql` | `package_items.name`, relaxed description constraint, fixes an overloaded `advance_lead_stage` ambiguity |
+| `0018_contracts.sql` | Contract DOCX snapshot fields (`homeowner_name`, `price_php`, etc.) and `update_contract_details` |
+| `0019_bugfixes.sql` | Role-check fixes left over from the 0013 role collapse |
+| `0020_notifications.sql` | `notification_preferences`/`notification_log` for the `notify` Edge Function |
+| `0021_seed_packages.sql` | Seeds the five standard hybrid packages |
+| `0022_property_type_industrial.sql` | Replaces property type `agricultural` with `industrial` |
+| `0023_package_design_type.sql` | `packages.design_type` (Hybrid/Off-Grid/Grid-Tie) |
+| `0024_ph_address_fields.sql` | Granular Philippine address fields (barangay, city/municipality, province, etc.) on properties |
+| `0025_drop_lead_source.sql` | Drops the unused "how did this lead find us" field |
+| `0026_search_indexes.sql` | Reworks the lead search trigram index to actually get used, and to search more fields |
+| `0027_report_guards_and_revenue_fix.sql` | Restricts report RPCs to admins; fixes revenue reading the wrong price column/status |
+| `0028_survey_completion.sql` | `complete_survey_report`/`reopen_survey_report` — a way to mark an inspection done |
+| `0029_drop_orphans.sql` | Removes functions/columns left behind by superseded workflows |
+| `0030_drop_permits.sql` | Removes permit tracking entirely (table, storage, reports, pipeline stage) |
+| `0031_auto_stage_advance.sql` | Lead stage now advances automatically and forward-only from the work itself, not hand-nudged |
+| `0032_installation_date_range.sql` | `installations.scheduled_end_date` — a job runs over a date range, not one day |
+| `0033_atomic_save_quote.sql` | `save_quote` RPC — header + line items replace atomically instead of update/delete/insert |
+| `0034_atomic_mark_contract_signed.sql` | `mark_contract_signed` RPC — signing, stage-advance and the activity log in one transaction |
+| `0035_atomic_quote_versioning.sql` | `create_quote_version` RPC — version allocation + insert (+ optional item clone) atomically |
+| `0036_installation_column_guard.sql` | Column/status-transition guard trigger on `installations`, auto-advances the lead on completion |
 
 With the CLI instead:
 

@@ -90,50 +90,25 @@ export type CreateQuoteArgs = {
 
 /**
  * Creates an empty in_progress quote with allocated version and next quotation number.
+ *
+ * Version allocation and the insert happen inside `create_quote_version`
+ * (see 0035_atomic_quote_versioning.sql), which locks the lead row for the
+ * duration — a client-side `select max(version)` here could otherwise race
+ * with a second "New Quote" click on the same lead.
  */
 export async function createQuote(args: CreateQuoteArgs): Promise<Id<"quotes">> {
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Authentication required to create a quote");
-
-    // Get the next version for this lead
-    const { data: siblings, error: sibError } = await supabase
-        .from("quotes")
-        .select("version")
-        .eq("lead_id", args.leadId)
-        .order("version", { ascending: false })
-        .limit(1);
-
-    if (sibError) throw toAppError(sibError, "Failed to inspect quote versions");
-    const nextVersion = (siblings?.[0]?.version ?? 0) + 1;
-
-    const { data: newQuote, error } = await supabase
-        .from("quotes")
-        .insert({
-            lead_id: args.leadId,
-            version: nextVersion,
-            status: "in_progress",
-            total_php: 0,
-            prepared_by_id: args.preparedById ?? user.id,
-            created_by: user.id,
-            valid_until: args.validUntil || null,
-            notes: args.notes ? args.notes.trim() : null,
-        })
-        .select("id, quotation_no")
-        .single();
-
-    if (error) throw toAppError(error, "Failed to create quote");
-
-    await logActivity({
-        leadId: args.leadId,
-        action: `Quote v${nextVersion} created`,
-        details: newQuote.quotation_no ?? `Version ${nextVersion}`,
-        entityType: "quote",
-        entityId: newQuote.id,
+    const { data, error } = await supabase.rpc("create_quote_version", {
+        p_lead_id: args.leadId,
+        p_prepared_by_id: args.preparedById ?? null,
+        p_valid_until: args.validUntil || null,
+        p_notes: args.notes ? args.notes.trim() : null,
+        p_total_php: 0,
+        p_items: [],
+        p_based_on_version: null,
     });
 
-    return newQuote.id as string;
+    if (error) throw toAppError(error, "Failed to create quote");
+    return data as string;
 }
 
 export type QuoteItemInput = {
@@ -279,72 +254,39 @@ export async function reopenQuote(args: {
 
 /**
  * Clones an existing quote and its line items into a new version.
+ *
+ * The clone's header and its items both go into `create_quote_version` (see
+ * 0035_atomic_quote_versioning.sql) as one call — previously these were two
+ * separate inserts, so a failure on the items insert left an orphaned empty
+ * draft quote behind.
  */
 export async function reviseQuote(args: {
     quoteId: Id<"quotes">;
 }): Promise<Id<"quotes">> {
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Authentication required to revise quote");
-
     const prev = await getQuoteWithItems(args.quoteId);
 
-    const { data: siblings, error: sibErr } = await supabase
-        .from("quotes")
-        .select("version")
-        .eq("lead_id", prev.leadId)
-        .order("version", { ascending: false })
-        .limit(1);
+    const items = prev.items.map((item, idx) => ({
+        description: item.description,
+        qty: item.qty,
+        unit: item.unit,
+        unit_price_php: item.unitPricePhp,
+        line_total_php: item.lineTotalPhp,
+        source_package_id: item.sourcePackageId || null,
+        sort_order: item.sortOrder ?? idx,
+    }));
 
-    if (sibErr) throw toAppError(sibErr, "Failed to inspect quote versions");
-    const nextVersion = (siblings?.[0]?.version ?? prev.version) + 1;
-
-    const { data: newQuote, error: insQuoteErr } = await supabase
-        .from("quotes")
-        .insert({
-            lead_id: prev.leadId,
-            version: nextVersion,
-            status: "in_progress",
-            total_php: prev.totalPhp,
-            notes: prev.notes || null,
-            valid_until: prev.validUntil || null,
-            prepared_by_id: prev.preparedById || user.id,
-            created_by: user.id,
-        })
-        .select("id, quotation_no")
-        .single();
-
-    if (insQuoteErr) throw toAppError(insQuoteErr, "Failed to clone quote");
-
-    if (prev.items.length > 0) {
-        const clonedItems = prev.items.map((item, idx) => ({
-            quote_id: newQuote.id,
-            description: item.description,
-            qty: item.qty,
-            unit: item.unit,
-            unit_price_php: item.unitPricePhp,
-            line_total_php: item.lineTotalPhp,
-            source_package_id: item.sourcePackageId || null,
-            sort_order: item.sortOrder ?? idx,
-        }));
-
-        const { error: insItemsErr } = await supabase
-            .from("quote_items")
-            .insert(clonedItems);
-
-        if (insItemsErr) throw toAppError(insItemsErr, "Failed to copy quote items");
-    }
-
-    await logActivity({
-        leadId: prev.leadId,
-        action: `Quote revised to v${nextVersion}`,
-        details: `Based on v${prev.version} · ${newQuote.quotation_no}`,
-        entityType: "quote",
-        entityId: newQuote.id,
+    const { data, error } = await supabase.rpc("create_quote_version", {
+        p_lead_id: prev.leadId,
+        p_prepared_by_id: prev.preparedById || null,
+        p_valid_until: prev.validUntil || null,
+        p_notes: prev.notes || null,
+        p_total_php: prev.totalPhp,
+        p_items: items,
+        p_based_on_version: prev.version,
     });
 
-    return newQuote.id as string;
+    if (error) throw toAppError(error, "Failed to revise quote");
+    return data as string;
 }
 
 export async function deleteQuote(args: { quoteId: Id<"quotes"> }): Promise<void> {

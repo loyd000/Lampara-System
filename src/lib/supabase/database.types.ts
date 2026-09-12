@@ -469,6 +469,30 @@ export type Database = {
                 Args: { p_lead_id: string; p_quote_id: string; p_notes?: string | null };
                 Returns: string;
             };
+            // Atomically allocates the next version and inserts the quote (+
+            // optional cloned items) in one transaction (see
+            // 0035_atomic_quote_versioning.sql) — serves both createQuote
+            // (p_items empty) and reviseQuote (p_items holds the clone).
+            create_quote_version: {
+                Args: {
+                    p_lead_id: string;
+                    p_prepared_by_id: string | null;
+                    p_valid_until: string | null;
+                    p_notes: string | null;
+                    p_total_php: number;
+                    p_items?: {
+                        description: string;
+                        qty: number;
+                        unit: string;
+                        unit_price_php: number;
+                        line_total_php: number;
+                        source_package_id: string | null;
+                        sort_order: number;
+                    }[];
+                    p_based_on_version?: number | null;
+                };
+                Returns: string;
+            };
             // Atomically replaces a quote's header + line items in one
             // transaction (see 0033_atomic_save_quote.sql) — the client still
             // computes totals and per-line rounding (see queries/quotes.ts),
@@ -490,6 +514,12 @@ export type Database = {
                         sort_order: number;
                     }[];
                 };
+                Returns: undefined;
+            };
+            // Atomically signs the contract, advances the lead's stage, and
+            // logs the activity entry (see 0034_atomic_mark_contract_signed.sql).
+            mark_contract_signed: {
+                Args: { p_contract_id: string };
                 Returns: undefined;
             };
             update_contract_details: {

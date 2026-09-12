@@ -139,8 +139,17 @@ export default function ServiceTicketsSection({ leadId, stage, canEdit }: Props)
                                     className={cn("-mx-4 px-4", idx > 0 && "border-t border-border")}
                                 >
                                     <div
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-expanded={expanded}
                                         className="-mx-4 flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors"
                                         onClick={() => toggleExpand(ticket._id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                toggleExpand(ticket._id);
+                                            }
+                                        }}
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
                                             {ticket.priority === "high" && (

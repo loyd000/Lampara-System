@@ -35,6 +35,19 @@ export function useAgent() {
     // "the briefing failed, fall back to the static empty state".
     const [briefingReady, setBriefingReady] = useState(false);
     const historyRef = useRef<AgentMessage[]>([]);
+    // `isThinking` (state) is what the panel renders, but state updates are
+    // batched/async — a fast double-submit (Enter plus a stray click before
+    // repaint) could see the stale `false` twice and start two concurrent
+    // turns sharing one `historyRef` snapshot. This ref is set synchronously,
+    // before either `await`, so the second call's guard actually sees the
+    // first call's claim.
+    const isThinkingRef = useRef(false);
+    // Bumped by every `send()` and by `clear()`. A turn's result is only
+    // applied if the generation it started with is still current when it
+    // resolves — otherwise `clear()` (or a newer `send()`) already moved the
+    // conversation on, and this turn's answer would otherwise land in a
+    // conversation it was never actually part of.
+    const generationRef = useRef(0);
 
     // The opening message: today's schedule + which projects have gone
     // quiet, computed directly (see briefing.ts) — not a Claude turn, so it
@@ -70,11 +83,14 @@ export function useAgent() {
     const send = useCallback(
         async (text: string) => {
             const trimmed = text.trim();
-            if (!trimmed || isThinking) return;
+            if (!trimmed || isThinkingRef.current) return;
             if (!user) {
                 setError("Still loading your account — try again in a moment.");
                 return;
             }
+
+            isThinkingRef.current = true;
+            const generation = ++generationRef.current;
 
             setError(null);
             setMessages((prev) => [...prev, { id: nextMessageId(), role: "user", text: trimmed }]);
@@ -88,6 +104,10 @@ export function useAgent() {
                     today: format(new Date(), "yyyy-MM-dd"),
                     navigate,
                 });
+                // Stale: `clear()` or a newer `send()` moved the conversation
+                // on while this turn was in flight. Applying it now would
+                // silently resurrect a cleared/superseded conversation.
+                if (generationRef.current !== generation) return;
                 historyRef.current = result.history;
                 setMessages((prev) => [
                     ...prev,
@@ -98,6 +118,7 @@ export function useAgent() {
                     },
                 ]);
             } catch (err) {
+                if (generationRef.current !== generation) return;
                 // The raw error (status code, the proxy's own message) is worth
                 // having in devtools even though the chat bubble stays generic
                 // — "something went wrong" alone isn't enough to tell a rate
@@ -105,16 +126,25 @@ export function useAgent() {
                 console.error("Lampara AI turn failed:", err);
                 setError(errorMessageFor(err));
             } finally {
-                setIsThinking(false);
+                if (generationRef.current === generation) {
+                    isThinkingRef.current = false;
+                    setIsThinking(false);
+                }
             }
         },
-        [isThinking, user, navigate],
+        [user, navigate],
     );
 
     const clear = useCallback(() => {
+        // Invalidates any turn still in flight — its eventual result will see
+        // a mismatched generation above and be discarded instead of landing
+        // in the fresh conversation this starts.
+        generationRef.current += 1;
+        isThinkingRef.current = false;
         historyRef.current = [];
         setMessages([]);
         setError(null);
+        setIsThinking(false);
         setBriefingReady(false);
         setBriefingAttempt((n) => n + 1);
     }, []);

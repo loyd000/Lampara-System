@@ -71,9 +71,9 @@ export async function buildQuotePdfData(
         ? `${property.address}, ${property.city}, ${property.state} ${property.zip}`.trim()
         : undefined;
 
-    const quoteDate = quote.validUntil
-        ? new Date()
-        : new Date(quote._creationTime);
+    // Always the quote's real issue date — never "today", or re-downloading
+    // the same quote later would silently print a different date each time.
+    const quoteDate = new Date(quote._creationTime);
     const dateFormatted = quoteDate.toLocaleDateString("en-US", {
         day: "numeric",
         month: "long",
@@ -87,9 +87,12 @@ export async function buildQuotePdfData(
         // A package's included components are listed for what they are, not
         // what they cost — the package's own line carries the real price.
         // Printing "₱0.00" next to each one reads as "these are free," which
-        // is exactly the confusion blanking the cell avoids.
-        priceStr: item.unitPricePhp > 0 ? formatPhp(item.unitPricePhp) : "",
-        totalStr: item.unitPricePhp > 0 ? formatPhp(item.lineTotalPhp) : "",
+        // is exactly the confusion blanking the cell avoids. `!== 0`, not
+        // `> 0`: a genuine negative-discount line is a real price too, and
+        // blanking it would make the printed items stop visibly summing to
+        // the grand total.
+        priceStr: item.unitPricePhp !== 0 ? formatPhp(item.unitPricePhp) : "",
+        totalStr: item.unitPricePhp !== 0 ? formatPhp(item.lineTotalPhp) : "",
     }));
 
     const grandTotal = (quote.items || []).reduce(

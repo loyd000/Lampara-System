@@ -679,8 +679,9 @@ export function QuotePdf({
                     </View>
                 </View>
 
-                {/* Payment Instructions & Authorization Block */}
-                <View style={styles.paySignBox}>
+                {/* Payment Instructions & Authorization Block — never split
+                    across a page break, matching ContractPdf's signature block. */}
+                <View style={styles.paySignBox} wrap={false}>
                     <View style={styles.paymentBox}>
                         <Text style={styles.paymentTitle}>Payment Instructions</Text>
                         <Text style={styles.paymentDetail}>

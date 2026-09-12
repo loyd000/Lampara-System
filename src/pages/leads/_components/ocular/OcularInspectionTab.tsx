@@ -277,7 +277,15 @@ export default function OcularInspectionTab({
                         return (
                             <div
                                 key={survey._id}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => openReport(survey._id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        openReport(survey._id);
+                                    }
+                                }}
                                 className={cn(
                                     "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
                                     "hover:bg-muted/40",

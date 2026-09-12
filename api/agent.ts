@@ -53,6 +53,29 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 const ALLOWED_ROLES = new Set(["superadmin", "admin"]);
 
+// Mirrors the tool *names* declared in src/ai/tools/index.ts (AGENT_TOOLS) —
+// kept as a plain string list, not an import, because that module pulls in
+// the Supabase browser client (import.meta.env, a Vite-only construct this
+// Vercel function doesn't go through). This endpoint never executes a tool
+// itself either way (see the file header) — the point of the allowlist is
+// narrower: without it, any holder of a valid admin bearer token could send
+// an arbitrary `tools` array and turn this into a general-purpose Claude
+// relay under the company's key, not just an interface to Lampara's own
+// nineteen actions. Update this list alongside AGENT_TOOLS.
+const ALLOWED_TOOL_NAMES = new Set([
+    "list_projects", "get_project", "get_schedule", "list_packages", "get_team",
+    "get_contract", "get_ocular_report", "list_tickets", "get_pipeline_summary",
+    "create_project", "create_quote", "approve_quote", "mark_contract_signed",
+    "schedule_inspection", "schedule_installation", "reschedule_installation",
+    "create_ticket", "update_project_stage", "add_lead_note", "navigate",
+]);
+
+// A real conversation is a handful of short lookups; this is generous enough
+// to never trip in normal use while still bounding how much any one request
+// can cost, regardless of how the tool-name check above is satisfied.
+const MAX_MESSAGES = 200;
+const MAX_MESSAGES_BYTES = 500_000;
+
 /**
  * Confirms the bearer token is a live Supabase session for an
  * admin/superadmin. This re-checks what `AgentFab.tsx` already gates client
@@ -121,6 +144,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = req.body as ProxyRequestBody | undefined;
     if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
         res.status(400).json({ error: '"messages" must be a non-empty array.' });
+        return;
+    }
+    if (body.messages.length > MAX_MESSAGES || JSON.stringify(body.messages).length > MAX_MESSAGES_BYTES) {
+        res.status(400).json({ error: "Conversation is too large for this endpoint." });
+        return;
+    }
+    if (body.tools && !body.tools.every((tool) => ALLOWED_TOOL_NAMES.has(tool.name))) {
+        res.status(400).json({ error: "Unrecognized tool in request." });
         return;
     }
 

@@ -20,6 +20,7 @@ import { useCalendarEvents } from "@/lib/supabase/hooks.ts";
 import { daysBetween, type CalendarEvent } from "@/lib/supabase/queries/calendar.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { QueryError } from "@/components/query-error.tsx";
 import {
     ToggleGroup, ToggleGroupItem,
 } from "@/components/ui/toggle-group.tsx";
@@ -72,7 +73,7 @@ export default function CalendarPage() {
         [rangeStart, rangeEnd],
     );
 
-    const { data: events, isLoading } = useCalendarEvents({
+    const { data: events, isLoading, isError, refetch } = useCalendarEvents({
         from: format(rangeStart, "yyyy-MM-dd"),
         to: format(rangeEnd, "yyyy-MM-dd"),
     });
@@ -94,6 +95,10 @@ export default function CalendarPage() {
     const heading = view === "month"
         ? format(anchor, "MMMM yyyy")
         : `${format(rangeStart, "MMM d")} – ${format(rangeEnd, "MMM d, yyyy")}`;
+
+    if (isError) {
+        return <QueryError title="Couldn't load the calendar" onRetry={() => void refetch()} />;
+    }
 
     return (
         <div className="p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">

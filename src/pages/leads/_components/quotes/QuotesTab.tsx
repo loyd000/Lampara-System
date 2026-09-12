@@ -183,7 +183,15 @@ export default function QuotesTab({
                                 // not a bordered card inside a bordered card.
                                 <div
                                     key={q._id}
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => openQuote(q._id)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            openQuote(q._id);
+                                        }
+                                    }}
                                     className={cn(
                                         "group -mx-4 px-4 py-3.5 transition-colors cursor-pointer",
                                         "hover:bg-muted/40",

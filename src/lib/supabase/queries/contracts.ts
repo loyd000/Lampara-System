@@ -4,7 +4,7 @@ import { supabase, toAppError, unwrap } from "../client.ts";
 import type { ContractRow } from "../database.types.ts";
 import { buildPath, removeFiles, signedUrl, uploadFile } from "../storage.ts";
 import { toContract, type ContractDetail, type Id } from "../types.ts";
-import { advanceLeadStage, logActivity } from "./leads.ts";
+import { logActivity } from "./leads.ts";
 import { notifyEvent } from "./notifications.ts";
 
 export async function getContractForLead(
@@ -78,6 +78,14 @@ export async function createContract(args: {
     return data as string;
 }
 
+/**
+ * Signs the contract, advances the lead to Contract Signed, and logs the
+ * activity entry — all inside `mark_contract_signed` (see
+ * 0034_atomic_mark_contract_signed.sql). Previously these were separate
+ * calls: a failure in the stage-advance step after the status update had
+ * already committed left the contract signed with the lead's stage never
+ * following it, with no compensating rollback.
+ */
 export async function markContractSigned(args: {
     contractId: Id<"contracts">;
 }): Promise<void> {
@@ -90,28 +98,16 @@ export async function markContractSigned(args: {
         "Contract not found",
     ) as { lead_id: string; leads: { assigned_sales_rep_id: string | null } | null };
 
-    const { error } = await supabase
-        .from("contracts")
-        .update({ status: "signed", signed_at: new Date().toISOString() })
-        .eq("id", args.contractId);
-    if (error) throw toAppError(error, "Failed to update contract");
-
-    // Signing is what puts the lead at Contract Signed — creating the contract
-    // used to, which claimed the deal days before anyone had signed anything.
-    await advanceLeadStage(contract.lead_id, "contract_signed");
-
-    await logActivity({
-        leadId: contract.lead_id,
-        action: "Contract signed",
-        entityType: "contract",
-        entityId: args.contractId,
+    const { error } = await supabase.rpc("mark_contract_signed", {
+        p_contract_id: args.contractId,
     });
+    if (error) throw toAppError(error, "Failed to sign contract");
 
     const repId = contract.leads?.assigned_sales_rep_id;
     if (repId) {
         await notifyEvent({
             event: "contract_signed",
-            leadId: contract.lead_id,
+            leadId: contract.lead_id as Id<"leads">,
             recipientUserIds: [repId],
         });
     }

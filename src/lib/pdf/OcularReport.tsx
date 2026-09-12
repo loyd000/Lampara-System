@@ -389,9 +389,13 @@ export function OcularReport({
                 </View>
 
                 {/* ── System package ─────────────────────────────────────
-                    Banded heading, table and Notes move as one block: split
-                    across a page the Notes label lands on one and its box on
-                    the next. */}
+                    Banded heading and table move as one block — both are
+                    short, fixed-size content that should never split
+                    mid-row. The Notes box below is deliberately its own,
+                    normally-wrapping block: `data.notes` is free text with no
+                    length cap, and a `wrap={false}` node react-pdf can't fit
+                    on the remaining page doesn't paginate, it just renders
+                    broken. */}
                 <View wrap={false}>
                 <Band>SYSTEM PACAKAGE/DETAILS</Band>
 
@@ -434,6 +438,7 @@ export function OcularReport({
                         </View>
                     </View>
                 </View>
+                </View>
 
                 <View
                     style={{
@@ -446,7 +451,6 @@ export function OcularReport({
                 >
                     <Text style={{ marginBottom: 3 }}>Notes:</Text>
                     <Text>{data.notes}</Text>
-                </View>
                 </View>
 
                 <PageFooter name={data.name} />

@@ -5,11 +5,12 @@
  * here is indistinguishable from that person clicking the equivalent button
  * in the UI.
  *
- * None of these tools ask for confirmation themselves — that's a system
- * prompt rule (see prompts.ts), not a code path. The model is instructed to
- * describe what it's about to do and wait for the user's next message
- * before calling a write tool at all. Nothing here pauses mid-call for a
- * click; the confirmation *is* the model choosing not to call the tool yet.
+ * None of these tools ask for confirmation themselves. Every one below (bar
+ * `navigate`) is tagged `requiresConfirmation: true`, which is what actually
+ * blocks it from running before it's been proposed in text and confirmed by
+ * a new user message — see `runAgentTurn` in ../agent.ts. The system prompt
+ * still describes the happy path, but the gate lives in code now, not just
+ * in what the model was told to do.
  */
 import { z } from "zod";
 import { createLead, getLeadById, getProperties, updateStage } from "@/lib/supabase/queries/leads.ts";
@@ -29,6 +30,7 @@ import {
 } from "@/lib/supabase/queries/installations.ts";
 import { getContractForLead, markContractSigned } from "@/lib/supabase/queries/contracts.ts";
 import { createTicket } from "@/lib/supabase/queries/service-tickets.ts";
+import { listUsers } from "@/lib/supabase/queries/users.ts";
 import { addLeadNote, NOTE_MAX_LENGTH } from "@/lib/supabase/queries/lead-notes.ts";
 import {
     composeLegacyAddress,
@@ -48,6 +50,25 @@ const TICKET_PRIORITIES: TicketPriority[] = ["low", "medium", "high"];
 
 function formatError(message: string): { error: string } {
     return { error: message };
+}
+
+/**
+ * `installations.assigned_crew_ids` has no per-element foreign key (unlike
+ * `surveys.assigned_surveyor_id`), so a hallucinated or mistyped id would
+ * otherwise write successfully and just never reach a real technician. Zod
+ * only checks "non-empty array of strings" — this is what actually confirms
+ * each id names a real, active user before the write happens.
+ */
+async function resolveCrewIds(crewIds: string[]): Promise<{ error: string } | null> {
+    const users = await listUsers();
+    const activeIds = new Set(users.filter((u) => u.isActive).map((u) => u._id));
+    const unknown = crewIds.filter((id) => !activeIds.has(id));
+    if (unknown.length > 0) {
+        return formatError(
+            `Not a recognized, active team member id: ${unknown.join(", ")}. Use get_team to find valid ids.`,
+        );
+    }
+    return null;
 }
 
 /**
@@ -540,6 +561,9 @@ export const scheduleInstallationTool: AgentTool = {
             );
         }
 
+        const crewError = await resolveCrewIds(crewIds);
+        if (crewError) return crewError;
+
         try {
             const installationId = await createInstallation({
                 leadId,
@@ -601,6 +625,11 @@ export const rescheduleInstallationTool: AgentTool = {
         const installation = await getInstallationForLead(leadId);
         if (!installation) {
             return formatError("This project has no installation scheduled yet — use schedule_installation instead.");
+        }
+
+        if (crewIds) {
+            const crewError = await resolveCrewIds(crewIds);
+            if (crewError) return crewError;
         }
 
         try {

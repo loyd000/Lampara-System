@@ -108,6 +108,11 @@ export function keysFor(
                 ["leads", "search"],
                 ["surveys", "mine"],
                 queryKeys.myInstallations,
+                // The calendar prints each event's address straight off the
+                // property row — a corrected address is invisible there
+                // otherwise. Prefix-only key: the real one is parameterised
+                // by the visible date range, which this handler never has.
+                ["calendarEvents"],
                 ...(leadId ? [queryKeys.leadProperties(leadId)] : [queryKeys.leads]),
             ];
         case "activity_log":
@@ -120,6 +125,7 @@ export function keysFor(
             return [
                 ...(leadId ? [queryKeys.surveysForLead(leadId)] : [queryKeys.surveys]),
                 ["surveys", "mine"],
+                ["calendarEvents"],
             ];
         // survey_photos rows carry no lead_id, so there is nothing to narrow to;
         // one photo upload refreshes the inspection queries wholesale — and the
@@ -159,6 +165,7 @@ export function keysFor(
                     : [queryKeys.installations]),
                 queryKeys.myInstallations,
                 queryKeys.reports,
+                ["calendarEvents"],
             ];
         case "service_tickets":
             return [
@@ -167,7 +174,9 @@ export function keysFor(
                 queryKeys.reports,
             ];
         case "users":
-            return [queryKeys.users, queryKeys.currentUser];
+            // A renamed crew member's name is baked into calendar installation
+            // events (resolved once for all rows — see calendar.ts) as well.
+            return [queryKeys.users, queryKeys.currentUser, ["calendarEvents"]];
         case "packages":
         case "package_items":
             return [queryKeys.packages];
@@ -185,9 +194,21 @@ export function useRealtimeSync(enabled: boolean) {
         // Keyed by the serialised key so repeats within one window collapse.
         const pending = new Map<string, QueryKey>();
         let flushTimer: number | undefined;
+        // Set instead of queuing individual keys when the signed-in user's
+        // own row changed (see isSelfChange below) — a role or active-state
+        // change alters what RLS lets nearly every query return, so anything
+        // short of a full reset leaves already-open pages showing data
+        // fetched under the old role until the user manually navigates.
+        let pendingFullReset = false;
 
         const flush = () => {
             flushTimer = undefined;
+            if (pendingFullReset) {
+                pendingFullReset = false;
+                pending.clear();
+                void client.invalidateQueries();
+                return;
+            }
             const keys = [...pending.values()];
             pending.clear();
             for (const queryKey of keys) client.invalidateQueries({ queryKey });
@@ -200,13 +221,33 @@ export function useRealtimeSync(enabled: boolean) {
             }
         };
 
+        const queueFullReset = () => {
+            pendingFullReset = true;
+            if (flushTimer === undefined) {
+                flushTimer = window.setTimeout(flush, COALESCE_MS);
+            }
+        };
+
+        /** True when a `users` row change is the signed-in user's own account. */
+        function isSelfChange(payload: RealtimePostgresChangesPayload<Row>): boolean {
+            const changedId = rowIdOf(payload);
+            const myId = (client.getQueryData(queryKeys.currentUser) as { _id?: string } | undefined)?._id;
+            return Boolean(changedId && myId && changedId === myId);
+        }
+
         let channel: RealtimeChannel = supabase.channel("lampara-crm");
 
         for (const table of WATCHED_TABLES) {
             channel = channel.on<Row>(
                 "postgres_changes",
                 { event: "*", schema: "public", table },
-                (payload) => queue(keysFor(table, payload)),
+                (payload) => {
+                    if (table === "users" && isSelfChange(payload)) {
+                        queueFullReset();
+                        return;
+                    }
+                    queue(keysFor(table, payload));
+                },
             );
         }
 
