@@ -174,11 +174,68 @@ async function callProxy(messages: AgentMessage[], system: string): Promise<Cont
     return body?.content ?? [];
 }
 
+/**
+ * A message's content is "plain text" if it's a bare string, or an array
+ * where every block is `type: "text"` — i.e. the model made no tool calls
+ * in that turn at all.
+ */
+function isTextOnly(content: AgentMessage["content"]): boolean {
+    if (typeof content === "string") return true;
+    return content.every((block) => block.type === "text");
+}
+
+/**
+ * Which write tools (if any) are confirmed for round 0 of *this* turn —
+ * derived entirely from the incoming history, not from separate state the
+ * hook has to remember to thread through correctly.
+ *
+ * A tool counts as confirmed only if the turn immediately before this one
+ * ended in plain text (the model described something and stopped, rather
+ * than continuing to call tools) *and* the tool_result turn immediately
+ * before that text was the specific "not confirmed yet" refusal this same
+ * loop produces below, naming that tool. That refusal is what proposing a
+ * write action actually looks like in this history: a blocked tool_use
+ * followed by the model's own plain-text description of what it just tried
+ * to do. Anything else — an empty history, the previous turn ending
+ * mid-tool-call, a stale confirmation from several turns back — yields no
+ * confirmed tools, and confirmation never carries into round 1+ of the
+ * *same* turn regardless, since by construction this is only ever computed
+ * once, from history as it stood before the current turn started.
+ */
+export function confirmedToolNames(history: AgentMessage[]): Set<string> {
+    const confirmed = new Set<string>();
+    const lastMessage = history[history.length - 1];
+    if (!lastMessage || lastMessage.role !== "assistant" || !isTextOnly(lastMessage.content)) {
+        return confirmed;
+    }
+
+    const priorMessage = history[history.length - 2];
+    if (!priorMessage || priorMessage.role !== "user" || typeof priorMessage.content === "string") {
+        return confirmed;
+    }
+
+    for (const block of priorMessage.content) {
+        if (block.type !== "tool_result") continue;
+        try {
+            const parsed = JSON.parse(block.content) as { pendingConfirmation?: unknown };
+            if (typeof parsed.pendingConfirmation === "string") confirmed.add(parsed.pendingConfirmation);
+        } catch {
+            // Not JSON, or not our shape — not a confirmation marker.
+        }
+    }
+    return confirmed;
+}
+
 export async function runAgentTurn(
     history: AgentMessage[],
     userText: string,
     ctx: AgentContext,
 ): Promise<AgentTurnResult> {
+    // Computed once, from history as it stood *before* this turn — never
+    // recomputed mid-loop, which is exactly what stops a write tool from
+    // being confirmed by anything that happens within this same turn.
+    const confirmedThisTurn = confirmedToolNames(history);
+
     const messages: AgentMessage[] = [...history, { role: "user", content: userText }];
     const system = buildSystemPrompt(ctx);
 
@@ -200,15 +257,35 @@ export async function runAgentTurn(
         const resultBlocks: ToolResultBlock[] = [];
         for (const call of toolUses) {
             const tool = AGENT_TOOLS[call.name];
-            const result = tool
-                ? await tool.run(call.input, ctx).catch((err: unknown) => ({
-                      error: err instanceof Error ? err.message : "Tool call failed",
-                  }))
-                : { error: `Unknown tool: ${call.name}` };
+
+            let result: Record<string, unknown>;
+            if (!tool) {
+                result = { error: `Unknown tool: ${call.name}` };
+            } else if (tool.requiresConfirmation && !(round === 0 && confirmedThisTurn.has(call.name))) {
+                // Blocked regardless of what the model's own arguments or
+                // reasoning claim — this is the code-enforced version of
+                // the system prompt's "describe it and wait" rule. The
+                // model's very next plain-text reply, if it names this
+                // tool again, is what `confirmedToolNames` looks for on
+                // the *following* turn.
+                result = {
+                    error:
+                        "This action has not been confirmed yet. Describe exactly what you're " +
+                        "about to do in a plain-text reply and wait for the user's next message " +
+                        "before calling this tool again — do not retry it in this same turn.",
+                    pendingConfirmation: call.name,
+                };
+            } else {
+                result = await tool.run(call.input, ctx).catch((err: unknown) => ({
+                    error: err instanceof Error ? err.message : "Tool call failed",
+                }));
+            }
+
             resultBlocks.push({
                 type: "tool_result",
                 tool_use_id: call.id,
                 content: JSON.stringify(result),
+                is_error: typeof result.error === "string" || undefined,
             });
         }
         // A tool_result turn must be role "user" and come immediately after

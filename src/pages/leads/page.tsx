@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
     Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
 } from "@/components/ui/empty.tsx";
+import { QueryError } from "@/components/query-error.tsx";
 import {
     STAGE_LABELS, STAGE_COLORS, STAGE_GROUP_LABELS,
     PROPERTY_TYPE_LABELS, DESIGN_TYPE_LABELS,
@@ -49,12 +50,13 @@ export default function LeadsPage() {
     const [debouncedSearch] = useDebounce(search, 300);
     const now = useNow();
 
-    const { data: page } = useEnrichedLeads();
-    const { data: searchResults } = useLeadSearch(debouncedSearch);
+    const { data: page, isError: pageIsError, refetch: refetchPage } = useEnrichedLeads();
+    const { data: searchResults, isError: searchIsError, refetch: refetchSearch } = useLeadSearch(debouncedSearch);
 
     const isSearching = debouncedSearch.trim().length > 1;
     const rawLeads = isSearching ? (searchResults ?? []) : (page?.leads ?? []);
     const isLoading = isSearching ? searchResults === undefined : page === undefined;
+    const isError = isSearching ? searchIsError : pageIsError;
 
     // All three of these filter the fetched page client-side rather than
     // round-tripping to the server: stage is filtered by *main* status, not
@@ -90,6 +92,15 @@ export default function LeadsPage() {
             ? `${records} — filtered from the first ${rawLeads.length} of ${total}`
             : `Showing ${rawLeads.length} of ${total} — narrow with search or filters`;
     })();
+
+    if (isError) {
+        return (
+            <QueryError
+                title="Couldn't load projects"
+                onRetry={() => { void (isSearching ? refetchSearch() : refetchPage()); }}
+            />
+        );
+    }
 
     return (
         <div className="p-6 space-y-6 max-w-7xl mx-auto">

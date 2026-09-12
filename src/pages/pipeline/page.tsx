@@ -204,7 +204,7 @@ export default function PipelinePage() {
                                                             canMoveStage={canMoveStage}
                                                             onDragStart={() => setDragging(lead._id)}
                                                             onDragEnd={() => { setDragging(null); setDragOver(null); }}
-                                                            onClick={() => navigate(`/leads/${lead._id}`)}
+                                                            onClick={() => navigate(`/projects/${lead._id}`)}
                                                             onMoveTo={(nextStage) => moveLead(lead._id, nextStage)}
                                                             isDragging={dragging === lead._id}
                                                             onTouchDragOver={canMoveStage ? setDragOver : undefined}

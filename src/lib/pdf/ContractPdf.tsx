@@ -429,8 +429,8 @@ export function ContractPdf({
                     </Text>
 
                     <View style={styles.priceBox}>
-                        <Text style={styles.priceWords}>{data.priceWords}</Text>
-                        <Text style={styles.priceFigure}>PHP {data.priceFigures}</Text>
+                        <Text style={styles.priceWords}>{data.priceWords || "____"}</Text>
+                        <Text style={styles.priceFigure}>PHP {data.priceFigures || "____"}</Text>
                     </View>
 
                     <Text style={styles.body}>

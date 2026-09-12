@@ -22,6 +22,7 @@ const CalendarPage = lazy(() => import("./pages/calendar/page.tsx"));
 const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
 const TeamPage = lazy(() => import("./pages/team/page.tsx"));
 const PackagesPage = lazy(() => import("./pages/packages/page.tsx"));
+const PipelinePage = lazy(() => import("./pages/pipeline/page.tsx"));
 
 function RouteFallback() {
     return (
@@ -51,6 +52,7 @@ export default function App() {
                                     <Route path="/calendar" element={<CalendarPage />} />
                                     <Route path="/projects" element={<LeadsPage />} />
                                     <Route path="/projects/:id" element={<LeadDetailPage />} />
+                                    <Route path="/pipeline" element={<PipelinePage />} />
                                     <Route
                                         path="/packages"
                                         element={

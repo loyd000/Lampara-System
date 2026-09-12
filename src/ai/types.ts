@@ -50,4 +50,17 @@ export type AgentToolDeclaration = {
 export type AgentTool = {
     declaration: AgentToolDeclaration;
     run: (args: Record<string, unknown>, ctx: AgentContext) => Promise<ToolResult>;
+    /**
+     * True for every tool that mutates data. The system prompt tells the
+     * model to describe the action and wait for the user's next message
+     * before calling one of these — but a prompt is not a gate, and tool
+     * *results* (a lead's notes, a survey's free-text fields, a ticket
+     * description) are exactly the kind of untrusted data an injected
+     * instruction could hide in. `agent.ts`'s loop enforces this for real:
+     * a tool with this flag only actually runs if it was already proposed,
+     * described in plain text, and confirmed by a genuinely new user
+     * message — never within the same turn it was first attempted in,
+     * regardless of what the model's own text claims. See `runAgentTurn`.
+     */
+    requiresConfirmation?: boolean;
 };

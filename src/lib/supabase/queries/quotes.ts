@@ -155,29 +155,20 @@ export type SaveQuoteArgs = {
 
 /**
  * Saves quote metadata and synchronises line items, recomputing total_php.
+ *
+ * The header update, item replacement and lead touch all happen inside one
+ * `save_quote` transaction (see 0033_atomic_save_quote.sql) — previously
+ * these were three separate calls, so a failure between the delete and the
+ * insert could leave a quote saved with zero line items. This function still
+ * owns the pricing math (clamping, rounding, defaults); the RPC only
+ * guarantees the write lands as a unit.
  */
 export async function saveQuote(args: SaveQuoteArgs): Promise<void> {
-    const current = unwrap(
-        await supabase
-            .from("quotes")
-            .select("id, lead_id, version, status")
-            .eq("id", args.quoteId)
-            .single(),
-        "Quote not found",
-    ) as { id: string; lead_id: string; version: number; status: QuoteStatus };
-
-    if (current.status === "approved") {
-        throw new Error(
-            "Approved quotes are locked. Unlock the quote to make changes.",
-        );
-    }
-
     const items = args.items.map((item, idx) => {
         const qty = Math.max(0.01, item.qty);
         const unitPrice = Math.max(0, item.unitPricePhp);
         const lineTotal = lineTotalPhp(qty, unitPrice);
         return {
-            quote_id: args.quoteId,
             description: item.description.trim() || "Item",
             qty,
             unit: item.unit.trim() || "pc",
@@ -190,36 +181,16 @@ export async function saveQuote(args: SaveQuoteArgs): Promise<void> {
 
     const grandTotal = items.reduce((acc, item) => acc + item.line_total_php, 0);
 
-    // Update quote header
-    const { error: quoteErr } = await supabase
-        .from("quotes")
-        .update({
-            total_php: grandTotal,
-            notes: args.notes ?? null,
-            valid_until: args.validUntil ?? null,
-            prepared_by_id: args.preparedById ?? null,
-        })
-        .eq("id", args.quoteId);
+    const { error } = await supabase.rpc("save_quote", {
+        p_quote_id: args.quoteId,
+        p_notes: args.notes ?? null,
+        p_valid_until: args.validUntil ?? null,
+        p_prepared_by_id: args.preparedById ?? null,
+        p_total_php: grandTotal,
+        p_items: items,
+    });
 
-    if (quoteErr) throw toAppError(quoteErr, "Failed to update quote header");
-
-    // Replace line items: delete old items, insert updated list
-    const { error: delErr } = await supabase
-        .from("quote_items")
-        .delete()
-        .eq("quote_id", args.quoteId);
-
-    if (delErr) throw toAppError(delErr, "Failed to clear previous quote items");
-
-    if (items.length > 0) {
-        const { error: insErr } = await supabase.from("quote_items").insert(items);
-        if (insErr) throw toAppError(insErr, "Failed to save quote items");
-    }
-
-    await supabase
-        .from("leads")
-        .update({ last_activity_at: new Date().toISOString() })
-        .eq("id", current.lead_id);
+    if (error) throw toAppError(error, "Failed to save quote");
 }
 
 /**

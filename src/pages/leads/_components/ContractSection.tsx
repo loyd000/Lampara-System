@@ -109,6 +109,11 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
     // number input shows a null as an empty box, but a stray 0 is just as wrong
     // in "a 0 kW-DC rated system" as no value at all.
     const needsSystemSize = !details?.systemSizeKw;
+    // Same reasoning, for the number the customer is actually signing to pay —
+    // the PDF prints "____" instead of "ZERO PESOS" when this is missing (see
+    // contract-data.ts), but that's a last line of defense, not the first
+    // place someone should notice.
+    const needsPrice = !details?.pricePhp;
 
     function updateField<K extends keyof ContractDetailsInput>(
         field: K,
@@ -362,9 +367,23 @@ export default function ContractSection({ leadId, lead, canEdit }: Props) {
                                                 />
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-[11px]">Contract Price (₱)</Label>
+                                                <Label
+                                                    className={cn(
+                                                        "text-[11px]",
+                                                        needsPrice && "text-amber-700 dark:text-amber-400 font-semibold",
+                                                    )}
+                                                >
+                                                    Contract Price (₱)
+                                                    {needsPrice && (
+                                                        <span className="ml-1 font-normal">— required</span>
+                                                    )}
+                                                </Label>
                                                 <Input
-                                                    className="h-9 text-xs"
+                                                    className={cn(
+                                                        "h-9 text-xs",
+                                                        needsPrice &&
+                                                            "border-amber-400 bg-amber-50 focus-visible:ring-amber-400/40 dark:border-amber-600 dark:bg-amber-950/30",
+                                                    )}
                                                     type="number"
                                                     inputMode="decimal"
                                                     step="0.01"

@@ -49,7 +49,10 @@ function formatContractPhp(amount: number): string {
 }
 
 export function buildContractPdfData(details: ContractDetailsInput): ContractPdfData {
-    const price = details.pricePhp ?? 0;
+    // 0 counts as missing, same reasoning as systemSizeKw below: a stray 0 is
+    // just as wrong as no value at all on a document the customer signs — it
+    // must never quietly print "ZERO PESOS" for a price nobody actually set.
+    const hasPrice = details.pricePhp != null && details.pricePhp > 0;
     const date = details.contractDate
         ? new Date(`${details.contractDate}T00:00:00`)
         : new Date();
@@ -62,8 +65,8 @@ export function buildContractPdfData(details: ContractDetailsInput): ContractPdf
         panelLine: details.panelLine,
         inverterLine: details.inverterLine,
         batteryLine: details.batteryLine,
-        priceWords: phpAmountToWords(price),
-        priceFigures: formatContractPhp(price),
+        priceWords: hasPrice ? phpAmountToWords(details.pricePhp!) : "",
+        priceFigures: hasPrice ? formatContractPhp(details.pricePhp!) : "",
         preparedByName: details.preparedByName,
         contractDate: date
             .toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })

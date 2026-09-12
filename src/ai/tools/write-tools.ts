@@ -133,6 +133,8 @@ const createProjectArgs = z.object({
 });
 
 export const createProjectTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "create_project",
         description:
@@ -251,6 +253,8 @@ const createQuoteArgs = z.object({
 });
 
 export const createQuoteTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "create_quote",
         description:
@@ -340,6 +344,8 @@ const approveQuoteArgs = z.object({
 });
 
 export const approveQuoteTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "approve_quote",
         description:
@@ -381,6 +387,8 @@ const markContractSignedArgs = z.object({
 });
 
 export const markContractSignedTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "mark_contract_signed",
         description:
@@ -424,6 +432,8 @@ const scheduleInspectionArgs = z.object({
 });
 
 export const scheduleInspectionTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "schedule_inspection",
         description:
@@ -487,6 +497,8 @@ const scheduleInstallationArgs = z.object({
 });
 
 export const scheduleInstallationTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "schedule_installation",
         description:
@@ -552,6 +564,8 @@ const rescheduleInstallationArgs = z.object({
 });
 
 export const rescheduleInstallationTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "reschedule_installation",
         description:
@@ -619,6 +633,8 @@ const createTicketArgs = z.object({
 });
 
 export const createTicketTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "create_ticket",
         description:
@@ -698,6 +714,8 @@ const addLeadNoteArgs = z.object({
 });
 
 export const addLeadNoteTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "add_lead_note",
         description:
@@ -737,6 +755,8 @@ const updateProjectStageArgs = z.object({
 });
 
 export const updateProjectStageTool: AgentTool = {
+    // Mutates data — see AgentTool.requiresConfirmation in types.ts.
+    requiresConfirmation: true,
     declaration: {
         name: "update_project_stage",
         description:

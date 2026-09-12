@@ -7,6 +7,7 @@ import {
     UserCog,
     Package,
     CalendarDays,
+    Columns3,
     Search,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
@@ -25,6 +26,7 @@ const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.userAgen
 const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "Projects", to: "/projects", icon: Users },
+    { label: "Pipeline", to: "/pipeline", icon: Columns3 },
     { label: "Calendar", to: "/calendar", icon: CalendarDays },
     { label: "Packages", to: "/packages", icon: Package, roles: ["superadmin"] },
     { label: "Team", to: "/team", icon: UserCog, roles: ["superadmin", "admin"] },

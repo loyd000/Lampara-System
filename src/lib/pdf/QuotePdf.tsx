@@ -501,7 +501,10 @@ export function QuotePdf({
                     <Text style={styles.footerText}>
                         Lampara Electrical Installation Services · {data.quotationNo}
                     </Text>
-                    <Text style={styles.footerText}>Page 1 of {hasPhotos ? "3" : "2"}</Text>
+                    <Text
+                        style={styles.footerText}
+                        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                    />
                 </View>
             </Page>
 
@@ -713,7 +716,10 @@ export function QuotePdf({
                     <Text style={styles.footerText}>
                         Lampara Electrical Installation Services · {data.quotationNo}
                     </Text>
-                    <Text style={styles.footerText}>Page 2 of {hasPhotos ? "3" : "2"}</Text>
+                    <Text
+                        style={styles.footerText}
+                        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                    />
                 </View>
             </Page>
 
@@ -767,7 +773,10 @@ export function QuotePdf({
                         <Text style={styles.footerText}>
                             Lampara Electrical Installation Services · {data.quotationNo}
                         </Text>
-                        <Text style={styles.footerText}>Page 3 of 3</Text>
+                        <Text
+                            style={styles.footerText}
+                            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                        />
                     </View>
                 </Page>
             )}

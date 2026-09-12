@@ -469,6 +469,29 @@ export type Database = {
                 Args: { p_lead_id: string; p_quote_id: string; p_notes?: string | null };
                 Returns: string;
             };
+            // Atomically replaces a quote's header + line items in one
+            // transaction (see 0033_atomic_save_quote.sql) — the client still
+            // computes totals and per-line rounding (see queries/quotes.ts),
+            // this only removes the gap between the update/delete/insert.
+            save_quote: {
+                Args: {
+                    p_quote_id: string;
+                    p_notes: string | null;
+                    p_valid_until: string | null;
+                    p_prepared_by_id: string | null;
+                    p_total_php: number;
+                    p_items: {
+                        description: string;
+                        qty: number;
+                        unit: string;
+                        unit_price_php: number;
+                        line_total_php: number;
+                        source_package_id: string | null;
+                        sort_order: number;
+                    }[];
+                };
+                Returns: undefined;
+            };
             update_contract_details: {
                 Args: {
                     p_contract_id: string;
