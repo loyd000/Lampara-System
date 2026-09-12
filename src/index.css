@@ -285,8 +285,17 @@
        Never apply to plain content surfaces. */
     .glass-nav {
         background: rgba(245, 245, 247, 0.72);
-        backdrop-filter: saturate(180%) blur(20px);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        /* Two chained filter functions behind one custom property, not a
+           literal `saturate(180%) blur(20px)` on the backdrop-filter line
+           itself — the production minifier collapses the space between
+           chained function calls (turning it into the invalid
+           `saturate(180%)blur(20px)`), which a browser silently drops the
+           whole declaration for. Splitting the value out fixed it in
+           practice; `vite build`'s output for the property below then
+           carries a single var() token instead of the literal chain. */
+        --glass-filter: saturate(180%) blur(20px);
+        backdrop-filter: var(--glass-filter);
+        -webkit-backdrop-filter: var(--glass-filter);
     }
 
     .dark .glass-nav {
@@ -298,8 +307,10 @@
        transparent than nav glass since there's no content moving under it. */
     .glass-modal {
         background: rgba(255, 255, 255, 0.82);
-        backdrop-filter: saturate(180%) blur(20px);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        /* See the comment on .glass-nav above — same minifier issue. */
+        --glass-filter: saturate(180%) blur(20px);
+        backdrop-filter: var(--glass-filter);
+        -webkit-backdrop-filter: var(--glass-filter);
     }
 
     .dark .glass-modal {
@@ -348,8 +359,10 @@
     /* Lighter touch — popovers/dropdowns/menus float over local content, not a scrim */
     .glass-popover {
         background: rgba(255, 255, 255, 0.88);
-        backdrop-filter: saturate(180%) blur(16px);
-        -webkit-backdrop-filter: saturate(180%) blur(16px);
+        /* See the comment on .glass-nav above — same minifier issue. */
+        --glass-filter: saturate(180%) blur(16px);
+        backdrop-filter: var(--glass-filter);
+        -webkit-backdrop-filter: var(--glass-filter);
     }
 
     .dark .glass-popover {
