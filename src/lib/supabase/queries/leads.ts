@@ -235,14 +235,21 @@ function toEnrichedLead(
  * `fetchApprovedDesignTypes`). Same round-trip latency as one, a fraction of
  * the rows.
  */
+export type LeadSortBy = "created_at" | "last_activity_at" | "name";
+
 export async function listEnrichedLeads(
     filters: {
         stage?: LeadStage;
         assignedSalesRepId?: Id<"users">;
         limit?: number;
+        /** Defaults to `created_at` — newest-added first. */
+        sortBy?: LeadSortBy;
+        sortDirection?: "asc" | "desc";
     } = {},
 ): Promise<PagedLeads<EnrichedLead>> {
     const limit = filters.limit ?? LEAD_LIST_LIMIT;
+    const sortBy = filters.sortBy ?? "created_at";
+    const ascending = filters.sortDirection === "asc";
 
     let query = supabase
         .from("leads")
@@ -258,11 +265,18 @@ export async function listEnrichedLeads(
         query = query.eq("assigned_sales_rep_id", filters.assignedSalesRepId);
     }
 
+    // The sort has to happen server-side, before `limit()` — a client-side
+    // re-sort of an already-limited page would silently exclude rows that
+    // the *other* order's cutoff left out (e.g. sorting by oldest-added
+    // client-side over a page limited by most-recently-active would never
+    // surface a lead that's both old and quiet).
+    query =
+        sortBy === "name"
+            ? query.order("first_name", { ascending }).order("last_name", { ascending })
+            : query.order(sortBy, { ascending });
+
     const [result, designTypesByLead] = await Promise.all([
-        query
-            .order("last_activity_at", { ascending: false })
-            .limit(limit)
-            .returns<EnrichedRow[]>(),
+        query.limit(limit).returns<EnrichedRow[]>(),
         fetchApprovedDesignTypes(),
     ]);
 

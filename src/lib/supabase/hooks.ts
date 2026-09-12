@@ -192,6 +192,8 @@ export function useEnrichedLeads(
         stage?: LeadStage;
         assignedSalesRepId?: Id<"users">;
         limit?: number;
+        sortBy?: leadsApi.LeadSortBy;
+        sortDirection?: "asc" | "desc";
     } = {},
 ) {
     return useQuery({

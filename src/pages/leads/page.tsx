@@ -14,7 +14,7 @@ import {
     PROPERTY_TYPE_LABELS, DESIGN_TYPE_LABELS,
     groupOf, type StageGroup,
 } from "@/lib/constants.ts";
-import { Plus, Search, SlidersHorizontal, AlertTriangle, User } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, ArrowUpDown, AlertTriangle, User } from "lucide-react";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
@@ -23,6 +23,26 @@ import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useNow } from "@/hooks/use-now.ts";
 import { cn } from "@/lib/utils.ts";
 import type { PackageDesignType } from "@/lib/supabase/types.ts";
+import type { LeadSortBy } from "@/lib/supabase/queries/leads.ts";
+
+/**
+ * Combines into one Select rather than a separate field+direction pair —
+ * "Newest First" reads more directly than "Date Added" + "Descending" ever
+ * would. `created_at` (newest first) is the default — the order the server
+ * fetches in when nothing else is picked.
+ */
+const SORT_OPTIONS: {
+    value: string;
+    label: string;
+    sortBy: LeadSortBy;
+    sortDirection: "asc" | "desc";
+}[] = [
+    { value: "date_desc", label: "Newest First", sortBy: "created_at", sortDirection: "desc" },
+    { value: "date_asc", label: "Oldest First", sortBy: "created_at", sortDirection: "asc" },
+    { value: "activity_desc", label: "Recently Active", sortBy: "last_activity_at", sortDirection: "desc" },
+    { value: "name_asc", label: "Name (A–Z)", sortBy: "name", sortDirection: "asc" },
+    { value: "name_desc", label: "Name (Z–A)", sortBy: "name", sortDirection: "desc" },
+];
 
 /**
  * Which breakpoint each of the seven table columns appears at, in order:
@@ -46,11 +66,16 @@ export default function LeadsPage() {
     const [stageFilter, setStageFilter] = useState<string>("all");
     const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
     const [designTypeFilter, setDesignTypeFilter] = useState<string>("all");
+    const [sortOption, setSortOption] = useState<string>("date_desc");
     const [createOpen, setCreateOpen] = useState(false);
     const [debouncedSearch] = useDebounce(search, 300);
     const now = useNow();
 
-    const { data: page, isError: pageIsError, refetch: refetchPage } = useEnrichedLeads();
+    const sort = SORT_OPTIONS.find((o) => o.value === sortOption) ?? SORT_OPTIONS[0];
+    const { data: page, isError: pageIsError, refetch: refetchPage } = useEnrichedLeads({
+        sortBy: sort.sortBy,
+        sortDirection: sort.sortDirection,
+    });
     const { data: searchResults, isError: searchIsError, refetch: refetchSearch } = useLeadSearch(debouncedSearch);
 
     const isSearching = debouncedSearch.trim().length > 1;
@@ -181,6 +206,21 @@ export default function LeadsPage() {
                         Clear filters
                     </Button>
                 )}
+                {/* A display preference, not a filter — left out of
+                    hasActiveFilters/Clear filters on purpose. Disabled while
+                    searching: search results have their own relevance-first
+                    order, which this control has no effect on. */}
+                <Select value={sortOption} onValueChange={setSortOption} disabled={isSearching}>
+                    <SelectTrigger className="w-44 bg-card ml-auto">
+                        <ArrowUpDown className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {SORT_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             {/* Table */}
