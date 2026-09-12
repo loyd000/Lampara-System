@@ -42,7 +42,7 @@ export default function ScheduleSurveyDialog({
 }: Props) {
     const { mutateAsync: scheduleSurvey } = useScheduleSurvey();
     const { data: users } = useUsers();
-    const technicians = users?.filter((u) => ["field", "admin", "superadmin"].includes(u.role)) ?? [];
+    const technicians = users?.filter((u) => u.isActive && ["field", "admin", "superadmin"].includes(u.role)) ?? [];
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),

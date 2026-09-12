@@ -47,7 +47,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
     const { data: users } = useUsers();
     // Everyone who can create a lead is admin/superadmin now — no self-hiding
     // rule like the old "sales reps only assign to themselves" behaviour.
-    const assignableReps = users?.filter(u => ["admin", "superadmin"].includes(u.role)) ?? [];
+    const assignableReps = users?.filter(u => u.isActive && ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const [phAddress, setPhAddress] = useState<PhAddressValue>(EMPTY_PH_ADDRESS);
     const [addressError, setAddressError] = useState<string | null>(null);

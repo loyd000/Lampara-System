@@ -60,7 +60,7 @@ export default function ScheduleInstallationDialog({
     const { mutateAsync: createInstallation } = useCreateInstallation();
     const { mutateAsync: rescheduleInstallation } = useRescheduleInstallation();
     const { data: users } = useUsers();
-    const crew = users?.filter((u) => ["field", "admin", "superadmin"].includes(u.role)) ?? [];
+    const crew = users?.filter((u) => u.isActive && ["field", "admin", "superadmin"].includes(u.role)) ?? [];
 
     const editing = Boolean(installation);
 

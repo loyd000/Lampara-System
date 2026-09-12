@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import {
     useCurrentUser,
-    useContractForLead,
+    useContractsForLead,
     useDeleteLead,
     useInstallationForLead,
     useLead,
@@ -130,7 +130,7 @@ export default function LeadDetailPage() {
     // here costs nothing extra and lets the tab strip carry counts.
     const { data: surveys } = useSurveysForLead(id as Id<"leads">);
     const { data: quotes } = useQuotesForLead(id as Id<"leads">);
-    const { data: contract } = useContractForLead(id as Id<"leads">);
+    const { data: contracts } = useContractsForLead(id as Id<"leads">);
     const { data: installation } = useInstallationForLead(id as Id<"leads">);
     const { data: tickets } = useTicketsForLead(id as Id<"leads">);
     // All packages, not just active ones — an approved quote can reference a
@@ -243,7 +243,7 @@ export default function LeadDetailPage() {
     const counts: Record<string, number | undefined> = {
         ocular: surveys?.length,
         quotes: quotes?.length,
-        contracts: contract ? 1 : undefined,
+        contracts: contracts?.length,
         installation: installation ? 1 : undefined,
         maintenance: openTickets.length,
     };

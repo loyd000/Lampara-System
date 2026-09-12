@@ -157,7 +157,7 @@ export function keysFor(
             ];
         }
         case "contracts":
-            return leadId ? [queryKeys.contractForLead(leadId)] : [queryKeys.contracts];
+            return leadId ? [queryKeys.contractsForLead(leadId)] : [queryKeys.contracts];
         case "installations":
             return [
                 ...(leadId

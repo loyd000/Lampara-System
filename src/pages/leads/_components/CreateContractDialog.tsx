@@ -30,8 +30,9 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
 
     async function handleCreate() {
         setCreating(true);
+        let contractId: string;
         try {
-            await createContract({ leadId, quoteId });
+            contractId = await createContract({ leadId, quoteId });
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to create contract");
             setCreating(false);
@@ -42,10 +43,12 @@ export default function CreateContractDialog({ open, onClose, leadId, quoteId }:
         setCreating(false);
         onClose();
 
-        // Switch to the Contracts tab so the user sees the new contract immediately.
+        // Switch to the Contracts tab, opened straight to this new contract —
+        // a lead can carry more than one now, one per quote version.
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
             next.set("tab", "contracts");
+            next.set("contract", contractId);
             next.delete("quote");
             return next;
         });

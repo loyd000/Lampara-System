@@ -28,7 +28,7 @@ import {
     getInstallationForLead,
     rescheduleInstallation,
 } from "@/lib/supabase/queries/installations.ts";
-import { getContractForLead, markContractSigned } from "@/lib/supabase/queries/contracts.ts";
+import { listContractsForLead, markContractSigned } from "@/lib/supabase/queries/contracts.ts";
 import { createTicket } from "@/lib/supabase/queries/service-tickets.ts";
 import { listUsers } from "@/lib/supabase/queries/users.ts";
 import { addLeadNote, NOTE_MAX_LENGTH } from "@/lib/supabase/queries/lead-notes.ts";
@@ -430,12 +430,17 @@ export const markContractSignedTool: AgentTool = {
         if (!parsed.success) return formatError(parsed.error.message);
         const leadId = parsed.data.projectId as Id<"leads">;
 
-        const contract = await getContractForLead(leadId);
-        if (!contract) return formatError("This project has no contract yet — one has to be created in the app first.");
-        if (contract.status === "signed") return formatError("This contract is already marked signed.");
+        const contracts = await listContractsForLead(leadId);
+        if (contracts.length === 0) return formatError("This project has no contract yet — one has to be created in the app first.");
+        // A project can have one contract per quote version now — the one
+        // actually awaiting a signature is what "sign the contract" means
+        // when there's more than one (e.g. an earlier quote's already signed,
+        // a revised quote's is now pending).
+        const pending = contracts.find((c) => c.status === "pending_signature");
+        if (!pending) return formatError("No contract for this project is awaiting a signature.");
 
         try {
-            await markContractSigned({ contractId: contract._id as Id<"contracts"> });
+            await markContractSigned({ contractId: pending._id as Id<"contracts"> });
             return { navigateTo: `/projects/${leadId}` };
         } catch (err) {
             return formatError(err instanceof Error ? err.message : "Failed to mark the contract signed.");

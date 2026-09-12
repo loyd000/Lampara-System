@@ -75,7 +75,7 @@ export const queryKeys = {
     quoteWithItems: (quoteId: string) => ["quotes", "detail", quoteId] as const,
 
     contracts: ["contracts"] as const,
-    contractForLead: (leadId: string) => ["contracts", "lead", leadId] as const,
+    contractsForLead: (leadId: string) => ["contracts", "lead", leadId] as const,
 
 
     installations: ["installations"] as const,
@@ -578,10 +578,10 @@ export function useDeleteQuote() {
 
 // ─── Contracts ────────────────────────────────────────────────────────────
 
-export function useContractForLead(leadId: Id<"leads"> | undefined) {
+export function useContractsForLead(leadId: Id<"leads"> | undefined) {
     return useQuery({
-        queryKey: queryKeys.contractForLead(leadId ?? ""),
-        queryFn: () => contractsApi.getContractForLead(leadId!),
+        queryKey: queryKeys.contractsForLead(leadId ?? ""),
+        queryFn: () => contractsApi.listContractsForLead(leadId!),
         enabled: !!leadId,
     });
 }
@@ -604,19 +604,6 @@ export function useMarkContractSigned() {
     const client = useQueryClient();
     return useMutation({
         mutationFn: contractsApi.markContractSigned,
-        onSuccess: () =>
-            Promise.all([
-                client.invalidateQueries({ queryKey: queryKeys.contracts }),
-                client.invalidateQueries({ queryKey: queryKeys.leads }),
-                invalidatePipeline(client),
-            ]),
-    });
-}
-
-export function useMarkContractCancelled() {
-    const client = useQueryClient();
-    return useMutation({
-        mutationFn: contractsApi.markContractCancelled,
         onSuccess: () =>
             Promise.all([
                 client.invalidateQueries({ queryKey: queryKeys.contracts }),

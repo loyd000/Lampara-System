@@ -69,7 +69,7 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
     const { mutateAsync: updateLead } = useUpdateLead();
     const { mutateAsync: updateProperty } = useUpdateProperty();
     const { data: users } = useUsers();
-    const assignableReps = users?.filter((u) => ["admin", "superadmin"].includes(u.role)) ?? [];
+    const assignableReps = users?.filter((u) => u.isActive && ["admin", "superadmin"].includes(u.role)) ?? [];
 
     const [phAddress, setPhAddress] = useState<PhAddressValue>(() => phAddressFromProperty(property));
     const [addressError, setAddressError] = useState<string | null>(null);

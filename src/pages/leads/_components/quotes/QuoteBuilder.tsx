@@ -93,7 +93,8 @@ export default function QuoteBuilder({
     canEdit: boolean;
 }) {
     const { data: currentUser } = useCurrentUser();
-    const { data: users } = useUsers();
+    const { data: allUsers } = useUsers();
+    const users = allUsers?.filter((u) => u.isActive);
 
     const { mutateAsync: saveQuote, isPending: saving } = useSaveQuote();
     const { mutateAsync: approveQuote, isPending: approving } = useApproveQuote();

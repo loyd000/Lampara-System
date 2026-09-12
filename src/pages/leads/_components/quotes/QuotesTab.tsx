@@ -10,7 +10,7 @@ import {
 import { toast } from "sonner";
 
 import {
-    useContractForLead,
+    useContractsForLead,
     useCreateQuote,
     useDeleteQuote,
     useQuotesForLead,
@@ -51,7 +51,7 @@ export default function QuotesTab({
 }) {
     const leadId = lead._id as Id<"leads">;
     const { data: quotes, isLoading } = useQuotesForLead(leadId);
-    const { data: contract } = useContractForLead(leadId);
+    const { data: contracts } = useContractsForLead(leadId);
     const { mutateAsync: createQuote, isPending: creating } = useCreateQuote();
     const { mutateAsync: deleteQuote, isPending: deletingSingle } = useDeleteQuote();
 
@@ -253,14 +253,21 @@ export default function QuotesTab({
                                         />
 
                                         {isApproved && canEdit && (
-                                            contract ? (
-                                                contract.quoteId === q._id ? (
+                                            // Contracts are one-per-quote-version now, so
+                                            // each row looks up its own, not "the" lead-wide
+                                            // contract — a revised quote can get a fresh one
+                                            // without disturbing an earlier version's.
+                                            (() => {
+                                                const quoteContract = contracts?.find(
+                                                    (c) => c.quoteId === q._id,
+                                                );
+                                                return quoteContract ? (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         className={cn(
                                                             "h-8 text-xs font-medium",
-                                                            contract.status === "cancelled"
+                                                            quoteContract.status === "cancelled"
                                                                 ? "text-muted-foreground bg-muted/40 hover:bg-muted/70 border-muted"
                                                                 : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-300 dark:text-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-800",
                                                         )}
@@ -268,34 +275,31 @@ export default function QuotesTab({
                                                             setSearchParams((prev) => {
                                                                 const next = new URLSearchParams(prev);
                                                                 next.set("tab", "contracts");
+                                                                next.set("contract", quoteContract._id);
                                                                 next.delete("quote");
                                                                 return next;
                                                             });
                                                         }}
                                                     >
                                                         <FileBadge2 className="w-3 h-3 mr-1" />
-                                                        {contract.status === "cancelled"
+                                                        {quoteContract.status === "cancelled"
                                                             ? "Cancelled Contract"
                                                             : "View Contract"}
                                                     </Button>
                                                 ) : (
-                                                    <Badge variant="outline" className="text-muted-foreground">
-                                                        Contract on v{contract.quoteVersion}
-                                                    </Badge>
-                                                )
-                                            ) : (
-                                                <Button
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    className="h-8 text-xs"
-                                                    onClick={() =>
-                                                        setContractQuoteId(q._id as Id<"quotes">)
-                                                    }
-                                                >
-                                                    <FileBadge2 className="w-3 h-3 mr-1" />
-                                                    Create Contract
-                                                </Button>
-                                            )
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        className="h-8 text-xs"
+                                                        onClick={() =>
+                                                            setContractQuoteId(q._id as Id<"quotes">)
+                                                        }
+                                                    >
+                                                        <FileBadge2 className="w-3 h-3 mr-1" />
+                                                        Create Contract
+                                                    </Button>
+                                                );
+                                            })()
                                         )}
 
                                         {canEdit && (

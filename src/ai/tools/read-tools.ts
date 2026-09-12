@@ -15,7 +15,7 @@ import { z } from "zod";
 import { getLeadById, getProperties, listEnrichedLeads, searchLeads } from "@/lib/supabase/queries/leads.ts";
 import { listQuotesForLead } from "@/lib/supabase/queries/quotes.ts";
 import { getInstallationForLead } from "@/lib/supabase/queries/installations.ts";
-import { getContractForLead } from "@/lib/supabase/queries/contracts.ts";
+import { listContractsForLead } from "@/lib/supabase/queries/contracts.ts";
 import { listCalendarEvents } from "@/lib/supabase/queries/calendar.ts";
 import { listActivePackages } from "@/lib/supabase/queries/packages.ts";
 import { listUsers } from "@/lib/supabase/queries/users.ts";
@@ -301,9 +301,10 @@ export const getContractTool: AgentTool = {
     declaration: {
         name: "get_contract",
         description:
-            "A project's contract status — pending signature, signed (with " +
-            "date), or cancelled — and which quote it's based on. Useful for " +
-            "explaining why schedule_installation is or isn't available yet.",
+            "A project's contracts — one per quote version it was ever " +
+            "generated from, newest first, each with its own status (pending " +
+            "signature, signed with date, or cancelled). Useful for explaining " +
+            "why schedule_installation is or isn't available yet.",
         input_schema: {
             type: "object",
             properties: {
@@ -316,15 +317,17 @@ export const getContractTool: AgentTool = {
         const parsed = getContractArgs.safeParse(rawArgs);
         if (!parsed.success) return formatError(parsed.error.message);
 
-        const contract = await getContractForLead(parsed.data.projectId as Id<"leads">);
-        if (!contract) return { exists: false };
+        const contracts = await listContractsForLead(parsed.data.projectId as Id<"leads">);
+        if (contracts.length === 0) return { exists: false };
 
         return {
             exists: true,
-            status: contract.status,
-            signedAt: contract.signedAt ?? null,
-            quoteVersion: contract.quoteVersion,
-            systemSizeKw: contract.systemSizeKw ?? null,
+            contracts: contracts.map((contract) => ({
+                status: contract.status,
+                signedAt: contract.signedAt ?? null,
+                quoteVersion: contract.quoteVersion,
+                systemSizeKw: contract.systemSizeKw ?? null,
+            })),
         };
     },
 };

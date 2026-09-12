@@ -7,61 +7,66 @@ import { toContract, type ContractDetail, type Id } from "../types.ts";
 import { logActivity } from "./leads.ts";
 import { notifyEvent } from "./notifications.ts";
 
-export async function getContractForLead(
+/**
+ * Every contract ever generated for a lead — one per quote version it was
+ * created from (see 0038_multiple_contracts_per_lead.sql), newest first.
+ * Signing one has no effect on the others; each keeps its own status.
+ */
+export async function listContractsForLead(
     leadId: Id<"leads">,
-): Promise<ContractDetail | null> {
+): Promise<ContractDetail[]> {
     const { data, error } = await supabase
         .from("contracts")
         .select("*, quotes!contracts_quote_id_fkey(version)")
         .eq("lead_id", leadId)
-        .maybeSingle<ContractRow & { quotes: { version: number } | null }>();
+        .order("created_at", { ascending: false })
+        .returns<(ContractRow & { quotes: { version: number } | null })[]>();
 
     if (error) {
-        // Fallback: if relationship embedding fails, query contracts plain and fetch quote separately
-        const { data: fallbackData, error: fallbackError } = await supabase
+        // Fallback: if relationship embedding fails, query contracts plain and fetch quotes separately.
+        const { data: fallbackRows, error: fallbackError } = await supabase
             .from("contracts")
             .select("*")
             .eq("lead_id", leadId)
-            .maybeSingle<ContractRow>();
+            .order("created_at", { ascending: false })
+            .returns<ContractRow[]>();
 
-        if (fallbackError) throw toAppError(fallbackError, "Failed to load contract");
-        if (!fallbackData) return null;
+        if (fallbackError) throw toAppError(fallbackError, "Failed to load contracts");
+        const rows = fallbackRows ?? [];
 
-        let quoteVersion: number | null = null;
-        if (fallbackData.quote_id) {
-            const { data: quoteData } = await supabase
-                .from("quotes")
-                .select("version")
-                .eq("id", fallbackData.quote_id)
-                .maybeSingle<{ version: number }>();
-            quoteVersion = quoteData?.version ?? null;
-        }
+        const quoteIds = [...new Set(rows.map((r) => r.quote_id))];
+        const { data: quoteRows } = quoteIds.length
+            ? await supabase.from("quotes").select("id, version").in("id", quoteIds)
+            : { data: [] as { id: string; version: number }[] };
+        const versionById = new Map((quoteRows ?? []).map((q) => [q.id, q.version]));
 
-        return {
-            ...toContract(fallbackData),
-            documentUrl: await signedUrl("documents", fallbackData.document_path),
-            quoteVersion,
-        };
+        return Promise.all(
+            rows.map(async (row) => ({
+                ...toContract(row),
+                documentUrl: await signedUrl("documents", row.document_path),
+                quoteVersion: versionById.get(row.quote_id) ?? null,
+            })),
+        );
     }
 
-    if (!data) return null;
-
-    return {
-        ...toContract(data),
-        documentUrl: await signedUrl("documents", data.document_path),
-        quoteVersion: data.quotes?.version ?? null,
-    };
+    return Promise.all(
+        (data ?? []).map(async (row) => ({
+            ...toContract(row),
+            documentUrl: await signedUrl("documents", row.document_path),
+            quoteVersion: row.quotes?.version ?? null,
+        })),
+    );
 }
 
 /**
- * Creates the single contract for a lead and accepts the quote it is based on.
+ * Creates a contract for a lead's quote and accepts that quote.
  * The lead's stage does not move here — it moves when the contract is signed.
  *
  * All three in one transaction: previously the quote was flipped to `accepted`
  * before the contract insert, so a failed insert left a quote marked accepted
- * with no contract behind it. "One contract per lead" is enforced by the
- * `lead_id` unique constraint, which the function translates into a readable
- * message.
+ * with no contract behind it. "One contract per quote version" is enforced by
+ * the `quote_id` unique constraint, which the function translates into a
+ * readable message.
  */
 export async function createContract(args: {
     leadId: Id<"leads">;
@@ -111,28 +116,6 @@ export async function markContractSigned(args: {
             recipientUserIds: [repId],
         });
     }
-}
-
-export async function markContractCancelled(args: {
-    contractId: Id<"contracts">;
-}): Promise<void> {
-    const contract = unwrap(
-        await supabase.from("contracts").select("lead_id").eq("id", args.contractId).single(),
-        "Contract not found",
-    ) as { lead_id: string };
-
-    const { error } = await supabase
-        .from("contracts")
-        .update({ status: "cancelled" })
-        .eq("id", args.contractId);
-    if (error) throw toAppError(error, "Failed to cancel contract");
-
-    await logActivity({
-        leadId: contract.lead_id,
-        action: "Contract cancelled",
-        entityType: "contract",
-        entityId: args.contractId,
-    });
 }
 
 /** Uploads to the private `documents` bucket and records the path on the row. */
