@@ -144,7 +144,13 @@ export default function OcularInspectionTab({
         // Admins and the assigned technician share one editable report. The
         // legacy status column is retained for existing rows, but no longer
         // gates editing or requires an approval handoff.
-        const editable = active.status !== "cancelled" && (canSchedule || isAssignedTech);
+        const canWork = active.status !== "cancelled" && (canSchedule || isAssignedTech);
+        // A completed report is locked — the fields and photos stop taking
+        // edits until someone with canWork reopens it via the action below.
+        // `canWork` itself stays completion-independent: it's what the
+        // Complete/Reopen toggle uses, and it has to remain true on a
+        // completed report or nobody could ever click Reopen again.
+        const editable = canWork && !active.completedAt;
 
         return (
             <div className="space-y-4">
@@ -163,7 +169,7 @@ export default function OcularInspectionTab({
                     lead={lead}
                     property={property}
                     canSchedule={canSchedule}
-                    editable={editable}
+                    canWork={canWork}
                     onDeleted={() => openReport(null)}
                 />
 
@@ -427,7 +433,7 @@ function StatusBar({
     lead,
     property,
     canSchedule,
-    editable,
+    canWork,
     onDeleted,
 }: {
     survey: SurveyForLead;
@@ -437,8 +443,11 @@ function StatusBar({
     /**
      * Admin staff *or* the assigned technician — completing a visit is the
      * technician's call to make, not something they wait on the office for.
+     * Deliberately independent of `completedAt`: the Complete/Reopen toggle
+     * below is the one action that has to stay available on a completed
+     * report, or there would be no way back to editable.
      */
-    editable: boolean;
+    canWork: boolean;
     /** Deleting removes the report entirely, so the view goes back to the list. */
     onDeleted: () => void;
 }) {
@@ -497,7 +506,7 @@ function StatusBar({
 
                     <div className="flex flex-wrap items-center gap-1.5">
                         <DownloadReportButton survey={survey} lead={lead} property={property} />
-                        {editable && (
+                        {canWork && (
                             <Button
                                 size="sm"
                                 variant={survey.completedAt ? "ghost" : "default"}
