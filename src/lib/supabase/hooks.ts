@@ -56,6 +56,7 @@ export const queryKeys = {
     lead: (id: string) => ["leads", "detail", id] as const,
     leadProperties: (id: string) => ["leads", "properties", id] as const,
     leadActivity: (id: string) => ["leads", "activity", id] as const,
+    recentActivity: (limit: number) => ["leads", "activity", "recent", limit] as const,
     leadSearch: (q: string) => ["leads", "search", q] as const,
     ticketSearch: (q: string) => ["service_tickets", "search", q] as const,
 
@@ -223,6 +224,14 @@ export function useLeadActivity(leadId: Id<"leads"> | undefined) {
         queryKey: queryKeys.leadActivity(leadId ?? ""),
         queryFn: () => leadsApi.getActivity(leadId!),
         enabled: !!leadId,
+    });
+}
+
+/** Cross-project activity feed — see `listRecentActivity`. Powers the dashboard. */
+export function useRecentActivity(limit: number) {
+    return useQuery({
+        queryKey: queryKeys.recentActivity(limit),
+        queryFn: () => leadsApi.listRecentActivity(limit),
     });
 }
 

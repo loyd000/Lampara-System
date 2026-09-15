@@ -23,6 +23,7 @@ import {
     type Lead,
     type LeadDetail,
     type Property,
+    type RecentActivityEntry,
 } from "../types.ts";
 
 const LEAD_COLUMNS = "*";
@@ -334,6 +335,40 @@ export async function getActivity(leadId: Id<"leads">): Promise<ActivityEntry[]>
     return rows.map((row) => ({
         ...toActivityLogEntry(row),
         userName: displayName(row.users),
+    }));
+}
+
+/**
+ * Recent activity across every project the signed-in user can see — the
+ * same rows `getActivity` reads per-lead (RLS-scoped by `can_see_lead`
+ * exactly the same way), just not filtered to one `lead_id`. Powers the
+ * dashboard's activity feed: an ocular inspection completed, a quote
+ * approved, a contract signed, a stage move — whatever the various write
+ * paths already log, company-wide instead of one project at a time.
+ */
+export async function listRecentActivity(limit: number): Promise<RecentActivityEntry[]> {
+    const rows = unwrap(
+        await supabase
+            .from("activity_log")
+            .select("*, users(name, email), leads(first_name, last_name)")
+            .order("created_at", { ascending: false })
+            .limit(limit)
+            .returns<
+                (ActivityLogRow & {
+                    users: NameOnly;
+                    leads: { first_name: string; last_name: string } | null;
+                })[]
+            >(),
+        "Failed to load recent activity",
+    );
+
+    return rows.map((row) => ({
+        ...toActivityLogEntry(row),
+        userName: displayName(row.users),
+        // Null only if the lead itself was since deleted — activity_log rows
+        // cascade with it, so this is a narrow race (fetched just before a
+        // concurrent delete commits), not a routine case worth its own copy.
+        leadName: row.leads ? `${row.leads.first_name} ${row.leads.last_name}` : "Deleted project",
     }));
 }
 

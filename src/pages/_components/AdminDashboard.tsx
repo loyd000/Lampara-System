@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { addDays, format } from "date-fns";
 
-import { useCalendarEvents, useLeads, usePipelineSummary } from "@/lib/supabase/hooks.ts";
+import { useCalendarEvents, useLeads, usePipelineSummary, useRecentActivity } from "@/lib/supabase/hooks.ts";
 import type { CalendarEvent } from "@/lib/supabase/queries/calendar.ts";
 import type { Doc } from "@/lib/supabase/types.ts";
 
@@ -13,11 +13,14 @@ const RECENT_LEAD_COUNT = 6;
 const UPCOMING_DAYS_AHEAD = 6;
 /** How many of those events it actually lists — a peek, not the calendar. */
 const UPCOMING_SHOWN = 4;
+/** The activity feed is a peek too, not the full audit trail. */
+const RECENT_ACTIVITY_COUNT = 10;
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
 import {
     Users, TrendingUp, ClipboardList, SunMedium, CalendarDays, ClipboardCheck, Wrench,
+    FileBadge2, Activity,
 } from "lucide-react";
 import { STAGE_LABELS, STAGE_COLORS } from "@/lib/constants.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -31,6 +34,27 @@ const EVENT_KIND_STYLES: Record<CalendarEvent["kind"], string> = {
 
 function eventTab(event: CalendarEvent): string {
     return event.kind === "inspection" ? "ocular" : "installation";
+}
+
+/** One icon per `activity_log.entity_type` — matches the iconography the
+ * rest of the dashboard/tabs already use for the same kind of record. */
+const ACTIVITY_ICONS: Record<string, typeof Activity> = {
+    lead: Users,
+    survey: ClipboardCheck,
+    quote: ClipboardList,
+    contract: FileBadge2,
+    installation: Wrench,
+};
+
+/** Which project tab an activity entry's own record actually lives on. */
+function activityTab(entityType: string | undefined): string | null {
+    switch (entityType) {
+        case "survey": return "ocular";
+        case "quote": return "quotes";
+        case "contract": return "contracts";
+        case "installation": return "installation";
+        default: return null;
+    }
 }
 
 type Props = { user: Doc<"users"> };
@@ -53,15 +77,18 @@ export default function AdminDashboard({ user }: Props) {
     // admin/superadmin viewer (the only roles this dashboard renders for)
     // gets the whole company's board, which is the point of a dashboard peek.
     const calendarQuery = useCalendarEvents(calendarRange);
+    const activityQuery = useRecentActivity(RECENT_ACTIVITY_COUNT);
 
     const { data: pipeline } = pipelineQuery;
     const { data: recentLeads } = leadsQuery;
     const { data: calendarEvents } = calendarQuery;
+    const { data: recentActivity } = activityQuery;
     const navigate = useNavigate();
 
-    if (pipelineQuery.isError || leadsQuery.isError || calendarQuery.isError) {
+    if (pipelineQuery.isError || leadsQuery.isError || calendarQuery.isError || activityQuery.isError) {
         return <QueryError title="Couldn't load your dashboard" onRetry={() => {
             void pipelineQuery.refetch(); void leadsQuery.refetch(); void calendarQuery.refetch();
+            void activityQuery.refetch();
         }} />;
     }
 
@@ -220,6 +247,57 @@ export default function AdminDashboard({ user }: Props) {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Recent Activity — a chronological feed across every project
+                    (an ocular report completed, a quote approved, a contract
+                    signed, an installation marked done…), not one project's
+                    own timeline at a time the way its Overview tab already is. */}
+                <Card className="lg:col-span-3">
+                    <CardHeader className="pb-3 border-b">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-muted-foreground" />
+                            Recent Activity
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {activityQuery.isPending ? (
+                            <div className="px-6 py-4 space-y-2">
+                                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                            </div>
+                        ) : (recentActivity ?? []).length === 0 ? (
+                            <p className="px-6 py-8 text-muted-foreground text-sm">
+                                Nothing yet — activity shows up here as the team works projects.
+                            </p>
+                        ) : (
+                            <ul className="divide-y">
+                                {(recentActivity ?? []).map((entry) => {
+                                    const Icon = ACTIVITY_ICONS[entry.entityType ?? ""] ?? Activity;
+                                    const tab = activityTab(entry.entityType);
+                                    return (
+                                        <li
+                                            key={entry._id}
+                                            className="flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                                            onClick={() => navigate(`/projects/${entry.leadId}${tab ? `?tab=${tab}` : ""}`)}
+                                        >
+                                            <div className="mt-0.5 flex items-center justify-center rounded-md size-7 shrink-0 bg-muted text-muted-foreground">
+                                                <Icon className="size-3.5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm truncate">
+                                                    <span className="font-medium text-foreground">{entry.action}</span>
+                                                    <span className="text-muted-foreground"> · {entry.leadName}</span>
+                                                </p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {entry.userName} · {timeAgo(entry._creationTime)}
+                                                </p>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
@@ -250,7 +328,7 @@ function getGreeting() {
     return "evening";
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string | number) {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 60) return `${mins}m ago`;

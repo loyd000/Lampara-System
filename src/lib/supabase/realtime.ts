@@ -116,7 +116,15 @@ export function keysFor(
                 ...(leadId ? [queryKeys.leadProperties(leadId)] : [queryKeys.leads]),
             ];
         case "activity_log":
-            return leadId ? [queryKeys.leadActivity(leadId)] : [queryKeys.leads];
+            return [
+                ...(leadId ? [queryKeys.leadActivity(leadId)] : [queryKeys.leads]),
+                // Prefix-only: the real key is parameterised by the feed's
+                // row limit, which this handler never has. The dashboard's
+                // cross-project feed reads this table too, not just one
+                // lead's timeline — almost every row carries a leadId, so
+                // without this the feed would rarely refresh live.
+                ["leads", "activity", "recent"],
+            ];
         case "lead_notes":
             return leadId ? [queryKeys.leadNotesForLead(leadId)] : [queryKeys.leadNotes];
         case "lead_files":

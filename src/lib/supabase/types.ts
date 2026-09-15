@@ -451,6 +451,9 @@ export type LeadDetail = Lead & { assignedRepName: string | null };
 
 export type ActivityEntry = ActivityLogEntry & { userName: string };
 
+/** Same shape, for a feed spanning every project rather than one. */
+export type RecentActivityEntry = ActivityEntry & { leadName: string };
+
 export type LeadNoteEntry = LeadNote & {
     authorName: string;
     /** True when the signed-in user wrote it, so the UI can offer Edit. */
