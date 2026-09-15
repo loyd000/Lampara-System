@@ -6,7 +6,7 @@ const urlsToCache = [
     OFFLINE_URL,
     // The icon site.webmanifest actually points at — cached so the OS can
     // still resolve the installed app's icon with no connectivity.
-    "/lampara-icon-white.png",
+    "/icon/app-icon-512.png",
     "/site.webmanifest",
 ];
 

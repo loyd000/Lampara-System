@@ -9,7 +9,7 @@
     <meta name="description" content="Lampara — Solar Installation CRM for managing your pipeline from inquiry to installation." />
     <meta name="author" content="Lampara" />
     <link rel="icon" href="/icon/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/lampara-icon.png" type="image/png" />
+    <link rel="icon" href="/icon/app-icon-512.png" type="image/png" />
     <meta property="og:title" content="Lampara CRM" />
     <meta property="og:description" content="Solar Installation CRM — manage leads, surveys, quotes, permits, and installations in one place." />
     <meta property="og:type" content="website" />
@@ -24,15 +24,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Lampara" />
     <!--
-      White, not the plain black lampara-icon.png the in-app <img> tags use
-      (those get a `dark:invert` CSS filter at render time — icons in a
-      manifest/home-screen slot don't get CSS applied to them, so whichever
-      color is baked into the file is what's shown, on whatever wallpaper
-      the user has). Black-on-transparent was invisible against a dark
-      wallpaper, which is also why theme_color/background_color below are
-      already dark — the PWA is designed dark-first.
+      A solid Apple-Blue background baked into the PNG itself, not the plain
+      transparent lampara-icon.png/lampara-icon-white.png the in-app <img>
+      tags use (those get a `dark:invert` CSS filter at render time — icons
+      in a manifest/home-screen/favicon slot don't get CSS applied to them,
+      so a transparent mark is invisible on whatever background — wallpaper,
+      browser tab, launcher — happens to be behind it, light or dark). See
+      public/icon/app-icon-512.png and favicon.svg, also used below in
+      site.webmanifest.
     -->
-    <link rel="apple-touch-icon" href="/lampara-icon-white.png" />
+    <link rel="apple-touch-icon" href="/icon/app-icon-512.png" />
 
     <!--
       iOS launch splash screens. Unlike Android, iOS generates nothing from the
