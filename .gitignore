@@ -36,3 +36,6 @@ ocular-report-preview.pdf
 
 # Supabase CLI scratch, written by `supabase link` — machine-local, not shared
 supabase/.temp/
+
+# Playwright MCP's own screenshot/snapshot output — tool scratch, not project files
+.playwright-mcp/
