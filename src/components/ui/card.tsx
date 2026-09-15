@@ -28,9 +28,14 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+/** Renders as a real heading element (h2 by default, matching this app's
+ * existing "h1 page title, h2 section titles" convention) so screen-reader
+ * users can navigate between card sections by heading, not just by scanning
+ * styled text. Pass `level` for a card nested under another card's heading. */
+function CardTitle({ className, level = 2, ...props }: React.ComponentProps<"h2"> & { level?: 2 | 3 | 4 }) {
+    const Heading = `h${level}` as `h${typeof level}`;
     return (
-        <div
+        <Heading
             data-slot="card-title"
             className={cn("text-base font-semibold tracking-tight text-foreground leading-snug", className)}
             {...props}

@@ -57,7 +57,8 @@
       "headline": { "displayName": "Headline", "purpose": "Every page's own <h1>. Identical everywhere on purpose — a page never invents its own hero size." },
       "title": { "displayName": "Title", "purpose": "Card and section titles." },
       "body": { "displayName": "Body", "purpose": "Default running text size across the whole app — table cells, inputs, most copy." },
-      "label": { "displayName": "Label", "purpose": "Column headers, section eyebrows, and status/stage badge text." }
+      "label": { "displayName": "Label", "purpose": "Column headers, section eyebrows, and status/stage badge text." },
+      "stat": { "displayName": "Stat", "purpose": "Large glanceable numerals in a dashboard stat tile. Deliberately close to Headline's 28px but a separate role — data being scanned, not a page title." }
     },
     "shadows": [
       { "name": "2xs", "value": "0 1px 2px rgba(0,0,0,0.04)", "purpose": "Default resting shadow for most content cards." },

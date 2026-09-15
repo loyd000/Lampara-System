@@ -20,11 +20,11 @@ import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
 import {
     Users, TrendingUp, ClipboardList, SunMedium, CalendarDays, ClipboardCheck, Wrench,
-    FileBadge2, Activity,
+    FileBadge2, Activity, MessageSquare, Paperclip, ShieldCheck,
 } from "lucide-react";
 import { STAGE_LABELS, STAGE_COLORS } from "@/lib/constants.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { QueryError } from "@/components/query-error.tsx";
+import { InlineQueryError } from "@/components/query-error.tsx";
 import { cn } from "@/lib/utils.ts";
 
 const EVENT_KIND_STYLES: Record<CalendarEvent["kind"], string> = {
@@ -36,23 +36,60 @@ function eventTab(event: CalendarEvent): string {
     return event.kind === "inspection" ? "ocular" : "installation";
 }
 
-/** One icon per `activity_log.entity_type` — matches the iconography the
- * rest of the dashboard/tabs already use for the same kind of record. */
+/** Rows below are `role="button"` divs/tr/li rather than real `<button>`s
+ * (a button can't wrap a `<tr>`, and these need block-level row layout) —
+ * this fires the same action on Enter/Space so they're keyboard-operable too. */
+function onActivateKey(action: () => void) {
+    return (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            action();
+        }
+    };
+}
+
+/** One icon per real `activity_log.entity_type` value (8 total — checked
+ * against every `entityType:` the query layer actually logs) — matches the
+ * iconography the rest of the dashboard/tabs already use for the same kind
+ * of record: `MessageSquare` mirrors LeadNotes's own icon, `Paperclip`
+ * mirrors LeadFiles's, `ShieldCheck` mirrors ServiceTicketsSection's warranty
+ * icon (kept distinct from `installation`'s `Wrench` so the two don't read
+ * as the same event in the feed). */
 const ACTIVITY_ICONS: Record<string, typeof Activity> = {
     lead: Users,
     survey: ClipboardCheck,
     quote: ClipboardList,
     contract: FileBadge2,
     installation: Wrench,
+    leadNote: MessageSquare,
+    leadFile: Paperclip,
+    serviceTicket: ShieldCheck,
 };
 
-/** Which project tab an activity entry's own record actually lives on. */
+/** Screen-reader label for the icon above — kept separate from the icon map
+ * so a missing/unmapped entity type still gets a sensible spoken name. */
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+    lead: "Lead",
+    survey: "Survey",
+    quote: "Quote",
+    contract: "Contract",
+    installation: "Installation",
+    leadNote: "Note",
+    leadFile: "File",
+    serviceTicket: "Service ticket",
+};
+
+/** Which project tab an activity entry's own record actually lives on.
+ * Notes/files render inside the Overview tab's sticky sidebar (no tab of
+ * their own — same as `lead`'s own activities, so both fall to the page's
+ * default), and service tickets live on the Maintenance tab. */
 function activityTab(entityType: string | undefined): string | null {
     switch (entityType) {
         case "survey": return "ocular";
         case "quote": return "quotes";
         case "contract": return "contracts";
         case "installation": return "installation";
+        case "serviceTicket": return "maintenance";
         default: return null;
     }
 }
@@ -85,13 +122,10 @@ export default function AdminDashboard({ user }: Props) {
     const { data: recentActivity } = activityQuery;
     const navigate = useNavigate();
 
-    if (pipelineQuery.isError || leadsQuery.isError || calendarQuery.isError || activityQuery.isError) {
-        return <QueryError title="Couldn't load your dashboard" onRetry={() => {
-            void pipelineQuery.refetch(); void leadsQuery.refetch(); void calendarQuery.refetch();
-            void activityQuery.refetch();
-        }} />;
-    }
-
+    // No single query below is load-bearing for the whole page — the four
+    // panels are independent peeks, so each handles its own error inline
+    // (`InlineQueryError`) instead of one failed query blanking the other
+    // three that loaded fine.
     const byStage = pipeline?.stageCounts ?? {};
     const countIn = (...stages: string[]) =>
         stages.reduce((sum, stage) => sum + (byStage[stage] ?? 0), 0);
@@ -135,12 +169,18 @@ export default function AdminDashboard({ user }: Props) {
 
             {/* Stat line — one unified panel, hairline-separated, not fragmented cards */}
             <Card className="py-0">
-                <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x">
-                    <StatCell title="Total Projects" value={stats?.total} icon={<Users className="w-4 h-4" />} />
-                    <StatCell title="Active Pipeline" value={stats?.active} icon={<TrendingUp className="w-4 h-4" />} />
-                    <StatCell title="Contracts Signed" value={stats?.contracts} icon={<ClipboardList className="w-4 h-4" />} />
-                    <StatCell title="Installations" value={stats?.installs} icon={<SunMedium className="w-4 h-4" />} />
-                </div>
+                {pipelineQuery.isError ? (
+                    <div className="px-5 py-5">
+                        <InlineQueryError message="Couldn't load your stats." onRetry={() => void pipelineQuery.refetch()} />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x">
+                        <StatCell title="Total Projects" value={stats?.total} icon={<Users className="w-4 h-4" />} loading={pipelineQuery.isPending} />
+                        <StatCell title="Active Pipeline" value={stats?.active} icon={<TrendingUp className="w-4 h-4" />} loading={pipelineQuery.isPending} />
+                        <StatCell title="Contracts Signed" value={stats?.contracts} icon={<ClipboardList className="w-4 h-4" />} loading={pipelineQuery.isPending} />
+                        <StatCell title="Installations" value={stats?.installs} icon={<SunMedium className="w-4 h-4" />} loading={pipelineQuery.isPending} />
+                    </div>
+                )}
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -151,12 +191,16 @@ export default function AdminDashboard({ user }: Props) {
                         <Button size="sm" variant="ghost" onClick={() => navigate("/projects")}>View all</Button>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
-                        {recentLeads === undefined ? (
+                        {leadsQuery.isError ? (
+                            <div className="px-4 py-4">
+                                <InlineQueryError message="Couldn't load projects." onRetry={() => void leadsQuery.refetch()} />
+                            </div>
+                        ) : recentLeads === undefined ? (
                             <div className="px-4 py-4 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
                         ) : recentLeads.length === 0 ? (
                             <p className="px-4 py-8 text-muted-foreground text-sm">No projects yet.</p>
                         ) : (
-                            <table className="w-full text-sm min-w-[380px]">
+                            <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b">
                                         <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Name</th>
@@ -169,8 +213,11 @@ export default function AdminDashboard({ user }: Props) {
                                     {recentLeads.map(lead => (
                                         <tr
                                             key={lead._id}
-                                            className="border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
+                                            role="button"
+                                            tabIndex={0}
+                                            className="border-b last:border-0 hover:bg-muted/40 focus-visible:bg-muted/40 cursor-pointer transition-colors"
                                             onClick={() => navigate(`/projects/${lead._id}`)}
+                                            onKeyDown={onActivateKey(() => navigate(`/projects/${lead._id}`))}
                                         >
                                             <td className="px-4 py-3.5 font-medium">{lead.firstName} {lead.lastName}</td>
                                             <td className="px-4 py-3.5 text-muted-foreground hidden sm:table-cell">{lead.phone}</td>
@@ -200,7 +247,11 @@ export default function AdminDashboard({ user }: Props) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {calendarQuery.isPending ? (
+                        {calendarQuery.isError ? (
+                            <div className="px-6 pb-6">
+                                <InlineQueryError message="Couldn't load your schedule." onRetry={() => void calendarQuery.refetch()} />
+                            </div>
+                        ) : calendarQuery.isPending ? (
                             <div className="px-6 pb-6 space-y-2">
                                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
                             </div>
@@ -216,19 +267,30 @@ export default function AdminDashboard({ user }: Props) {
                                     return (
                                         <li
                                             key={`${event.kind}-${event.id}`}
-                                            className="flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                                            role="button"
+                                            tabIndex={0}
+                                            className="flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-muted/40 focus-visible:bg-muted/40 transition-colors"
                                             onClick={() => navigate(`/projects/${event.leadId}?tab=${eventTab(event)}`)}
+                                            onKeyDown={onActivateKey(() => navigate(`/projects/${event.leadId}?tab=${eventTab(event)}`))}
                                         >
                                             <div
                                                 className={cn(
                                                     "mt-0.5 flex items-center justify-center rounded-md size-7 shrink-0",
                                                     EVENT_KIND_STYLES[event.kind],
                                                 )}
+                                                aria-hidden="true"
                                             >
                                                 <Icon className="size-3.5" />
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium truncate">{event.leadName}</p>
+                                                <p className="text-sm font-medium truncate">
+                                                    {/* The icon above is the only visual signal for kind — name it for
+                                                        screen readers instead of relying on shape/color alone. */}
+                                                    <span className="sr-only">
+                                                        {event.kind === "inspection" ? "Inspection: " : "Installation: "}
+                                                    </span>
+                                                    {event.leadName}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
                                                     {event.kind === "inspection"
                                                         ? format(new Date(event.at), "EEE, MMM d · h:mm a")
@@ -260,7 +322,11 @@ export default function AdminDashboard({ user }: Props) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {activityQuery.isPending ? (
+                        {activityQuery.isError ? (
+                            <div className="px-6 py-4">
+                                <InlineQueryError message="Couldn't load recent activity." onRetry={() => void activityQuery.refetch()} />
+                            </div>
+                        ) : activityQuery.isPending ? (
                             <div className="px-6 py-4 space-y-2">
                                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
                             </div>
@@ -276,14 +342,23 @@ export default function AdminDashboard({ user }: Props) {
                                     return (
                                         <li
                                             key={entry._id}
-                                            className="flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                                            role="button"
+                                            tabIndex={0}
+                                            className="flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-muted/40 focus-visible:bg-muted/40 transition-colors"
                                             onClick={() => navigate(`/projects/${entry.leadId}${tab ? `?tab=${tab}` : ""}`)}
+                                            onKeyDown={onActivateKey(() => navigate(`/projects/${entry.leadId}${tab ? `?tab=${tab}` : ""}`))}
                                         >
-                                            <div className="mt-0.5 flex items-center justify-center rounded-md size-7 shrink-0 bg-muted text-muted-foreground">
+                                            <div
+                                                className="mt-0.5 flex items-center justify-center rounded-md size-7 shrink-0 bg-muted text-muted-foreground"
+                                                aria-hidden="true"
+                                            >
                                                 <Icon className="size-3.5" />
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-sm truncate">
+                                                    <span className="sr-only">
+                                                        {(entry.entityType && ACTIVITY_TYPE_LABELS[entry.entityType]) ?? "Activity"}:{" "}
+                                                    </span>
                                                     <span className="font-medium text-foreground">{entry.action}</span>
                                                     <span className="text-muted-foreground"> · {entry.leadName}</span>
                                                 </p>
@@ -307,13 +382,19 @@ export default function AdminDashboard({ user }: Props) {
 // exactly. The two used to disagree (this one ran label-above-value,
 // `items-start`), so the same stat strip read as two different panels
 // depending which role happened to sign in.
-function StatCell({ title, value, icon }: { title: string; value: number | string | undefined; icon: React.ReactNode }) {
+function StatCell({
+    title, value, icon, loading,
+}: { title: string; value: number | string | undefined; icon: React.ReactNode; loading?: boolean }) {
     return (
         <div className="flex items-center justify-between gap-3 px-5 py-5">
             <div>
-                <p className="text-[26px] font-bold tracking-[-0.02em] text-foreground tabular-nums">
-                    {value ?? "—"}
-                </p>
+                {loading ? (
+                    <Skeleton className="h-[31px] w-12" />
+                ) : (
+                    <p className="text-[26px] font-bold tracking-[-0.02em] text-foreground tabular-nums">
+                        {value ?? "—"}
+                    </p>
+                )}
                 <p className="text-xs font-medium text-muted-foreground mt-0.5">{title}</p>
             </div>
             <div className="text-muted-foreground">{icon}</div>

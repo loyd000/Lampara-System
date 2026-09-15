@@ -35,6 +35,13 @@ typography:
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "0.05em"
+  stat:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif"
+    fontSize: "26px"
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: "-0.02em"
+    tabularNums: true
 rounded:
   sm: "14px"
   md: "15px"
@@ -132,9 +139,10 @@ Every token above is remapped rather than inverted by formula: ground `#0a0e15`,
 - **Title** (600, 16px, 1.35): Card and section titles — "Recent Activity", "Contract Details".
 - **Body** (400, 14px, 1.5): Default text size for the whole app — table cells, form inputs, most copy.
 - **Label** (600, 12px, 1.3, 0.05em, uppercase): Column headers, section eyebrows, stage/status badge text.
+- **Stat** (700, 26px, 1.2, −0.02em, `tabular-nums`): Large glanceable numerals in a dashboard stat tile (Total Projects, Contracts Signed). Deliberately close to Headline's 28px but distinct from it — a stat is data being scanned, not a page title, and the two never appear positioned as alternatives to each other on the same screen. Used identically on both dashboards (`AdminDashboard`/`FieldDashboard`) so a stat strip reads the same regardless of which role is viewing it.
 
 ### Named Rules
-**The One Headline Rule.** Every page's top-level heading uses the exact same 28px/700/−0.02em treatment. A page never invents its own hero size.
+**The One Headline Rule.** Every page's top-level heading uses the exact same 28px/700/−0.02em treatment. A page never invents its own hero size. (This governs the page's own `<h1>` specifically — the Stat tier above is a separate, deliberately-smaller numeral role, not a second hero size competing with it.)
 
 ## Layout
 
