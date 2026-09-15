@@ -357,12 +357,12 @@ export default function LeadDetailPage() {
             <Tabs value={tab} onValueChange={setTab}>
                 {/* Scrolls rather than wrapping: seven tabs do not fit a phone. */}
                 <div className="glass-nav -mx-6 px-6 overflow-x-auto sticky top-0 z-20 py-1">
-                    <TabsList variant="line" className="w-max">
+                    <TabsList variant="pill" className="w-max">
                         {TABS.map((t) => (
-                            <TabsTrigger key={t.value} value={t.value} className="whitespace-nowrap">
+                            <TabsTrigger key={t.value} value={t.value} className="group whitespace-nowrap">
                                 {t.label}
                                 {!!counts[t.value] && (
-                                    <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                                    <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground">
                                         {counts[t.value]}
                                     </span>
                                 )}

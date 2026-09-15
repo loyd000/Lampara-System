@@ -221,7 +221,12 @@ export default function AdminDashboard({ user }: Props) {
                                             onClick={() => navigate(`/projects/${lead._id}`)}
                                             onKeyDown={onActivateKey(() => navigate(`/projects/${lead._id}`))}
                                         >
-                                            <td className="px-4 py-3.5 font-medium">{lead.firstName} {lead.lastName}</td>
+                                            <td className="px-4 py-3.5 font-medium">
+                                                {lead.firstName} {lead.lastName}
+                                                {lead.city && (
+                                                    <p className="text-xs font-normal text-muted-foreground mt-0.5">{lead.city}</p>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3.5 text-muted-foreground hidden sm:table-cell">{lead.phone}</td>
                                             <td className="px-4 py-3.5">
                                                 <Badge className={STAGE_COLORS[lead.stage]}>{STAGE_LABELS[lead.stage]}</Badge>

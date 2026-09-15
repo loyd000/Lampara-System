@@ -128,8 +128,13 @@ export async function listLeads(
         /** Defaults to LEAD_LIST_LIMIT; dashboards pass something much smaller. */
         limit?: number;
     } = {},
-): Promise<Lead[]> {
-    let query = supabase.from("leads").select(LEAD_COLUMNS);
+): Promise<(Lead & { city: string | null })[]> {
+    // The lightweight one-to-one `properties(city)` embed below is cheap —
+    // unlike `listEnrichedLeads`'s design-types lookup (a separate,
+    // company-wide query), a property join costs nothing extra per row. Kept
+    // on this function rather than switching callers to listEnrichedLeads,
+    // so a small dashboard peek doesn't also pay for data it won't render.
+    let query = supabase.from("leads").select(`${LEAD_COLUMNS}, properties(city)`);
 
     if (filters.stage) query = query.eq("stage", filters.stage);
     if (filters.assignedSalesRepId) {
@@ -139,10 +144,11 @@ export async function listLeads(
     const rows = unwrap(
         await query
             .order("last_activity_at", { ascending: false })
-            .limit(filters.limit ?? LEAD_LIST_LIMIT),
+            .limit(filters.limit ?? LEAD_LIST_LIMIT)
+            .returns<(LeadRow & { properties: Pick<PropertyRow, "city">[] | null })[]>(),
         "Failed to load leads",
     );
-    return (rows as LeadRow[]).map(toLead);
+    return rows.map((row) => ({ ...toLead(row), city: row.properties?.[0]?.city ?? null }));
 }
 
 type EnrichedRow = LeadRow & {
