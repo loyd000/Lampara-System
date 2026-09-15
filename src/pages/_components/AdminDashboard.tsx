@@ -186,7 +186,7 @@ export default function AdminDashboard({ user }: Props) {
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Recent Activity */}
+                {/* Recent Projects */}
                 <Card className="lg:col-span-2">
                     <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
                         <CardTitle className="text-base">Recent Projects</CardTitle>
@@ -312,15 +312,18 @@ export default function AdminDashboard({ user }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Recent Activity — a chronological feed across every project
+                {/* Activity Feed — a chronological feed across every project
                     (an ocular report completed, a quote approved, a contract
                     signed, an installation marked done…), not one project's
-                    own timeline at a time the way its Overview tab already is. */}
+                    own timeline at a time the way its own Activity tab already
+                    is. Named "Activity Feed" rather than "Recent Activity" so
+                    it doesn't read as a second, overlapping "Recent Projects"
+                    card — this one is events, that one is projects. */}
                 <Card className="lg:col-span-3">
                     <CardHeader className="pb-3 border-b">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Activity className="w-4 h-4 text-muted-foreground" />
-                            Recent Activity
+                            Activity Feed
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
