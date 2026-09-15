@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
 
 import { useCalendarEvents, useLeads, usePipelineSummary, useRecentActivity } from "@/lib/supabase/hooks.ts";
@@ -20,17 +20,13 @@ import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
 import {
     Users, TrendingUp, ClipboardList, SunMedium, CalendarDays, ClipboardCheck, Wrench,
-    FileBadge2, Activity, MessageSquare, Paperclip, ShieldCheck,
+    FileBadge2, Activity, MessageSquare, Paperclip, ShieldCheck, Plus,
 } from "lucide-react";
-import { STAGE_LABELS, STAGE_COLORS } from "@/lib/constants.ts";
+import { STAGE_LABELS, STAGE_COLORS, CALENDAR_EVENT_KIND_COLORS } from "@/lib/constants.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { InlineQueryError } from "@/components/query-error.tsx";
 import { cn } from "@/lib/utils.ts";
-
-const EVENT_KIND_STYLES: Record<CalendarEvent["kind"], string> = {
-    inspection: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    installation: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
-};
+import CreateLeadDialog from "../leads/_components/CreateLeadDialog.tsx";
 
 function eventTab(event: CalendarEvent): string {
     return event.kind === "inspection" ? "ocular" : "installation";
@@ -121,6 +117,7 @@ export default function AdminDashboard({ user }: Props) {
     const { data: calendarEvents } = calendarQuery;
     const { data: recentActivity } = activityQuery;
     const navigate = useNavigate();
+    const [createOpen, setCreateOpen] = useState(false);
 
     // No single query below is load-bearing for the whole page — the four
     // panels are independent peeks, so each handles its own error inline
@@ -160,11 +157,16 @@ export default function AdminDashboard({ user }: Props) {
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
             {/* Header */}
-            <div>
-                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
-                    Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1.5">Here's what's happening at Lampara today.</p>
+            <div className="flex items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
+                        Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1.5">Here's what's happening at Lampara today.</p>
+                </div>
+                <Button onClick={() => setCreateOpen(true)}>
+                    <Plus className="w-4 h-4 mr-1.5" />New Project
+                </Button>
             </div>
 
             {/* Stat line — one unified panel, hairline-separated, not fragmented cards */}
@@ -276,7 +278,7 @@ export default function AdminDashboard({ user }: Props) {
                                             <div
                                                 className={cn(
                                                     "mt-0.5 flex items-center justify-center rounded-md size-7 shrink-0",
-                                                    EVENT_KIND_STYLES[event.kind],
+                                                    CALENDAR_EVENT_KIND_COLORS[event.kind],
                                                 )}
                                                 aria-hidden="true"
                                             >
@@ -374,6 +376,8 @@ export default function AdminDashboard({ user }: Props) {
                     </CardContent>
                 </Card>
             </div>
+
+            <CreateLeadDialog open={createOpen} onClose={() => setCreateOpen(false)} />
         </div>
     );
 }

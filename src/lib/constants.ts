@@ -152,6 +152,17 @@ export const INSTALLATION_STATUS_LABELS: Record<string, string> = {
   on_hold: "On Hold",
 };
 
+// ─── Calendar ─────────────────────────────────────────────────────────────
+// The dashboard's "Upcoming" peek colors an inspection differently from an
+// installation. Same light-tint-plus-dark-variant pattern as STAGE_COLORS
+// above, kept as its own small map since a calendar event's `kind` isn't a
+// pipeline stage — centralized here instead of inline in the component so a
+// third event kind doesn't have to go looking for where this pattern lives.
+export const CALENDAR_EVENT_KIND_COLORS: Record<"inspection" | "installation", string> = {
+  inspection: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  installation: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+};
+
 // ─── Service Ticket ───────────────────────────────────────────────────────
 export const TICKET_STATUS_LABELS: Record<string, string> = {
   open: "Open",
