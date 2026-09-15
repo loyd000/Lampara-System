@@ -362,7 +362,7 @@ export default function LeadDetailPage() {
                             <TabsTrigger key={t.value} value={t.value} className="group whitespace-nowrap">
                                 {t.label}
                                 {!!counts[t.value] && (
-                                    <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground">
+                                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] leading-none font-semibold tabular-nums text-muted-foreground group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground">
                                         {counts[t.value]}
                                     </span>
                                 )}

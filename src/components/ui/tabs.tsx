@@ -44,19 +44,71 @@ const tabsListVariants = cva(
     },
 );
 
+/**
+ * Pill variant only: a single sliding indicator behind the active trigger's
+ * text, rather than a background painted on each trigger. This is what makes
+ * switching tabs read as one pill *moving*, not a new pill appearing.
+ *
+ * Measures the active trigger's own offset/width (found by Radix's
+ * `data-state="active"`) and repositions on every state or size change — a
+ * `MutationObserver` on `data-state` rather than plumbing the current value
+ * in as a prop, so this stays a drop-in variant with no API change for the
+ * three existing (non-pill) call sites.
+ */
+function usePillIndicator(listRef: React.RefObject<HTMLDivElement | null>, active: boolean) {
+    const [rect, setRect] = React.useState<{ left: number; width: number } | null>(null);
+
+    const measure = React.useCallback(() => {
+        const list = listRef.current;
+        const activeTrigger = list?.querySelector<HTMLElement>('[data-state="active"]');
+        setRect(activeTrigger ? { left: activeTrigger.offsetLeft, width: activeTrigger.offsetWidth } : null);
+    }, [listRef]);
+
+    React.useLayoutEffect(() => {
+        if (!active) return;
+        measure();
+        const list = listRef.current;
+        if (!list) return;
+        const mutationObserver = new MutationObserver(measure);
+        mutationObserver.observe(list, { attributes: true, attributeFilter: ["data-state"], subtree: true });
+        const resizeObserver = new ResizeObserver(measure);
+        resizeObserver.observe(list);
+        return () => {
+            mutationObserver.disconnect();
+            resizeObserver.disconnect();
+        };
+    }, [active, measure, listRef]);
+
+    return rect;
+}
+
 function TabsList({
     className,
     variant = "default",
+    children,
     ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
     VariantProps<typeof tabsListVariants>) {
+    const listRef = React.useRef<HTMLDivElement>(null);
+    const indicator = usePillIndicator(listRef, variant === "pill");
+
     return (
         <TabsPrimitive.List
+            ref={listRef}
             data-slot="tabs-list"
             data-variant={variant}
-            className={cn(tabsListVariants({ variant }), className)}
+            className={cn(tabsListVariants({ variant }), "relative", className)}
             {...props}
-        />
+        >
+            {variant === "pill" && indicator && (
+                <span
+                    aria-hidden="true"
+                    className="absolute inset-y-[3px] left-0 rounded-full bg-primary transition-[transform,width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none"
+                    style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }}
+                />
+            )}
+            {children}
+        </TabsPrimitive.List>
     );
 }
 
@@ -68,15 +120,16 @@ function TabsTrigger({
         <TabsPrimitive.Trigger
             data-slot="tabs-trigger"
             className={cn(
-                "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+                "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm leading-none font-medium whitespace-nowrap text-foreground/60 transition-all group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
                 "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
                 "data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 dark:data-[state=active]:text-foreground",
                 "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
-                // Pill: the one accent color fills the active tab, plain text
-                // otherwise — no shadow, no border, no underline indicator.
-                "group-data-[variant=pill]/tabs-list:rounded-full group-data-[variant=pill]/tabs-list:px-3.5",
-                "group-data-[variant=pill]/tabs-list:data-[state=active]:bg-primary group-data-[variant=pill]/tabs-list:data-[state=active]:text-primary-foreground group-data-[variant=pill]/tabs-list:data-[state=active]:shadow-none",
-                "dark:group-data-[variant=pill]/tabs-list:data-[state=active]:bg-primary dark:group-data-[variant=pill]/tabs-list:data-[state=active]:text-primary-foreground dark:group-data-[variant=pill]/tabs-list:data-[state=active]:border-transparent",
+                // Pill: no background of its own — the sliding indicator in
+                // TabsList paints the color. The trigger just sits above it
+                // (z-10) and swaps its own text to the accent's foreground.
+                "group-data-[variant=pill]/tabs-list:z-10 group-data-[variant=pill]/tabs-list:rounded-full group-data-[variant=pill]/tabs-list:px-3.5",
+                "group-data-[variant=pill]/tabs-list:data-[state=active]:bg-transparent group-data-[variant=pill]/tabs-list:data-[state=active]:text-primary-foreground group-data-[variant=pill]/tabs-list:data-[state=active]:shadow-none",
+                "dark:group-data-[variant=pill]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=pill]/tabs-list:data-[state=active]:text-primary-foreground dark:group-data-[variant=pill]/tabs-list:data-[state=active]:border-transparent",
                 className,
             )}
             {...props}

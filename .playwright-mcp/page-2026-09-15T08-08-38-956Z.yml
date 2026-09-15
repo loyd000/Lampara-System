@@ -1,0 +1,35 @@
+- generic [ref=f3e2]:
+  - region "Notifications alt+T"
+  - generic [ref=f3e3]:
+    - banner [ref=f3e4]:
+      - generic [ref=f3e5]:
+        - img "Lampara" [ref=f3e6]
+        - generic [ref=f3e7]: Lampara
+      - generic [ref=f3e8]:
+        - button "Toggle theme" [ref=f3e9] [cursor=pointer]
+        - button "Sign in to your account" [ref=f3e11] [cursor=pointer]: Sign In
+    - main [ref=f3e12]:
+      - generic [ref=f3e13]:
+        - generic [ref=f3e14]: Solar Installation CRM
+        - heading "Manage your solar pipeline with ease" [level=1] [ref=f3e17]:
+          - text: Manage your solar
+          - generic [ref=f3e18]: pipeline with ease
+        - paragraph [ref=f3e19]: Solar Installation CRM — from first inquiry to completed installation, track every step of your solar projects.
+        - button "Sign in to your account" [ref=f3e21] [cursor=pointer]: Get Started
+      - generic [ref=f3e22]:
+        - generic [ref=f3e23]:
+          - heading "Pipeline Tracking" [level=3] [ref=f3e27]
+          - paragraph [ref=f3e28]: Visual Kanban board from first inquiry to completed installation
+        - generic [ref=f3e29]:
+          - heading "Team Management" [level=3] [ref=f3e36]
+          - paragraph [ref=f3e37]: Assign leads and field technicians with role-based access
+        - generic [ref=f3e38]:
+          - heading "Inspections & Quotes" [level=3] [ref=f3e44]
+          - paragraph [ref=f3e45]: Site ocular inspections, system sizing, and professional proposal generation
+        - generic [ref=f3e46]:
+          - heading "Installation Management" [level=3] [ref=f3e50]
+          - paragraph [ref=f3e51]: Schedule technicians, track materials, and manage completion photos
+        - generic [ref=f3e52]:
+          - heading "Service & Warranty" [level=3] [ref=f3e56]
+          - paragraph [ref=f3e57]: Log and track post-installation service tickets and warranty claims
+    - contentinfo [ref=f3e58]: © 2026 Lampara. All rights reserved.
