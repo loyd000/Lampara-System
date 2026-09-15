@@ -70,14 +70,24 @@ export default function PipelinePage() {
         await applyMove(leadId, stage);
     }
 
+    async function commitMove(leadId: string, stage: Stage) {
+        await moveLead(leadId, stage);
+        setDragging(null);
+        setDragOver(null);
+    }
+
+    /**
+     * Native HTML5 drag (desktop): the drop event itself carries no payload
+     * (no `dataTransfer` in use), so the dragged lead's id comes from the
+     * `dragging` state `onDragStart` set — read fresh here because JSX event
+     * props are rebound on every render.
+     */
     async function handleDrop(stage: Stage) {
         if (!dragging) {
             setDragOver(null);
             return;
         }
-        await moveLead(dragging, stage);
-        setDragging(null);
-        setDragOver(null);
+        await commitMove(dragging, stage);
     }
 
     const totalActive = leads?.filter(
@@ -208,7 +218,7 @@ export default function PipelinePage() {
                                                             onMoveTo={(nextStage) => moveLead(lead._id, nextStage)}
                                                             isDragging={dragging === lead._id}
                                                             onTouchDragOver={canMoveStage ? setDragOver : undefined}
-                                                            onTouchDrop={canMoveStage ? (s) => handleDrop(s) : undefined}
+                                                            onTouchDrop={canMoveStage ? (leadId, s) => void commitMove(leadId, s) : undefined}
                                                         />
                                                     ))}
                                                     {cards.length === 0 && !isOver && (
@@ -262,7 +272,15 @@ function PipelineCard({
     onMoveTo: (stage: Stage) => void;
     isDragging: boolean;
     onTouchDragOver?: (stage: Stage | null) => void;
-    onTouchDrop?: (stage: Stage) => void;
+    /**
+     * Carries the lead's own id, unlike the native-DnD path — a touch drag's
+     * `pointerup` handler is registered once, at drag start, via
+     * `window.addEventListener`, not a React-rebound JSX prop. If it read
+     * `dragging` from outer state instead (the way the desktop drop handler
+     * does), it would close over the value from *before* `onDragStart` set
+     * it — always null — and silently no-op on every touch drop.
+     */
+    onTouchDrop?: (leadId: string, stage: Stage) => void;
 }) {
     const now = useNow();
     const daysSinceActivity = Math.floor(
@@ -350,7 +368,7 @@ function PipelineCard({
             const stage = stageFromPoint(ue.clientX, ue.clientY);
             onTouchDragOver?.(null);
             if (stage) {
-                onTouchDrop?.(stage);
+                onTouchDrop?.(lead._id, stage);
             }
             onDragEnd();
         }
