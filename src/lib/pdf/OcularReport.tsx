@@ -114,6 +114,7 @@ export function OcularReport({
         >
             {/* ══ Page 1 — the form ══════════════════════════════════════ */}
             <Page size="LETTER" style={s.page}>
+                <PageFooter name={data.name} />
                 <ReportHeader logo={logo} />
 
                 <Band>CLIENT DETAILS</Band>
@@ -456,11 +457,11 @@ export function OcularReport({
                     <Text>{data.notes}</Text>
                 </View>
 
-                <PageFooter name={data.name} />
             </Page>
 
             {/* ══ Photo pages ════════════════════════════════════════════ */}
             <Page size="LETTER" style={s.page}>
+                <PageFooter name={data.name} />
                 <ReportHeader logo={logo} />
 
                 <PhotoSection title="BUILDING FRONT VIEW" photos={data.photos.buildingFront} height={228} />
@@ -470,10 +471,10 @@ export function OcularReport({
                     height={228}
                 />
 
-                <PageFooter name={data.name} />
             </Page>
 
             <Page size="LETTER" style={s.page}>
+                <PageFooter name={data.name} />
                 <ReportHeader logo={logo} />
 
                 <Text style={s.photoHeading}>MAIN PANEL BOARD</Text>
@@ -515,10 +516,10 @@ export function OcularReport({
                     height={250}
                 />
 
-                <PageFooter name={data.name} />
             </Page>
 
             <Page size="LETTER" style={s.page}>
+                <PageFooter name={data.name} />
                 <ReportHeader logo={logo} />
 
                 <PhotoSection
@@ -532,10 +533,10 @@ export function OcularReport({
                 <StripBand>FROM PV MODULES TO INVERTER</StripBand>
                 <PhotoStrip photos={data.photos.dcConduit} />
 
-                <PageFooter name={data.name} />
             </Page>
 
             <Page size="LETTER" style={s.page}>
+                <PageFooter name={data.name} />
                 <ReportHeader logo={logo} />
 
                 <Text style={s.photoHeading}>AC CONDUIT LINES</Text>
@@ -551,7 +552,6 @@ export function OcularReport({
                     </>
                 )}
 
-                <PageFooter name={data.name} />
             </Page>
         </Document>
     );
@@ -559,6 +559,13 @@ export function OcularReport({
 
 // ── Pieces ───────────────────────────────────────────────────────────────
 
+/**
+ * Rendered as the first child of every `<Page>`, not the last: it's
+ * `fixed`/absolutely positioned, so document order costs nothing, and a
+ * `fixed` element placed after content that wraps across pages (several
+ * sections below have no length cap) is dropped from every page instead of
+ * repeating on each — the same react-pdf quirk ContractPdf.tsx hit first.
+ */
 function PageFooter({ name }: { name: string }) {
     return (
         <View style={s.footer} fixed>

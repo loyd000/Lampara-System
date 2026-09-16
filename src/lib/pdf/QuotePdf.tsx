@@ -390,6 +390,24 @@ export function QuotePdf({
         <Document title={docTitle ?? data.quotationNo} author={data.preparerName}>
             {/* ════ PAGE 1: Proposal & Itemised Quotation ════ */}
             <Page size="A4" style={styles.page}>
+                {/*
+                 * Declared first even though it prints last: it's absolutely
+                 * positioned, so document order costs nothing, and a `fixed`
+                 * element placed after content that wraps across pages (the
+                 * items table below has no row cap) is dropped from every
+                 * page instead of repeating on each — see ContractPdf.tsx,
+                 * which hit this same react-pdf quirk first.
+                 */}
+                <View style={styles.pageFooter} fixed>
+                    <Text style={styles.footerText}>
+                        Lampara Electrical Installation Services · {data.quotationNo}
+                    </Text>
+                    <Text
+                        style={styles.footerText}
+                        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                    />
+                </View>
+
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerRow}>
@@ -495,8 +513,11 @@ export function QuotePdf({
                         <Text style={styles.toDetail}>{data.notes}</Text>
                     </View>
                 )}
+            </Page>
 
-                {/* Running Footer */}
+            {/* ════ PAGE 2: Terms & Conditions & Payment ════ */}
+            <Page size="A4" style={styles.page}>
+                {/* Footer first — see PAGE 1's comment above. */}
                 <View style={styles.pageFooter} fixed>
                     <Text style={styles.footerText}>
                         Lampara Electrical Installation Services · {data.quotationNo}
@@ -506,10 +527,7 @@ export function QuotePdf({
                         render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
                     />
                 </View>
-            </Page>
 
-            {/* ════ PAGE 2: Terms & Conditions & Payment ════ */}
-            <Page size="A4" style={styles.page}>
                 <Text style={styles.sectionTitle}>Terms & Conditions</Text>
 
                 <View style={styles.termsGrid}>
@@ -712,21 +730,22 @@ export function QuotePdf({
                         </View>
                     </View>
                 </View>
-
-                <View style={styles.pageFooter} fixed>
-                    <Text style={styles.footerText}>
-                        Lampara Electrical Installation Services · {data.quotationNo}
-                    </Text>
-                    <Text
-                        style={styles.footerText}
-                        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-                    />
-                </View>
             </Page>
 
             {/* ════ PAGE 3: Site Layout & Inspection Photos (Optional) ════ */}
             {hasPhotos && (
                 <Page size="A4" style={styles.page}>
+                    {/* Footer first — see PAGE 1's comment above. */}
+                    <View style={styles.pageFooter} fixed>
+                        <Text style={styles.footerText}>
+                            Lampara Electrical Installation Services · {data.quotationNo}
+                        </Text>
+                        <Text
+                            style={styles.footerText}
+                            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                        />
+                    </View>
+
                     <Text style={styles.sectionTitle}>Proposed System Layout & Site Photos</Text>
                     <Text style={[styles.introText, { marginBottom: 12 }]}>
                         Photos captured during the site ocular inspection for {data.customerName}:
@@ -769,16 +788,6 @@ export function QuotePdf({
                             )}
                         </View>
                     )}
-
-                    <View style={styles.pageFooter} fixed>
-                        <Text style={styles.footerText}>
-                            Lampara Electrical Installation Services · {data.quotationNo}
-                        </Text>
-                        <Text
-                            style={styles.footerText}
-                            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-                        />
-                    </View>
                 </Page>
             )}
         </Document>
