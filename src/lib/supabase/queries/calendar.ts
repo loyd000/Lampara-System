@@ -3,9 +3,9 @@
  * of its own. `surveys.scheduled_at` is still a timestamptz column, but the
  * scheduling dialog only ever collects a date (stored as local midnight) —
  * same as `installations.scheduled_date`, a plain date with no time-of-day.
- * Both kinds report `allDay: true` in `CalendarEvent`; `at` survives on the
- * inspection variant only because it's still useful for sorting/bucketing by
- * day, not because it carries a real time slot anymore.
+ * Neither kind carries a real time slot, so `CalendarEvent` has no `allDay`
+ * flag to branch on; `at` survives on the inspection variant only because
+ * it's still useful for sorting/day-bucketing.
  */
 
 import { supabase, unwrap } from "../client.ts";
@@ -44,14 +44,11 @@ export type CalendarEvent =
           /** Kept for sorting/day-bucketing, but always local midnight —
            *  the scheduling dialog only ever collects a date now. */
           at: string;
-          allDay: true;
       })
     | (EventBase & {
           kind: "installation";
           id: Id<"installations">;
           status: InstallationStatus;
-          /** Dates only — no time-of-day was ever scheduled. */
-          allDay: true;
       });
 
 type LeadWithProperty = Pick<LeadRow, "first_name" | "last_name"> & {
@@ -203,7 +200,6 @@ export async function listCalendarEvents(args: {
             status: row.status,
             assigneeNames: [row.surveyor?.name || row.surveyor?.email || "Unassigned"],
             at: row.scheduled_at,
-            allDay: true,
             startDate: day,
             endDate: day,
         };
@@ -219,7 +215,6 @@ export async function listCalendarEvents(args: {
         assigneeNames: row.assigned_crew_ids.length
             ? row.assigned_crew_ids.map((id) => crewById.get(id) ?? "Unknown")
             : ["Unassigned"],
-        allDay: true,
         // The row may start before or end after the requested window; it is
         // returned whole and the grid clips it to the weeks on screen.
         startDate: row.scheduled_date,

@@ -188,11 +188,6 @@ function EventBar({
             }
         >
             {continuesLeft && <span aria-hidden className="opacity-60 shrink-0">◀</span>}
-            {!event.allDay && (
-                <span className="tabular-nums shrink-0">
-                    {format(new Date(event.at), "h:mma").toLowerCase()}
-                </span>
-            )}
             <span className="truncate">
                 {event.leadName}
                 {event.address && (
@@ -388,8 +383,7 @@ function WeekList({
                                             </p>
                                             <p className="text-xs text-muted-foreground truncate">
                                                 {KIND_LABELS[event.kind]}
-                                                {!event.allDay && ` · ${format(new Date(event.at), "h:mm a")}`}
-                                                {event.allDay && " · All day"}
+                                                {" · All day"}
                                                 {dayCount > 1 && ` · Day ${dayIndex} of ${dayCount}`}
                                                 {event.assigneeNames.length > 0 && ` · ${event.assigneeNames.join(", ")}`}
                                             </p>

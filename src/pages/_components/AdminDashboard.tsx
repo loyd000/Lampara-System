@@ -146,9 +146,10 @@ export default function AdminDashboard({ user }: Props) {
     // The query sorts longest-first per start date — right for laying a
     // multi-day install out as one bar on the calendar grid, wrong for a flat
     // "what's next" list, which wants strict chronological order instead.
-    // Installations carry no time-of-day (`allDay: true`, no `at`), so they
-    // sort as the start of their day; inspections sort by their real time
-    // within it.
+    // Neither kind carries a real time-of-day (an inspection's `at` is always
+    // local midnight, installations have no `at` at all), so both sort as
+    // the start of their day; this only breaks same-day ties, which fall
+    // back to array order.
     const eventSortKey = (e: CalendarEvent) =>
         e.kind === "inspection" ? e.at : `${e.startDate}T00:00:00`;
     const upcoming = [...(calendarEvents ?? [])]
