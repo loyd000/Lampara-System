@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils.ts";
 import { LayoutDashboard, Users, CalendarDays, Columns3, Plus } from "lucide-react";
 import CreateLeadDialog from "@/pages/leads/_components/CreateLeadDialog.tsx";
+import { useCurrentUser } from "@/lib/supabase/hooks.ts";
 
 // Just the four everyday tabs. Notifications has its own bell button in the
 // mobile top bar (AppLayout.tsx); Packages and Team moved to the Profile
@@ -19,6 +20,12 @@ const ITEMS_AFTER = [
 
 export default function MobileNav() {
     const [createOpen, setCreateOpen] = useState(false);
+    const { data: currentUser } = useCurrentUser();
+    // Matches the leads_insert RLS policy (superadmin/admin only, see
+    // 0013_roles_and_approval.sql) — a field engineer who opened this would
+    // just get a "Failed to create project" toast on submit, same reasoning
+    // as Pipeline's canMoveStage gate.
+    const canCreate = ["superadmin", "admin"].includes(currentUser?.role ?? "");
 
     return (
         <>
@@ -31,22 +38,26 @@ export default function MobileNav() {
                 {/* New Project — used to live as a button in the dashboard
                     header; raised out of the bar into the center like a
                     typical tab-bar action button so it reads as "the" thing
-                    to do, not a fifth peer of Home/Projects/Pipeline/Calendar. */}
-                <div className="min-w-0 flex-1 flex justify-center">
-                    <button
-                        type="button"
-                        onClick={() => setCreateOpen(true)}
-                        aria-label="New Project"
-                        className="-mt-8 flex size-16 items-center justify-center rounded-full bg-sidebar-primary text-primary-foreground shadow-lg ring-4 ring-background cursor-pointer transition-transform active:scale-95"
-                    >
-                        <Plus className="size-7" strokeWidth={2.5} />
-                    </button>
-                </div>
+                    to do, not a fifth peer of Home/Projects/Pipeline/Calendar.
+                    Hidden entirely for field engineers, who can't create
+                    projects — the bar just spaces its four tabs evenly. */}
+                {canCreate && (
+                    <div className="min-w-0 flex-1 flex justify-center">
+                        <button
+                            type="button"
+                            onClick={() => setCreateOpen(true)}
+                            aria-label="New Project"
+                            className="-mt-8 flex size-16 items-center justify-center rounded-full bg-sidebar-primary text-primary-foreground shadow-lg ring-4 ring-background cursor-pointer transition-transform active:scale-95"
+                        >
+                            <Plus className="size-7" strokeWidth={2.5} />
+                        </button>
+                    </div>
+                )}
 
                 {ITEMS_AFTER.map((item) => <NavItem key={item.to} item={item} />)}
             </nav>
 
-            <CreateLeadDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+            {canCreate && <CreateLeadDialog open={createOpen} onClose={() => setCreateOpen(false)} />}
         </>
     );
 }

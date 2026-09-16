@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useEnrichedLeads, useLeadSearch } from "@/lib/supabase/hooks.ts";
+import { useCurrentUser, useEnrichedLeads, useLeadSearch } from "@/lib/supabase/hooks.ts";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -66,6 +66,11 @@ const SKELETON_COLUMNS = [
 
 export default function LeadsPage() {
     const navigate = useNavigate();
+    const { data: currentUser } = useCurrentUser();
+    // Matches the leads_insert RLS policy (superadmin/admin only) — a field
+    // engineer who opened this dialog would just get a "Failed to create
+    // project" toast on submit.
+    const canCreate = ["superadmin", "admin"].includes(currentUser?.role ?? "");
     const [search, setSearch] = useState("");
     const [stageFilter, setStageFilter] = useState<string>("all");
     const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
@@ -159,10 +164,13 @@ export default function LeadsPage() {
                     </p>
                 </div>
                 {/* Hidden on mobile — the mobile nav bar's center "+" button
-                    opens the same CreateLeadDialog now. */}
-                <Button onClick={() => setCreateOpen(true)} className="hidden md:inline-flex">
-                    <Plus className="w-4 h-4 mr-1.5" />New Project
-                </Button>
+                    opens the same CreateLeadDialog now. Hidden entirely for
+                    field engineers, who can't create projects. */}
+                {canCreate && (
+                    <Button onClick={() => setCreateOpen(true)} className="hidden md:inline-flex">
+                        <Plus className="w-4 h-4 mr-1.5" />New Project
+                    </Button>
+                )}
             </div>
 
             {/* Search + filters — search stays inline everywhere; on mobile
@@ -379,7 +387,7 @@ export default function LeadsPage() {
                                                     : "New projects you add will show up here, ready to move through the stages."}
                                             </EmptyDescription>
                                         </EmptyHeader>
-                                        {!hasActiveFilters && (
+                                        {!hasActiveFilters && canCreate && (
                                             <Button size="sm" onClick={() => setCreateOpen(true)}>
                                                 <Plus className="w-3.5 h-3.5 mr-1" />Create your first project
                                             </Button>
@@ -471,7 +479,7 @@ export default function LeadsPage() {
                                     : "New projects you add will show up here, ready to move through the stages."}
                             </EmptyDescription>
                         </EmptyHeader>
-                        {!hasActiveFilters && (
+                        {!hasActiveFilters && canCreate && (
                             <Button size="sm" onClick={() => setCreateOpen(true)}>
                                 <Plus className="w-3.5 h-3.5 mr-1" />Create your first project
                             </Button>

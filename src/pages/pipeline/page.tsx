@@ -120,9 +120,14 @@ export default function PipelinePage() {
                                 : `${totalActive} active · drag cards to move stages`}
                     </p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1.5" />New Lead
-                </Button>
+                {/* Matches canMoveStage below — the leads_insert RLS policy
+                    is superadmin/admin only, so a field engineer would just
+                    get a "Failed to create project" toast on submit. */}
+                {canMoveStage && (
+                    <Button onClick={() => setCreateOpen(true)}>
+                        <Plus className="w-4 h-4 mr-1.5" />New Lead
+                    </Button>
+                )}
             </div>
 
             {/* Kanban board: three swim-lanes (New / In Progress / Completed), each
