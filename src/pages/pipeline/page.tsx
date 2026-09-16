@@ -154,7 +154,7 @@ export default function PipelinePage() {
                     ))}
                 </div>
             ) : (
-                <div className="flex gap-6 overflow-x-auto p-6 flex-1 min-h-0 items-start">
+                <div className="flex gap-6 overflow-x-auto p-6 flex-1 min-h-0">
                     {(Object.keys(STAGE_GROUPS) as StageGroup[]).map((group, groupIndex) => {
                         const groupStages = STAGE_GROUPS[group];
                         const groupCount = groupStages.reduce((sum, s) => sum + byStage[s].length, 0);
@@ -174,7 +174,11 @@ export default function PipelinePage() {
                                         {groupCount}
                                     </span>
                                 </div>
-                                <div className="flex gap-3 items-start">
+                                {/* flex-1 + no items-start: every column below stretches to
+                                    fill the board's full height instead of shrinking to its
+                                    own card count, so a column with one card looks the same
+                                    height as its neighbour with five. */}
+                                <div className="flex gap-3 flex-1 min-h-0">
                                     {groupStages.map((stage) => {
                                         const cards = byStage[stage];
                                         const isOver = dragOver === stage;
@@ -189,7 +193,7 @@ export default function PipelinePage() {
                                             >
                                                 {/* Column header */}
                                                 <div className={cn(
-                                                    "flex items-center justify-between mb-2.5 px-1.5 py-1 rounded-md transition-colors",
+                                                    "flex items-center justify-between mb-2.5 px-1.5 py-1 rounded-md transition-colors shrink-0",
                                                     isOver && "bg-secondary",
                                                 )}>
                                                     <div className="flex items-center gap-2">
@@ -202,9 +206,11 @@ export default function PipelinePage() {
                                                     </span>
                                                 </div>
 
-                                                {/* Drop zone */}
+                                                {/* Drop zone — flex-1 so the column's own drop
+                                                    surface always reaches the bottom of the
+                                                    board, empty or not. */}
                                                 <div className={cn(
-                                                    "space-y-2 min-h-[6rem] rounded-lg transition-all p-1",
+                                                    "flex-1 space-y-2 min-h-[6rem] rounded-lg transition-all p-1 overflow-y-auto",
                                                     isOver && "bg-secondary/50 ring-2 ring-foreground/20 ring-dashed",
                                                 )}>
                                                     {cards.map((lead) => (
@@ -222,7 +228,7 @@ export default function PipelinePage() {
                                                         />
                                                     ))}
                                                     {cards.length === 0 && !isOver && (
-                                                        <div className="border border-dashed border-border rounded-lg py-8 flex flex-col items-center justify-center gap-1">
+                                                        <div className="h-full min-h-[6rem] border border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1">
                                                             <Users className="w-4 h-4 text-muted-foreground/30" />
                                                             <span className="text-[11px] text-muted-foreground/40">Drop here</span>
                                                         </div>
