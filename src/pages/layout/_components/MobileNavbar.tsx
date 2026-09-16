@@ -30,8 +30,8 @@ export default function MobileNav() {
     return (
         <>
             <nav
-                className="glass-nav fixed left-3 right-3 flex items-center justify-around rounded-full border border-sidebar-border shadow-lg px-2 md:hidden z-50"
-                style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+                className="glass-nav fixed left-5 right-5 flex items-center justify-around rounded-full border border-sidebar-border shadow-lg px-2 md:hidden z-50"
+                style={{ bottom: "max(1.1rem, env(safe-area-inset-bottom))" }}
             >
                 {ITEMS.map((item) => <NavItem key={item.to} item={item} />)}
 
@@ -47,9 +47,9 @@ export default function MobileNav() {
                             type="button"
                             onClick={() => setCreateOpen(true)}
                             aria-label="New Project"
-                            className="-mt-8 flex size-16 items-center justify-center rounded-full bg-sidebar-primary text-primary-foreground shadow-lg ring-4 ring-background cursor-pointer transition-transform active:scale-95"
+                            className="-mt-6 flex size-14 items-center justify-center rounded-full bg-sidebar-primary text-primary-foreground shadow-lg ring-4 ring-background cursor-pointer transition-transform active:scale-95"
                         >
-                            <Plus className="size-7" strokeWidth={2.5} />
+                            <Plus className="size-6" strokeWidth={2.5} />
                         </button>
                     </div>
                 )}
@@ -67,10 +67,10 @@ function NavItem({ item }: { item: { label: string; to: string; icon: React.Comp
         <NavLink to={item.to} end={item.to === "/"} className="min-w-0 flex-1">
             {({ isActive }) => (
                 <div className={cn(
-                    "flex flex-col items-center gap-1 py-3.5 px-1 text-[11px] font-medium tracking-tight transition-colors cursor-pointer relative",
+                    "flex flex-col items-center gap-0.5 py-3 px-1 text-[10px] font-medium tracking-tight transition-colors cursor-pointer relative",
                     isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60",
                 )}>
-                    <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.25 : 1.75} />
+                    <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.25 : 1.75} />
                     <span className="w-full truncate text-center leading-none">
                         {item.label}
                     </span>

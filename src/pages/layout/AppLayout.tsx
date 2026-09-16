@@ -108,7 +108,7 @@ export default function AppLayout() {
                               a page that scrolls past the shell into empty space.
                               Worst on the ocular report, which has ~40 of them.
                             */}
-                            <main className="relative flex-1 overflow-auto pb-28 md:pb-0">
+                            <main className="relative flex-1 overflow-auto pb-24 md:pb-0">
                                 <motion.div
                                     key={location.pathname}
                                     initial={reducedMotion ? false : { opacity: 0, y: 4 }}
