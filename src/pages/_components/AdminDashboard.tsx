@@ -166,7 +166,10 @@ export default function AdminDashboard({ user }: Props) {
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1.5">Here's what's happening at Lampara today.</p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)} className="sm:shrink-0">
+                {/* Hidden on mobile — the mobile nav bar's center "+" button
+                    opens the same CreateLeadDialog now, so this would just be
+                    a second, redundant entry point below md. */}
+                <Button onClick={() => setCreateOpen(true)} className="hidden md:inline-flex sm:shrink-0">
                     <Plus className="w-4 h-4 mr-1.5" />New Project
                 </Button>
             </div>

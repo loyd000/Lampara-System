@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { KeyRound, User as UserIcon } from "lucide-react";
+import { ChevronRight, KeyRound, Package, Settings, User as UserIcon, UserCog } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-context.ts";
 import { useCurrentUser, useUpdateOwnProfile } from "@/lib/supabase/hooks.ts";
@@ -14,6 +15,8 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { ThemeToggle } from "@/components/theme-toggle.tsx";
+import { SignOutButton } from "@/components/sign-out-button.tsx";
 import {
     Form,
     FormControl,
@@ -215,7 +218,80 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
 
+            {/* Preferences — theme + sign out live here now instead of the
+                mobile top bar, which only has room for the essentials
+                (alerts, account). Desktop keeps its own copies in the
+                sidebar too; this page is reachable from both. */}
+            <Card>
+                <CardHeader className="pb-3 border-b">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Settings className="w-4 h-4 text-muted-foreground" />
+                        Preferences
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="divide-y">
+                    <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                        <div>
+                            <p className="text-sm font-medium">Appearance</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Light, dark, or match your device</p>
+                        </div>
+                        <ThemeToggle variant="outline" size="sm" align="end" />
+                    </div>
+                    <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                        <div>
+                            <p className="text-sm font-medium">Sign out</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">End your session on this device</p>
+                        </div>
+                        <SignOutButton className="size-9" />
+                    </div>
+                </CardContent>
+            </Card>
 
+            {/* Administration — Packages and Team moved here from the mobile
+                nav bar, which now only has room for the four everyday tabs.
+                Same role gates as the desktop sidebar and each route's own
+                RequireRole: Packages is superadmin-only, Team is admin and
+                superadmin. */}
+            {(currentUser.role === "superadmin" || currentUser.role === "admin") && (
+                <Card>
+                    <CardHeader className="pb-3 border-b">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <UserCog className="w-4 h-4 text-muted-foreground" />
+                            Administration
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="divide-y">
+                        {currentUser.role === "superadmin" && (
+                            <Link
+                                to="/packages"
+                                className="flex items-center justify-between py-3 first:pt-0 last:pb-0 -mx-1 px-1 rounded-md hover:bg-muted/40 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Package className="w-4 h-4 text-muted-foreground" />
+                                    <div>
+                                        <p className="text-sm font-medium">Packages</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Solar system bundles quotes are built from</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                            </Link>
+                        )}
+                        <Link
+                            to="/team"
+                            className="flex items-center justify-between py-3 first:pt-0 last:pb-0 -mx-1 px-1 rounded-md hover:bg-muted/40 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <UserCog className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm font-medium">Team</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Approve new accounts and manage roles</p>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                        </Link>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

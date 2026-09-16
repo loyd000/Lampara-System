@@ -8,7 +8,6 @@ import { useRealtimeSync } from "@/lib/supabase/realtime.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
-import { SignOutButton } from "@/components/sign-out-button.tsx";
 import AppSidebar from "./_components/AppSidebar.tsx";
 import MobileNav from "./_components/MobileNavbar.tsx";
 import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
@@ -76,7 +75,7 @@ export default function AppLayout() {
                                 <div className="flex items-center gap-1.5">
                                     <NavLink
                                         to="/notifications"
-                                        className="relative size-11 rounded-md bg-secondary text-foreground flex items-center justify-center border border-border shrink-0"
+                                        className="relative size-11 rounded-full bg-secondary text-foreground flex items-center justify-center border border-border shrink-0"
                                         aria-label="Notifications"
                                     >
                                         <Bell className="size-4" />
@@ -86,15 +85,16 @@ export default function AppLayout() {
                                             </span>
                                         )}
                                     </NavLink>
+                                    {/* Theme toggle and sign-out moved to the Profile page —
+                                        this bar only needs quick access to alerts and the
+                                        account itself. */}
                                     <NavLink
                                         to="/profile"
-                                        className="size-11 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0"
+                                        className="size-11 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0"
                                         aria-label="My profile"
                                     >
                                         {(currentUser?.name ?? currentUser?.email ?? "U").charAt(0).toUpperCase()}
                                     </NavLink>
-                                    <ThemeToggle size="icon-lg" className="size-11" />
-                                    <SignOutButton className="size-11" />
                                 </div>
                             </div>
                             {/*

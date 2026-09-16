@@ -72,7 +72,14 @@ export default function App() {
                                             </RequireRole>
                                         }
                                     />
-                                    <Route path="/team" element={<TeamPage />} />
+                                    <Route
+                                        path="/team"
+                                        element={
+                                            <RequireRole roles={["admin", "superadmin"]}>
+                                                <TeamPage />
+                                            </RequireRole>
+                                        }
+                                    />
                                     <Route path="/profile" element={<ProfilePage />} />
                                     <Route path="/notifications" element={<NotificationsPage />} />
                                     {/* Inside the layout, not beside it: a
