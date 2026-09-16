@@ -20,8 +20,24 @@ import { useEffect } from "react";
 import { offlineDb } from "./db.ts";
 import { saveSurveyReport, addSurveyPhotos } from "../supabase/queries/surveys.ts";
 
-function isNetworkError(err: unknown): boolean {
-    return err instanceof TypeError && /fetch|network/i.test(err.message);
+/**
+ * True for a connectivity failure — as opposed to a real error (RLS denial,
+ * validation, deleted row) that happened to occur during an online attempt.
+ *
+ * Checks the message, not `instanceof TypeError`: a raw rejected fetch is a
+ * TypeError, but supabase-js/toAppError often re-wraps it into a plain Error
+ * first (see saveSurveyReport), which keeps the "Failed to fetch" wording but
+ * loses the original class. `instanceof TypeError` alone missed that wrapped
+ * case, which is exactly how a genuine network failure during an online
+ * attempt (navigator.onLine said "online" when the device wasn't actually
+ * reachable — common on Android WebView) got surfaced as a raw error toast
+ * instead of falling back to the offline queue, and also risked the sync
+ * engine misclassifying a transient connectivity blip as terminal instead of
+ * leaving it pending for retry.
+ */
+export function isNetworkError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    return /fetch|network/i.test(message);
 }
 
 function errorStatus(err: unknown): "pending" | "failed" {

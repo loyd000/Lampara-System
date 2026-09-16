@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Cloud, CloudOff, RefreshCw, AlertCircle } from "lucide-react";
+import { Cloud, CloudOff, RefreshCw, RotateCw, AlertCircle } from "lucide-react";
 
 import { offlineDb } from "@/lib/offline/db.ts";
 import { drainQueue } from "@/lib/offline/sync-engine.ts";
@@ -14,6 +14,17 @@ import {
     PopoverTitle,
     PopoverDescription,
 } from "@/components/ui/popover.tsx";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog.tsx";
 import { cn } from "@/lib/utils.ts";
 
 type FailedItem = { id: string; kind: "patch" | "photo"; error?: string };
@@ -171,6 +182,45 @@ export default function SyncStatusButton({
                         {syncing ? "Syncing…" : "Sync Now"}
                     </Button>
                 )}
+
+                {/* The Android app has no pull-to-refresh, no address bar, and
+                    launchMode="singleTask" means swiping it away in the
+                    recent-apps switcher often doesn't even kill the process —
+                    so short of Force Stopping it in system settings, there was
+                    no way to force a reload at all. Always shown, regardless
+                    of connectivity: forcing a reload while offline is exactly
+                    how you'd recover a stuck WebView or test a cold start. */}
+                <div className="mt-3 pt-3 border-t">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="w-full h-8 text-xs text-muted-foreground"
+                            >
+                                <RotateCw className="size-3.5 mr-1.5" />
+                                Reload App
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Reload the app?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Saved changes are safe, including anything still waiting to
+                                    sync — they're stored on this device. But if you're in the
+                                    middle of filling out a form and haven't saved it yet,
+                                    reloading will lose that.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => window.location.reload()}>
+                                    Reload
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </PopoverContent>
         </Popover>
     );

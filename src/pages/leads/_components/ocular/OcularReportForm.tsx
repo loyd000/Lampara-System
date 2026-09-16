@@ -9,6 +9,7 @@ import type { SurveyReportPatch } from "@/lib/supabase/queries/surveys.ts";
 import type { Id, SurveyForLead } from "@/lib/supabase/types.ts";
 import { useIsOnline } from "@/lib/offline/network.ts";
 import { saveSurveyOffline } from "@/lib/offline/survey-repository.ts";
+import { isNetworkError } from "@/lib/offline/sync-engine.ts";
 import {
     BATTERY_OPTION_LABELS,
     CONNECTION_TYPE_LABELS,
@@ -248,8 +249,13 @@ export default function OcularReportForm({
 
     const packageType = useWatch({ control, name: "packageType" });
 
-    async function saveDraft() {
-        if (!editable || !formState.isDirty) return;
+    /** Returns whether the save actually landed offline — `isOnline` (from
+     *  navigator.onLine) is a hint, not a guarantee; Android WebView in
+     *  particular can report "online" while genuinely unreachable, so a
+     *  network failure during the online attempt falls back to the offline
+     *  queue instead of surfacing a raw fetch error with no recovery. */
+    async function saveDraft(): Promise<boolean> {
+        if (!editable || !formState.isDirty) return false;
         if (savingRef.current) throw new Error("Wait for the report to finish saving.");
         savingRef.current = true;
         setSaving(true);
@@ -264,12 +270,20 @@ export default function OcularReportForm({
             const surveyId = survey._id as Id<"surveys">;
             // Offline, this queues the same field-scoped patch for the sync
             // engine to replay later — see docs/plans/Offline_implementation_plan.md.
+            let savedOffline = !isOnline;
             if (isOnline) {
-                await saveReport({ surveyId, patch });
+                try {
+                    await saveReport({ surveyId, patch });
+                } catch (err) {
+                    if (!isNetworkError(err)) throw err;
+                    await saveSurveyOffline(surveyId, patch);
+                    savedOffline = true;
+                }
             } else {
                 await saveSurveyOffline(surveyId, patch);
             }
             reset(values);
+            return savedOffline;
         } finally {
             savingRef.current = false;
             setSaving(false);
@@ -278,8 +292,8 @@ export default function OcularReportForm({
 
     async function onSubmit() {
         try {
-            await saveDraft();
-            toast.success(isOnline ? "Report saved" : "Saved locally — will sync when back online");
+            const savedOffline = await saveDraft();
+            toast.success(savedOffline ? "Saved locally — will sync when back online" : "Report saved");
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not save the report");
         }

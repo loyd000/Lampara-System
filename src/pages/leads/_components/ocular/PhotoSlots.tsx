@@ -9,6 +9,7 @@ import { SURVEY_PHOTO_SLOTS } from "@/lib/constants.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { useIsOnline } from "@/lib/offline/network.ts";
 import { addPhotosOffline } from "@/lib/offline/survey-repository.ts";
+import { isNetworkError } from "@/lib/offline/sync-engine.ts";
 import { offlineDb, type QueuedPhoto } from "@/lib/offline/db.ts";
 
 /**
@@ -127,7 +128,24 @@ function Slot({
                 toast.success(`${saved} photo${saved !== 1 ? "s" : ""} added to ${label}`);
             }
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Upload failed");
+            // `isOnline` (navigator.onLine) is a hint, not a guarantee —
+            // Android WebView in particular can report "online" while
+            // genuinely unreachable. A network failure here means nothing
+            // uploaded yet (addSurveyPhotos only throws when the very first
+            // file fails), so it's safe to queue the whole batch offline
+            // instead of surfacing a raw fetch error with no recovery.
+            if (isNetworkError(err)) {
+                try {
+                    await addPhotosOffline({ surveyId, category, files });
+                    toast.success(
+                        `${files.length} photo${files.length !== 1 ? "s" : ""} saved locally — will sync when back online`,
+                    );
+                } catch (offlineErr) {
+                    toast.error(offlineErr instanceof Error ? offlineErr.message : "Could not save photo");
+                }
+            } else {
+                toast.error(err instanceof Error ? err.message : "Upload failed");
+            }
         } finally {
             setUploading(false);
         }
