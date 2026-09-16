@@ -22,7 +22,7 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form.tsx";
-import NotificationPreferencesCard from "./_components/NotificationPreferencesCard.tsx";
+
 
 const passwordSchema = z
     .object({
@@ -215,8 +215,7 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* Notification preferences */}
-            <NotificationPreferencesCard />
+
         </div>
     );
 }

@@ -376,15 +376,7 @@ export type ActivityLogRow = {
     created_at: string;
 };
 
-export type NotificationPreferencesRow = {
-    user_id: string;
-    lead_assigned: boolean;
-    inspection_scheduled: boolean;
-    installation_scheduled: boolean;
-    quote_accepted: boolean;
-    contract_signed: boolean;
-    updated_at: string;
-};
+
 
 export type NotificationEvent =
     | "lead_assigned"
@@ -402,6 +394,9 @@ export type NotificationLogRow = {
     recipient_user_id: string | null;
     status: NotificationStatus;
     error: string | null;
+    title: string | null;
+    message: string | null;
+    is_read: boolean;
     created_at: string;
 };
 
@@ -431,7 +426,6 @@ export type Database = {
             packages: TableDef<PackageRow>;
             package_items: TableDef<PackageItemRow>;
             activity_log: TableDef<ActivityLogRow>;
-            notification_preferences: TableDef<NotificationPreferencesRow>;
             notification_log: TableDef<NotificationLogRow>;
         };
         Views: Record<never, never>;

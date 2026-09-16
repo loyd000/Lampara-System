@@ -23,6 +23,7 @@ const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
 const TeamPage = lazy(() => import("./pages/team/page.tsx"));
 const PackagesPage = lazy(() => import("./pages/packages/page.tsx"));
 const PipelinePage = lazy(() => import("./pages/pipeline/page.tsx"));
+const NotificationsPage = lazy(() => import("./pages/notifications/page.tsx"));
 
 function RouteFallback() {
     return (
@@ -63,6 +64,7 @@ export default function App() {
                                     />
                                     <Route path="/team" element={<TeamPage />} />
                                     <Route path="/profile" element={<ProfilePage />} />
+                                    <Route path="/notifications" element={<NotificationsPage />} />
                                     {/* Inside the layout, not beside it: a
                                         mistyped URL used to strand a signed-in
                                         user on a bare page with no sidebar, no

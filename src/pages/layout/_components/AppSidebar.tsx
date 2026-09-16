@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { useCurrentUser } from "@/lib/supabase/hooks.ts";
+import { useCurrentUser, useUnreadNotificationCount } from "@/lib/supabase/hooks.ts";
 import { cn } from "@/lib/utils.ts";
 import {
     LayoutDashboard,
@@ -9,6 +9,7 @@ import {
     CalendarDays,
     Columns3,
     Search,
+    Bell,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { SignOutButton } from "@/components/sign-out-button.tsx";
@@ -28,12 +29,14 @@ const NAV_ITEMS: NavItem[] = [
     { label: "Projects", to: "/projects", icon: Users },
     { label: "Pipeline", to: "/pipeline", icon: Columns3 },
     { label: "Calendar", to: "/calendar", icon: CalendarDays },
+    { label: "Notifications", to: "/notifications", icon: Bell },
     { label: "Packages", to: "/packages", icon: Package, roles: ["superadmin"] },
     { label: "Team", to: "/team", icon: UserCog, roles: ["superadmin", "admin"] },
 ];
 
 export default function AppSidebar() {
     const { data: currentUser } = useCurrentUser();
+    const { data: unreadCount } = useUnreadNotificationCount();
     const role = currentUser?.role ?? "";
 
     const visibleNav = NAV_ITEMS.filter(
@@ -88,6 +91,11 @@ export default function AppSidebar() {
                             >
                                 <item.icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
                                 {item.label}
+                                {item.to === "/notifications" && (unreadCount ?? 0) > 0 && (
+                                    <span className="ml-auto flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none">
+                                        {unreadCount! > 99 ? "99+" : unreadCount}
+                                    </span>
+                                )}
                             </div>
                         )}
                     </NavLink>

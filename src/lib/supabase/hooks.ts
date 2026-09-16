@@ -94,7 +94,8 @@ export const queryKeys = {
 
     calendarEvents: (from: string, to: string) => ["calendarEvents", from, to] as const,
 
-    myNotificationPreferences: ["notificationPreferences", "mine"] as const,
+    myNotifications: ["notifications", "mine"] as const,
+    myUnreadCount: ["notifications", "unreadCount"] as const,
 } as const;
 
 /**
@@ -893,21 +894,42 @@ export function useCalendarEvents(range: { from: string; to: string }) {
     });
 }
 
-// ─── Notification preferences ──────────────────────────────────────────────
+// ─── In-app notifications ──────────────────────────────────────────────────
 
-export function useMyNotificationPreferences() {
+export function useMyNotifications() {
     return useQuery({
-        queryKey: queryKeys.myNotificationPreferences,
-        queryFn: notificationsApi.getMyNotificationPreferences,
+        queryKey: queryKeys.myNotifications,
+        queryFn: () => notificationsApi.getMyNotifications(),
     });
 }
 
-export function useUpdateMyNotificationPreferences() {
+export function useUnreadNotificationCount() {
+    return useQuery({
+        queryKey: queryKeys.myUnreadCount,
+        queryFn: notificationsApi.getMyUnreadCount,
+        refetchInterval: 60_000, // poll every minute for badge freshness
+    });
+}
+
+export function useMarkNotificationRead() {
     const client = useQueryClient();
     return useMutation({
-        mutationFn: notificationsApi.updateMyNotificationPreferences,
-        onSuccess: () =>
-            client.invalidateQueries({ queryKey: queryKeys.myNotificationPreferences }),
+        mutationFn: notificationsApi.markNotificationRead,
+        onSuccess: () => {
+            client.invalidateQueries({ queryKey: queryKeys.myNotifications });
+            client.invalidateQueries({ queryKey: queryKeys.myUnreadCount });
+        },
+    });
+}
+
+export function useMarkAllNotificationsRead() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: notificationsApi.markAllNotificationsRead,
+        onSuccess: () => {
+            client.invalidateQueries({ queryKey: queryKeys.myNotifications });
+            client.invalidateQueries({ queryKey: queryKeys.myUnreadCount });
+        },
     });
 }
 

@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "@/components/auth-guard.tsx";
 import { AccountGate } from "@/components/account-gate.tsx";
 import { useAuth } from "@/components/providers/auth-context.ts";
-import { useCurrentUser } from "@/lib/supabase/hooks.ts";
+import { useCurrentUser, useUnreadNotificationCount } from "@/lib/supabase/hooks.ts";
 import { useRealtimeSync } from "@/lib/supabase/realtime.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
@@ -15,11 +15,12 @@ import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
 import GlobalSearch from "@/components/global-search.tsx";
 import AgentFab from "@/components/agent-panel/AgentFab.tsx";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
-import { BarChart3, Users, ClipboardCheck, Zap, Wrench } from "lucide-react";
+import { BarChart3, Users, ClipboardCheck, Zap, Wrench, Bell } from "lucide-react";
 
 export default function AppLayout() {
     const { isAuthenticated } = useAuth();
     const { data: currentUser } = useCurrentUser();
+    const { data: unreadCount } = useUnreadNotificationCount();
     const location = useLocation();
     const reducedMotion = useReducedMotion();
 
@@ -73,6 +74,18 @@ export default function AppLayout() {
                                     rather than the `icon-lg` variant that already
                                     means 40px — same visible size, wrong reason. */}
                                 <div className="flex items-center gap-1.5">
+                                    <NavLink
+                                        to="/notifications"
+                                        className="relative size-11 rounded-md bg-secondary text-foreground flex items-center justify-center border border-border shrink-0"
+                                        aria-label="Notifications"
+                                    >
+                                        <Bell className="size-4" />
+                                        {(unreadCount ?? 0) > 0 && (
+                                            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none">
+                                                {unreadCount! > 99 ? "99+" : unreadCount}
+                                            </span>
+                                        )}
+                                    </NavLink>
                                     <NavLink
                                         to="/profile"
                                         className="size-11 rounded-md bg-secondary text-foreground flex items-center justify-center font-semibold text-xs border border-border shrink-0"

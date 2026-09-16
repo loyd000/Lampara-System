@@ -1,90 +1,55 @@
 import { supabase, toAppError } from "../client.ts";
-import type { NotificationEvent, NotificationPreferencesRow } from "../database.types.ts";
+import type { NotificationEvent, NotificationLogRow } from "../database.types.ts";
 import type { Id } from "../types.ts";
 
 export type { NotificationEvent } from "../database.types.ts";
 
-export type NotificationPreferences = {
-    leadAssigned: boolean;
-    inspectionScheduled: boolean;
-    installationScheduled: boolean;
-    quoteAccepted: boolean;
-    contractSigned: boolean;
-};
+// ─── Notification content templates ─────────────────────────────────────────
 
-const DEFAULT_PREFERENCES: NotificationPreferences = {
-    leadAssigned: true,
-    inspectionScheduled: true,
-    installationScheduled: true,
-    quoteAccepted: true,
-    contractSigned: true,
-};
-
-function toPreferences(row: NotificationPreferencesRow): NotificationPreferences {
-    return {
-        leadAssigned: row.lead_assigned,
-        inspectionScheduled: row.inspection_scheduled,
-        installationScheduled: row.installation_scheduled,
-        quoteAccepted: row.quote_accepted,
-        contractSigned: row.contract_signed,
-    };
+function titleAndMessage(
+    event: NotificationEvent,
+    meta: Record<string, string>,
+): { title: string; message: string } {
+    const leadName = meta.leadName ?? "a lead";
+    switch (event) {
+        case "lead_assigned":
+            return {
+                title: "Lead assigned to you",
+                message: `${leadName} has been assigned to you.`,
+            };
+        case "inspection_scheduled":
+            return {
+                title: "Inspection scheduled",
+                message:
+                    `You're assigned to ${leadName}'s site inspection` +
+                    (meta.scheduledAt ? `, scheduled for ${meta.scheduledAt}.` : "."),
+            };
+        case "installation_scheduled":
+            return {
+                title: "Installation scheduled",
+                message:
+                    `You're on the crew for ${leadName}'s installation` +
+                    (meta.scheduledDate ? `, scheduled for ${meta.scheduledDate}.` : "."),
+            };
+        case "quote_accepted":
+            return {
+                title: "Quote approved",
+                message: `The quote for ${leadName}${meta.quotationNo ? ` (${meta.quotationNo})` : ""} has been approved.`,
+            };
+        case "contract_signed":
+            return {
+                title: "Contract signed",
+                message: `${leadName}'s contract has been signed.`,
+            };
+    }
 }
+
+// ─── Write in-app notifications ─────────────────────────────────────────────
 
 /**
- * A missing row means "never asked," not "opted out" — so a first read
- * creates one with everything on, rather than requiring a signup-time
- * backfill for every existing user.
- */
-export async function getMyNotificationPreferences(): Promise<NotificationPreferences> {
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return DEFAULT_PREFERENCES;
-
-    const { data: existing, error: selectError } = await supabase
-        .from("notification_preferences")
-        .select("*")
-        .eq("user_id", auth.user.id)
-        .maybeSingle<NotificationPreferencesRow>();
-    if (selectError) throw toAppError(selectError, "Failed to load notification preferences");
-    if (existing) return toPreferences(existing);
-
-    const { data: created, error: insertError } = await supabase
-        .from("notification_preferences")
-        .insert({ user_id: auth.user.id })
-        .select("*")
-        .single<NotificationPreferencesRow>();
-    if (insertError) throw toAppError(insertError, "Failed to set up notification preferences");
-    return toPreferences(created);
-}
-
-export async function updateMyNotificationPreferences(
-    prefs: Partial<NotificationPreferences>,
-): Promise<void> {
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) throw new Error("Not signed in");
-
-    const { error } = await supabase
-        .from("notification_preferences")
-        .upsert({
-            user_id: auth.user.id,
-            ...(prefs.leadAssigned !== undefined && { lead_assigned: prefs.leadAssigned }),
-            ...(prefs.inspectionScheduled !== undefined && {
-                inspection_scheduled: prefs.inspectionScheduled,
-            }),
-            ...(prefs.installationScheduled !== undefined && {
-                installation_scheduled: prefs.installationScheduled,
-            }),
-            ...(prefs.quoteAccepted !== undefined && { quote_accepted: prefs.quoteAccepted }),
-            ...(prefs.contractSigned !== undefined && { contract_signed: prefs.contractSigned }),
-        });
-    if (error) throw toAppError(error, "Failed to save notification preferences");
-}
-
-/**
- * Fires the `notify` Edge Function and never throws — a notification email
- * failing to send must not make the caller think their actual action (the
- * lead assignment, the schedule, the approval) failed. Every attempt is still
- * logged server-side in `notification_log`, so a silent failure here is at
- * least debuggable later.
+ * Inserts notification rows directly into `notification_log`. Unlike the old
+ * email flow this never throws — a notification failing to save must not make
+ * the caller think their actual action failed.
  */
 export async function notifyEvent(args: {
     event: NotificationEvent;
@@ -95,13 +60,94 @@ export async function notifyEvent(args: {
     const recipientUserIds = args.recipientUserIds.filter(Boolean);
     if (recipientUserIds.length === 0) return;
 
-    const { error } = await supabase.functions.invoke("notify", {
-        body: {
-            event: args.event,
-            leadId: args.leadId,
-            recipientUserIds,
-            meta: args.meta ?? {},
-        },
-    });
-    if (error) console.warn(`Failed to send "${args.event}" notification:`, error.message);
+    // Resolve lead name for the notification text
+    let leadName = "a lead";
+    try {
+        const { data: lead } = await supabase
+            .from("leads")
+            .select("first_name, last_name")
+            .eq("id", args.leadId)
+            .maybeSingle<{ first_name: string; last_name: string }>();
+        if (lead) leadName = `${lead.first_name} ${lead.last_name}`;
+    } catch {
+        // Swallow — the notification will just say "a lead"
+    }
+
+    const meta = { ...(args.meta ?? {}), leadName };
+    const { title, message } = titleAndMessage(args.event, meta);
+
+    const rows = recipientUserIds.map((uid) => ({
+        event: args.event,
+        lead_id: args.leadId,
+        recipient_user_id: uid,
+        status: "sent" as const,
+        title,
+        message,
+        is_read: false,
+    }));
+
+    const { error } = await supabase.from("notification_log").insert(rows);
+    if (error) console.warn(`Failed to save "${args.event}" notification:`, error.message);
+}
+
+// ─── Read notifications ─────────────────────────────────────────────────────
+
+export type AppNotification = {
+    id: string;
+    event: NotificationEvent;
+    leadId: string | null;
+    title: string | null;
+    message: string | null;
+    isRead: boolean;
+    createdAt: string;
+};
+
+function toAppNotification(row: NotificationLogRow): AppNotification {
+    return {
+        id: row.id,
+        event: row.event,
+        leadId: row.lead_id,
+        title: row.title,
+        message: row.message,
+        isRead: row.is_read,
+        createdAt: row.created_at,
+    };
+}
+
+export async function getMyNotifications(
+    limit = 50,
+    offset = 0,
+): Promise<AppNotification[]> {
+    const { data, error } = await supabase
+        .from("notification_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+    if (error) throw toAppError(error, "Failed to load notifications");
+    return (data as NotificationLogRow[]).map(toAppNotification);
+}
+
+export async function getMyUnreadCount(): Promise<number> {
+    const { count, error } = await supabase
+        .from("notification_log")
+        .select("id", { count: "exact", head: true })
+        .eq("is_read", false);
+    if (error) throw toAppError(error, "Failed to count unread notifications");
+    return count ?? 0;
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+    const { error } = await supabase
+        .from("notification_log")
+        .update({ is_read: true })
+        .eq("id", id);
+    if (error) throw toAppError(error, "Failed to mark notification as read");
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+    const { error } = await supabase
+        .from("notification_log")
+        .update({ is_read: true })
+        .eq("is_read", false);
+    if (error) throw toAppError(error, "Failed to mark notifications as read");
 }
