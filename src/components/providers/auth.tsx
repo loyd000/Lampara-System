@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
+import { toast } from "sonner";
 
 import { supabase, toAppError } from "@/lib/supabase/client.ts";
 import { queryKeys } from "@/lib/supabase/hooks.ts";
@@ -98,12 +99,34 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         if (!Capacitor.isNativePlatform()) return;
 
         const listenerPromise = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
-            const code = new URL(url).searchParams.get("code");
+            const params = new URL(url).searchParams;
+
+            // The provider redirects here on denial/failure too (no `code`,
+            // an `error`/`error_description` instead) — previously this
+            // branch did nothing at all, leaving the user stranded on the
+            // in-app browser tab with no explanation and no way back.
+            const oauthError = params.get("error_description") ?? params.get("error");
+            if (oauthError) {
+                toast.error(oauthError);
+                Browser.close().catch(() => {});
+                return;
+            }
+
+            const code = params.get("code");
             if (!code) return;
 
-            supabase.auth.exchangeCodeForSession(code).finally(() => {
-                Browser.close().catch(() => {});
-            });
+            supabase.auth.exchangeCodeForSession(code)
+                .then(({ error: exchangeError }) => {
+                    // Also previously unchecked — an expired/reused code or a
+                    // transient failure here closed the tab and left the app
+                    // silently sitting on the sign-in screen.
+                    if (exchangeError) {
+                        toast.error(toAppError(exchangeError, "Could not complete Google sign-in").message);
+                    }
+                })
+                .finally(() => {
+                    Browser.close().catch(() => {});
+                });
         });
 
         return () => {
