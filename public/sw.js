@@ -71,7 +71,14 @@ self.addEventListener("fetch", (event) => {
                 .then((response) => {
                     if (response.ok) {
                         const responseToCache = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, responseToCache));
+                        // waitUntil, not a bare .then(): without it the browser
+                        // can tear down the worker the instant `response` above
+                        // resolves, cutting off cache.put() mid-write and
+                        // leaving the offline shell stale or missing — exactly
+                        // the guarantee this whole branch exists to provide.
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, responseToCache)),
+                        );
                     }
                     return response;
                 })
@@ -97,7 +104,12 @@ self.addEventListener("fetch", (event) => {
                     return response;
                 }
                 const responseToCache = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+                // waitUntil — same reasoning as the navigate branch above: a
+                // bare .then() here can get cut off by worker teardown before
+                // the asset actually lands in the cache.
+                event.waitUntil(
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache)),
+                );
                 return response;
             })
             .catch(() => caches.match(event.request)),
