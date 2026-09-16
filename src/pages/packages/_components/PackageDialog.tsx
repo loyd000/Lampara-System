@@ -274,7 +274,6 @@ export default function PackageDialog({ open, onClose, existing }: Props) {
                             <Label htmlFor="pkg-desc">Description</Label>
                             <Textarea
                                 id="pkg-desc"
-                                placeholder="Brief description of what this package includes…"
                                 className="resize-none min-h-[60px]"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}

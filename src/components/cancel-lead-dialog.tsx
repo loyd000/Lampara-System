@@ -57,11 +57,10 @@ export default function CancelLeadDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-1.5">
-                    <Label htmlFor="cancel-reason">Reason</Label>
+                    <Label htmlFor="cancel-reason">Reason (optional)</Label>
                     <Textarea
                         id="cancel-reason"
                         autoFocus
-                        placeholder="Optional, but worth leaving one"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         className="min-h-[88px] text-sm"

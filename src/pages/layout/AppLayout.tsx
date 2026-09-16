@@ -145,7 +145,7 @@ const features = [
     {
         icon: Users,
         title: "Team Management",
-        description: "Assign leads and field technicians with role-based access",
+        description: "Assign leads and field engineers with role-based access",
     },
     {
         icon: ClipboardCheck,
@@ -155,7 +155,7 @@ const features = [
     {
         icon: Zap,
         title: "Installation Management",
-        description: "Schedule technicians, track materials, and manage completion photos",
+        description: "Schedule engineers, track materials, and manage completion photos",
     },
     {
         icon: Wrench,

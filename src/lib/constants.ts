@@ -124,7 +124,7 @@ export function groupOf(stage: Stage): StageGroup {
 export const ROLE_LABELS: Record<string, string> = {
   superadmin: "Superadmin",
   admin: "Admin",
-  field: "Technician",
+  field: "Engineer",
 };
 
 // ─── Financing ────────────────────────────────────────────────────────────

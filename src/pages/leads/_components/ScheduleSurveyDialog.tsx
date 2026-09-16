@@ -80,16 +80,16 @@ export default function ScheduleSurveyDialog({
                 <DialogHeader>
                     <DialogTitle>Schedule {INSPECTION_LABEL}</DialogTitle>
                     <DialogDescription>
-                        Book a site visit and assign a technician.
+                        Book a site visit and assign an engineer.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField control={form.control} name="assignedSurveyorId" render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Assign Technician</FormLabel>
+                                <FormLabel>Assign Engineer</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Select technician…" /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select engineer…" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {technicians.map((u) => (
                                             <SelectItem key={u._id} value={u._id}>

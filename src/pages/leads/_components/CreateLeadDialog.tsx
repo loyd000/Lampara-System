@@ -123,10 +123,10 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="firstName" render={({ field }) => (
-                                <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="Jane" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="lastName" render={({ field }) => (
-                                <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Smith" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -134,7 +134,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                 <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="0917 123 4567" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="email" render={({ field }) => (
-                                <FormItem><FormLabel>Email (optional)</FormLabel><FormControl><Input placeholder="jane@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Email (optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                         <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
@@ -174,7 +174,7 @@ export default function CreateLeadDialog({ open, onClose }: Props) {
                                 <FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="notes" render={({ field }) => (
-                            <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="Any initial notes…" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
 
                         <DialogFooter>

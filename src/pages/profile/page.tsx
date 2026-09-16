@@ -179,7 +179,7 @@ export default function ProfilePage() {
                                         <FormItem>
                                             <FormLabel>New Password</FormLabel>
                                             <FormControl>
-                                                <Input type="password" placeholder="••••••••" {...field} />
+                                                <Input type="password" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
                                         <FormItem>
                                             <FormLabel>Confirm Password</FormLabel>
                                             <FormControl>
-                                                <Input type="password" placeholder="••••••••" {...field} />
+                                                <Input type="password" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

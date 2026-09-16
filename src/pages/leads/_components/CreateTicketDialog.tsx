@@ -110,7 +110,7 @@ export default function CreateTicketDialog({ open, onClose, leadId, installation
                             <FormItem>
                                 <FormLabel>Description</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Describe the issue in detail…" className="resize-none min-h-[80px]" {...field} />
+                                    <Textarea className="resize-none min-h-[80px]" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

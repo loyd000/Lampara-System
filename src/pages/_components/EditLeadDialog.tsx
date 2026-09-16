@@ -209,11 +209,11 @@ export default function EditLeadDialog({ lead, property, open, onClose }: Props)
                                         <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="0917 123 4567" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={form.control} name="email" render={({ field }) => (
-                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Email (optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                 </div>
                                 <FormField control={form.control} name="referredBy" render={({ field }) => (
-                                    <FormItem><FormLabel>Referred By</FormLabel><FormControl><Input placeholder="Optional" {...field} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Referred By (optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <FormField control={form.control} name="assignedSalesRepId" render={({ field }) => (
                                     <FormItem><FormLabel>Assigned To</FormLabel>

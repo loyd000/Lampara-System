@@ -147,10 +147,9 @@ export default function PhilippineAddressFields({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <Label htmlFor="ph-subdivision">Subdivision/Village</Label>
+                    <Label htmlFor="ph-subdivision">Subdivision/Village (optional)</Label>
                     <Input
                         id="ph-subdivision"
-                        placeholder="Optional"
                         value={value.subdivision}
                         disabled={disabled}
                         onChange={(e) => onChange({ ...value, subdivision: e.target.value })}
@@ -232,10 +231,9 @@ export default function PhilippineAddressFields({
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="ph-zip">ZIP Code</Label>
+                    <Label htmlFor="ph-zip">ZIP Code (optional)</Label>
                     <Input
                         id="ph-zip"
-                        placeholder="Optional"
                         inputMode="numeric"
                         maxLength={4}
                         value={value.zipCode}

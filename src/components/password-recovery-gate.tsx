@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button.tsx";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -90,11 +91,11 @@ function SetNewPassword() {
                                         <Input
                                             type="password"
                                             autoComplete="new-password"
-                                            placeholder="At least 8 characters"
                                             autoFocus
                                             {...field}
                                         />
                                     </FormControl>
+                                    <FormDescription>At least 8 characters</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

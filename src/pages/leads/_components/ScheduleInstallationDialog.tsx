@@ -180,7 +180,7 @@ export default function ScheduleInstallationDialog({
                                     touch drag gesture on a phone. */}
                                 <div className="space-y-1 rounded-md border p-2">
                                     {crew.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground p-1">No technicians found</p>
+                                        <p className="text-xs text-muted-foreground p-1">No engineers found</p>
                                     ) : crew.map((u) => (
                                         // The whole row is the label, not just the
                                         // text beside a 16px checkbox — py-2 takes

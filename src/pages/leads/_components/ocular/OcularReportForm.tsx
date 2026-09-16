@@ -328,7 +328,6 @@ export default function OcularReportForm({
                         label="Monthly consumption"
                         inputMode="decimal"
                         suffix="kWh"
-                        placeholder="666"
                         disabled={disabled}
                         {...register("monthlyConsumptionKwh")}
                     />
@@ -336,7 +335,6 @@ export default function OcularReportForm({
                         label="Monthly electric bill"
                         inputMode="decimal"
                         suffix="₱"
-                        placeholder="10,000"
                         disabled={disabled}
                         {...register("monthlyBillPhp")}
                     />

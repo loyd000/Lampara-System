@@ -17,6 +17,7 @@ import {
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -190,7 +191,6 @@ export function SignInDialog({
                                                 <Input
                                                     type="email"
                                                     autoComplete="email"
-                                                    placeholder="you@company.com"
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -258,7 +258,6 @@ export function SignInDialog({
                                             <FormControl>
                                                 <Input
                                                     autoComplete="name"
-                                                    placeholder="Jane Smith"
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -276,7 +275,6 @@ export function SignInDialog({
                                                 <Input
                                                     type="email"
                                                     autoComplete="email"
-                                                    placeholder="you@company.com"
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -294,10 +292,10 @@ export function SignInDialog({
                                                 <Input
                                                     type="password"
                                                     autoComplete="new-password"
-                                                    placeholder="At least 8 characters"
                                                     {...field}
                                                 />
                                             </FormControl>
+                                            <FormDescription>At least 8 characters</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}
