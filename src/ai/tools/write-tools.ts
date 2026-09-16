@@ -458,7 +458,6 @@ export const markContractSignedTool: AgentTool = {
 const scheduleInspectionArgs = z.object({
     projectId: z.string().min(1),
     date: z.string().regex(DATE_RE, "Expected yyyy-mm-dd"),
-    time: z.string().regex(TIME_RE, 'Expected 24-hour "HH:mm"'),
     assignedUserId: z.string().min(1),
 });
 
@@ -468,8 +467,9 @@ export const scheduleInspectionTool: AgentTool = {
     declaration: {
         name: "schedule_inspection",
         description:
-            "Books a site ocular inspection for a project, at a specific date " +
-            "and time, with one assigned technician. Call get_team (role: " +
+            "Books a site ocular inspection for a project on a given date, " +
+            "with one assigned technician. No time of day — the app's own " +
+            "scheduling dialog only collects a date. Call get_team (role: " +
             '"field") first if you do not already have the technician\'s id. ' +
             "Moves the project to the Inspection Scheduled stage.",
         input_schema: {
@@ -477,16 +477,15 @@ export const scheduleInspectionTool: AgentTool = {
             properties: {
                 projectId: { type: "string", description: "The project's id, from list_projects." },
                 date: { type: "string", description: "yyyy-mm-dd" },
-                time: { type: "string", description: '24-hour "HH:mm", e.g. "14:30".' },
                 assignedUserId: { type: "string", description: "The technician's id, from get_team." },
             },
-            required: ["projectId", "date", "time", "assignedUserId"],
+            required: ["projectId", "date", "assignedUserId"],
         },
     },
     async run(rawArgs) {
         const parsed = scheduleInspectionArgs.safeParse(rawArgs);
         if (!parsed.success) return formatError(parsed.error.message);
-        const { projectId, date, time, assignedUserId } = parsed.data;
+        const { projectId, date, assignedUserId } = parsed.data;
         const leadId = projectId as Id<"leads">;
 
         const properties = await getProperties(leadId);
@@ -495,10 +494,12 @@ export const scheduleInspectionTool: AgentTool = {
             return formatError("This project has no property on file — add one in the app before scheduling an inspection.");
         }
 
-        // Interpreted in the caller's own local time, same as every date
-        // picker elsewhere in the app — this only ever runs in the browser.
-        const scheduledAt = new Date(`${date}T${time}:00`);
-        if (Number.isNaN(scheduledAt.getTime())) return formatError("That date/time didn't parse — check the values.");
+        // Local midnight of the given date — interpreted in the caller's own
+        // local time, same as every date picker elsewhere in the app (this
+        // only ever runs in the browser). No time of day is collected; see
+        // ScheduleSurveyDialog.tsx for why.
+        const scheduledAt = new Date(`${date}T00:00:00`);
+        if (Number.isNaN(scheduledAt.getTime())) return formatError("That date didn't parse — check the value.");
 
         try {
             const surveyId = await scheduleSurvey({

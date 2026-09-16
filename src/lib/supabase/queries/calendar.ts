@@ -1,9 +1,11 @@
 /**
  * The calendar's data layer — a client-side merge of two tables, not a table
- * of its own. `surveys.scheduled_at` is a timestamptz (a real time slot);
- * `installations.scheduled_date` is a plain date (all-day, no time-of-day) —
- * the two shapes stay distinct in `CalendarEvent` rather than being forced
- * into one "at" instant that would fabricate a time no installer scheduled.
+ * of its own. `surveys.scheduled_at` is still a timestamptz column, but the
+ * scheduling dialog only ever collects a date (stored as local midnight) —
+ * same as `installations.scheduled_date`, a plain date with no time-of-day.
+ * Both kinds report `allDay: true` in `CalendarEvent`; `at` survives on the
+ * inspection variant only because it's still useful for sorting/bucketing by
+ * day, not because it carries a real time slot anymore.
  */
 
 import { supabase, unwrap } from "../client.ts";
@@ -39,9 +41,10 @@ export type CalendarEvent =
           kind: "inspection";
           id: Id<"surveys">;
           status: SurveyStatus;
-          /** Exact time slot. */
+          /** Kept for sorting/day-bucketing, but always local midnight —
+           *  the scheduling dialog only ever collects a date now. */
           at: string;
-          allDay: false;
+          allDay: true;
       })
     | (EventBase & {
           kind: "installation";
@@ -200,7 +203,7 @@ export async function listCalendarEvents(args: {
             status: row.status,
             assigneeNames: [row.surveyor?.name || row.surveyor?.email || "Unassigned"],
             at: row.scheduled_at,
-            allDay: false,
+            allDay: true,
             startDate: day,
             endDate: day,
         };

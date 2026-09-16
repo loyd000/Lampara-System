@@ -171,7 +171,7 @@ export async function scheduleSurvey(args: {
     await logActivity({
         leadId: args.leadId,
         action: "Site ocular inspection scheduled",
-        details: `Scheduled for ${new Date(args.scheduledAt).toLocaleString()}`,
+        details: `Scheduled for ${new Date(args.scheduledAt).toLocaleDateString()}`,
         entityType: "survey",
         entityId: survey.id,
         touchLead: false,
@@ -181,7 +181,7 @@ export async function scheduleSurvey(args: {
         event: "inspection_scheduled",
         leadId: args.leadId,
         recipientUserIds: [args.assignedSurveyorId],
-        meta: { scheduledAt: new Date(args.scheduledAt).toLocaleString() },
+        meta: { scheduledAt: new Date(args.scheduledAt).toLocaleDateString() },
     });
 
     return survey.id;

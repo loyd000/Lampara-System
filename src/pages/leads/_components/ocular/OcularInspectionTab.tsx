@@ -526,17 +526,15 @@ function StatusBar({
                                 {survey.surveyorName}
                             </span>
                         </div>
-                        {/* Keeps the clock time — this is the visit's scheduled
-                            slot, which the technician needs. The weekday goes,
-                            as it does in the list. */}
+                        {/* Date only — the scheduling dialog doesn't collect a
+                            time of day, so scheduledAt is always local
+                            midnight. No weekday, matching the list above. */}
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                             <CalendarDays className="w-3 h-3" />
-                            {new Date(survey.scheduledAt).toLocaleString(undefined, {
+                            {new Date(survey.scheduledAt).toLocaleDateString(undefined, {
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
                             })}
                         </p>
                         {survey.completedAt && (

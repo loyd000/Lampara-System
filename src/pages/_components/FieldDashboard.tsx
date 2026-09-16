@@ -50,10 +50,10 @@ type FieldJob = {
     leadId: string;
     customerName: string;
     address: string | null;
-    /** Local Date for the scheduled moment. */
+    /** Local Date for the scheduled day — neither kind carries a real
+     *  time-of-day (an inspection's `at` is always local midnight, same as
+     *  an installation's), so nothing here ever renders a clock. */
     at: Date;
-    /** Installations carry a date with no time; don't render a clock for them. */
-    allDay: boolean;
     status: string;
     /**
      * Whether the job is finished. The two job types disagree on what that
@@ -113,7 +113,6 @@ export default function FieldDashboard({ user }: Props) {
             customerName: s.leadName,
             address: s.address,
             at: parseJobDate(s.scheduledAt),
-            allDay: false,
             status: s.status,
             // An inspection is finished when the technician says so (0028),
             // not by reaching a status — there is no terminal status to reach
@@ -135,7 +134,6 @@ export default function FieldDashboard({ user }: Props) {
             customerName: i.customerName,
             address: i.address,
             at: parseJobDate(i.scheduledDate),
-            allDay: true,
             status: i.status,
             done: i.status === "completed",
             statusLabel: INSTALLATION_STATUS_LABELS[i.status] ?? i.status,
@@ -386,7 +384,6 @@ function JobCard({ job, onClick, tone }: {
                             weekday: "short",
                             month: "short",
                             day: "numeric",
-                            ...(job.allDay ? {} : { hour: "2-digit", minute: "2-digit" }),
                         })}
                 </p>
 

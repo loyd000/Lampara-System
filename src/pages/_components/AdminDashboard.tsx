@@ -305,8 +305,11 @@ export default function AdminDashboard({ user }: Props) {
                                                     {event.leadName}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {/* Neither kind carries a real time-of-day — an
+                                                        inspection's `at` is always local midnight now,
+                                                        same as an installation's `startDate`. */}
                                                     {event.kind === "inspection"
-                                                        ? format(new Date(event.at), "EEE, MMM d · h:mm a")
+                                                        ? format(new Date(event.at), "EEE, MMM d")
                                                         : format(new Date(`${event.startDate}T00:00:00`), "EEE, MMM d")}
                                                 </p>
                                             </div>

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input.tsx";
 
 const schema = z.object({
     assignedSurveyorId: z.string().min(1, "Please select a surveyor"),
-    scheduledAt: z.string().min(1, "Please select a date and time"),
+    scheduledDate: z.string().min(1, "Please select a date"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -46,16 +46,20 @@ export default function ScheduleSurveyDialog({
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
-        defaultValues: { assignedSurveyorId: "", scheduledAt: "" },
+        defaultValues: { assignedSurveyorId: "", scheduledDate: "" },
     });
 
     async function onSubmit(values: FormValues) {
         try {
+            // No time of day is collected — the report only ever showed the
+            // date anyway (see OcularInspectionTab), so this is stored as
+            // local midnight of the chosen date rather than asking for a
+            // time nobody used.
             const surveyId = await scheduleSurvey({
                 leadId,
                 propertyId,
                 assignedSurveyorId: values.assignedSurveyorId as Id<"users">,
-                scheduledAt: new Date(values.scheduledAt).toISOString(),
+                scheduledAt: new Date(`${values.scheduledDate}T00:00:00`).toISOString(),
             });
             toast.success("Ocular report created");
             form.reset();
@@ -101,11 +105,11 @@ export default function ScheduleSurveyDialog({
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="scheduledAt" render={({ field }) => (
+                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Date & Time</FormLabel>
+                                <FormLabel>Date</FormLabel>
                                 <FormControl>
-                                    <Input type="datetime-local" {...field} />
+                                    <Input type="date" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
