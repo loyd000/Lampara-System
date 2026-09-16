@@ -1,6 +1,14 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, CloudOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
+
+/** Vite/browser wording for a failed `import()` — a route chunk that's
+ *  neither reachable over the network nor already cached. Distinct from an
+ *  actual rendering crash: offline, this is expected for any page whose code
+ *  was never fetched while online, not a bug to show a stack trace for. */
+function isChunkLoadError(message: string | undefined): boolean {
+    return !!message && /dynamically imported module|module script failed|failed to fetch/i.test(message);
+}
 
 interface Props {
     children: ReactNode;
@@ -27,19 +35,36 @@ export class ErrorBoundary extends Component<Props, State> {
 
     public render() {
         if (this.state.hasError) {
+            // A failed chunk import while offline means this page's code was
+            // never saved for offline use — not a crash. "Reload Page" would
+            // just repeat the exact same failure (still no network, still no
+            // cached chunk), so this gets its own message and sends the
+            // person somewhere that IS guaranteed cached (the dashboard is
+            // part of the entry bundle, not a lazy route) instead of looping.
+            const offlineChunkFailure =
+                isChunkLoadError(this.state.error?.message) && !navigator.onLine;
+
             return (
                 <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
                     <div className="w-full max-w-md space-y-5 rounded-lg border border-border bg-card p-6 shadow-xs text-center">
                         <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-                            <AlertCircle className="size-6" />
+                            {offlineChunkFailure ? (
+                                <CloudOff className="size-6" />
+                            ) : (
+                                <AlertCircle className="size-6" />
+                            )}
                         </div>
                         <div className="space-y-1.5">
-                            <h1 className="text-lg font-semibold text-foreground">Something went wrong</h1>
+                            <h1 className="text-lg font-semibold text-foreground">
+                                {offlineChunkFailure ? "Not available offline" : "Something went wrong"}
+                            </h1>
                             <p className="text-xs text-muted-foreground leading-relaxed">
-                                An unexpected error occurred while rendering the page.
+                                {offlineChunkFailure
+                                    ? "This page hasn't been opened while online yet, so it wasn't saved for offline use. Connect to the internet and open it once — after that, it'll work offline too."
+                                    : "An unexpected error occurred while rendering the page."}
                             </p>
                         </div>
-                        {this.state.error?.message && (
+                        {!offlineChunkFailure && this.state.error?.message && (
                             <div className="rounded-md border border-border bg-secondary/50 p-3 text-left font-mono text-xs text-muted-foreground break-words max-h-32 overflow-auto">
                                 {this.state.error.message}
                             </div>
@@ -48,10 +73,14 @@ export class ErrorBoundary extends Component<Props, State> {
                             variant="default"
                             size="sm"
                             className="gap-1.5 mx-auto"
-                            onClick={() => window.location.reload()}
+                            onClick={() =>
+                                offlineChunkFailure
+                                    ? (window.location.href = "/")
+                                    : window.location.reload()
+                            }
                         >
                             <RefreshCw className="size-3.5" />
-                            Reload Page
+                            {offlineChunkFailure ? "Go to Dashboard" : "Reload Page"}
                         </Button>
                     </div>
                 </div>

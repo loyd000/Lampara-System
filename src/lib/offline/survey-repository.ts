@@ -25,6 +25,15 @@ export async function downloadSurveyForOffline(leadId: string, surveyId: string)
     const now = new Date().toISOString();
     await offlineDb.surveys.put({ ...survey, downloadedAt: now, lastSyncedAt: now });
 
+    // The data above is now cached, but OcularInspectionTab lives on the lead
+    // detail route, which App.tsx lazy-loads — without this, that route's own
+    // JS chunk is never fetched (and so never cached by the service worker's
+    // generic same-origin handler), and opening a downloaded inspection
+    // offline throws a failed dynamic import instead of showing the report.
+    // Fire-and-forget: this is a cache-warming side effect, not something the
+    // caller needs to await or handle a failure for.
+    void import("../../pages/leads/[id]/page.tsx");
+
     if (navigator.storage?.persist) {
         void navigator.storage.persist();
     }
