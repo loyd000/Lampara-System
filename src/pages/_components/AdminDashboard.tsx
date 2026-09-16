@@ -14,7 +14,7 @@ const UPCOMING_DAYS_AHEAD = 6;
 /** How many of those events it actually lists — a peek, not the calendar. */
 const UPCOMING_SHOWN = 4;
 /** The activity feed is a peek too, not the full audit trail. */
-const RECENT_ACTIVITY_COUNT = 10;
+const RECENT_ACTIVITY_COUNT = 5;
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
