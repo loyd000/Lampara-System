@@ -1,7 +1,11 @@
-const CACHE_NAME = "app-assets-v1";
+const CACHE_NAME = "app-assets-v2";
 const OFFLINE_URL = "/offline.html";
-// Never precache "/" (the app shell). Its HTML embeds Vite-hashed asset URLs
-// that change on every publish, so a cached shell points at dead chunks.
+// The SPA shell (any navigated path serves this same document — Vercel
+// rewrites every route to it), cached under one fixed key regardless of which
+// path was actually requested.
+const SHELL_URL = "/";
+// Not precached at install time — see the "navigate" branch below for why,
+// and how it stays paired with the exact hashed assets it references.
 const urlsToCache = [
     OFFLINE_URL,
     // The icon site.webmanifest actually points at — cached so the OS can
@@ -10,7 +14,9 @@ const urlsToCache = [
     "/site.webmanifest",
 ];
 
-// Install event - cache the offline page and icons (never the app shell).
+// Install event - cache the offline page and icons. The app shell is
+// deliberately NOT precached here — see the "navigate" branch below, which
+// caches it opportunistically instead, in lockstep with its own assets.
 // allSettled so one missing asset does not abort the whole install.
 self.addEventListener("install", (event) => {
     event.waitUntil(
@@ -44,16 +50,40 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // Navigation requests are network-only. On failure, fall back to the
-    // dedicated offline page, NEVER the cached app shell — a stale "/" references
-    // dead Vite chunk hashes after a publish and white-screens the app.
+    // Navigation requests are network-first. On success, the shell is cached
+    // under the fixed SHELL_URL key — always overwritten with whatever was
+    // *just* fetched, never a stale build. This is what keeps it safe: the
+    // browser requests this document's script/link tags immediately after,
+    // within the same successful page load, and the generic same-origin
+    // handler below caches those exact content-hashed URLs as a side effect —
+    // so the cached shell and the cached assets it references are always
+    // captured together, from the same moment, never mixed across deploys.
+    //
+    // On failure, fall back to that cached shell first (a cold reload/fresh
+    // tab while offline still boots the app, with whatever was last loaded
+    // successfully — this is what makes the offline Ocular Report queue
+    // reachable from a dead start, not just a session that was already open).
+    // Only fall back to the static offline page if nothing has ever loaded
+    // successfully on this device.
     if (event.request.mode === "navigate") {
         event.respondWith(
-            fetch(event.request).catch(() =>
-                caches
-                    .match(OFFLINE_URL)
-                    .then((cached) => cached ?? new Response("Offline", { status: 503 })),
-            ),
+            fetch(event.request)
+                .then((response) => {
+                    if (response.ok) {
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, responseToCache));
+                    }
+                    return response;
+                })
+                .catch(() =>
+                    caches.match(SHELL_URL).then(
+                        (shell) =>
+                            shell ??
+                            caches
+                                .match(OFFLINE_URL)
+                                .then((cached) => cached ?? new Response("Offline", { status: 503 })),
+                    ),
+                ),
         );
         return;
     }
