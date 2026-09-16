@@ -156,15 +156,17 @@ export default function AdminDashboard({ user }: Props) {
 
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-4">
+            {/* Header — stacked on mobile so the button never vertically
+                centers against a wrapped two-line greeting and drifts into
+                the text; side-by-side once there's room for both on one line. */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
                         Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1.5">Here's what's happening at Lampara today.</p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)}>
+                <Button onClick={() => setCreateOpen(true)} className="sm:shrink-0">
                     <Plus className="w-4 h-4 mr-1.5" />New Project
                 </Button>
             </div>
