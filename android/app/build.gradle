@@ -16,6 +16,12 @@ android {
         applicationId "com.lampara.crm"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // Bump BOTH before every Play Store upload — nothing here ties them
+        // to package.json, a git tag, or a CI counter, so this is the one
+        // place that has to be remembered by hand. versionCode must strictly
+        // increase release over release or the Play Console rejects the
+        // upload as a duplicate/lower version; versionName is the
+        // human-readable string shown to users.
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

@@ -23,7 +23,14 @@ export async function listContractsForLead(
         .returns<(ContractRow & { quotes: { version: number } | null })[]>();
 
     if (error) {
-        // Fallback: if relationship embedding fails, query contracts plain and fetch quotes separately.
+        // Fallback: if relationship embedding fails, query contracts plain and
+        // fetch quotes separately. PostgREST resolves `quotes!contracts_quote_id_fkey`
+        // by constraint name at request time (see the same note in
+        // surveys.ts) — a renamed/dropped FK is a runtime 400 nothing in the
+        // build can catch, and without logging it here, this fallback would
+        // keep working (just slower — an N+1-shaped path) while masking
+        // exactly the kind of schema drift someone would want to know about.
+        console.warn("Contracts embed query failed, falling back to a two-step fetch:", error.message);
         const { data: fallbackRows, error: fallbackError } = await supabase
             .from("contracts")
             .select("*")

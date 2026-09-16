@@ -185,9 +185,35 @@ function isTextOnly(content: AgentMessage["content"]): boolean {
 }
 
 /**
+ * A stable, order-independent string for a tool call's arguments — used to
+ * check that a confirmed retry is the *same* action that was described and
+ * agreed to, not just a call to the same tool name. Plain `JSON.stringify`
+ * is sensitive to key order, which the model has no reason to keep
+ * consistent between the original blocked call and its retry, so object
+ * keys are sorted recursively before stringifying.
+ */
+export function canonicalArgs(input: Record<string, unknown>): string {
+    const sort = (value: unknown): unknown => {
+        if (Array.isArray(value)) return value.map(sort);
+        if (value && typeof value === "object") {
+            return Object.fromEntries(
+                Object.keys(value as Record<string, unknown>)
+                    .sort()
+                    .map((key) => [key, sort((value as Record<string, unknown>)[key])]),
+            );
+        }
+        return value;
+    };
+    return JSON.stringify(sort(input));
+}
+
+/**
  * Which write tools (if any) are confirmed for round 0 of *this* turn —
  * derived entirely from the incoming history, not from separate state the
- * hook has to remember to thread through correctly.
+ * hook has to remember to thread through correctly. Maps each confirmed
+ * tool name to the exact argument signature (see `canonicalArgs`) it was
+ * blocked and described with, so a retry only counts as confirmed if it's
+ * the same action, not just the same tool.
  *
  * A tool counts as confirmed only if the turn immediately before this one
  * ended in plain text (the model described something and stopped, rather
@@ -202,8 +228,8 @@ function isTextOnly(content: AgentMessage["content"]): boolean {
  * *same* turn regardless, since by construction this is only ever computed
  * once, from history as it stood before the current turn started.
  */
-export function confirmedToolNames(history: AgentMessage[]): Set<string> {
-    const confirmed = new Set<string>();
+export function confirmedToolNames(history: AgentMessage[]): Map<string, string> {
+    const confirmed = new Map<string, string>();
     const lastMessage = history[history.length - 1];
     if (!lastMessage || lastMessage.role !== "assistant" || !isTextOnly(lastMessage.content)) {
         return confirmed;
@@ -217,8 +243,16 @@ export function confirmedToolNames(history: AgentMessage[]): Set<string> {
     for (const block of priorMessage.content) {
         if (block.type !== "tool_result") continue;
         try {
-            const parsed = JSON.parse(block.content) as { pendingConfirmation?: unknown };
-            if (typeof parsed.pendingConfirmation === "string") confirmed.add(parsed.pendingConfirmation);
+            const parsed = JSON.parse(block.content) as {
+                pendingConfirmation?: unknown;
+                pendingConfirmationArgs?: unknown;
+            };
+            if (
+                typeof parsed.pendingConfirmation === "string" &&
+                typeof parsed.pendingConfirmationArgs === "string"
+            ) {
+                confirmed.set(parsed.pendingConfirmation, parsed.pendingConfirmationArgs);
+            }
         } catch {
             // Not JSON, or not our shape — not a confirmation marker.
         }
@@ -258,22 +292,29 @@ export async function runAgentTurn(
         for (const call of toolUses) {
             const tool = AGENT_TOOLS[call.name];
 
+            const isConfirmed =
+                round === 0 && confirmedThisTurn.get(call.name) === canonicalArgs(call.input);
+
             let result: Record<string, unknown>;
             if (!tool) {
                 result = { error: `Unknown tool: ${call.name}` };
-            } else if (tool.requiresConfirmation && !(round === 0 && confirmedThisTurn.has(call.name))) {
+            } else if (tool.requiresConfirmation && !isConfirmed) {
                 // Blocked regardless of what the model's own arguments or
                 // reasoning claim — this is the code-enforced version of
                 // the system prompt's "describe it and wait" rule. The
                 // model's very next plain-text reply, if it names this
-                // tool again, is what `confirmedToolNames` looks for on
-                // the *following* turn.
+                // tool again *with these same arguments*, is what
+                // `confirmedToolNames` looks for on the *following* turn —
+                // matching the tool name alone isn't enough, since the
+                // model's reasoning could drift between what it described
+                // and what it actually retries with.
                 result = {
                     error:
                         "This action has not been confirmed yet. Describe exactly what you're " +
                         "about to do in a plain-text reply and wait for the user's next message " +
                         "before calling this tool again — do not retry it in this same turn.",
                     pendingConfirmation: call.name,
+                    pendingConfirmationArgs: canonicalArgs(call.input),
                 };
             } else {
                 result = await tool.run(call.input, ctx).catch((err: unknown) => ({

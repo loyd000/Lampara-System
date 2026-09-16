@@ -42,8 +42,13 @@ export type ContractDetailsInput = {
  * encoding, so it must never reach the renderer.
  */
 function formatContractPhp(amount: number): string {
+    // Always two decimals, matching money.ts's formatPhp and the quote's own
+    // figures — a whole-peso amount used to print without cents ("366,500"
+    // here vs. "366,500.00" everywhere else this same price appears), which
+    // reads as a formatting bug on a document the customer signs, not a
+    // deliberate difference.
     return amount.toLocaleString("en-US", {
-        minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
 }

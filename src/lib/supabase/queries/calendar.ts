@@ -72,6 +72,28 @@ function localDayOf(instant: string): string {
 }
 
 /**
+ * The UTC instants that bound a *local* calendar day, as ISO strings.
+ *
+ * `args.from`/`args.to` below are local-day strings (produced with
+ * `date-fns format(x, "yyyy-MM-dd")` on a local Date, by CalendarPage /
+ * AdminDashboard) — filtering `scheduled_at` (a timestamptz) against them
+ * with a literal `T00:00:00Z` treats a local day as if it were a UTC one.
+ * For any timezone ahead of UTC (the Philippines is UTC+8, no DST) that
+ * silently drops early-morning local events from the low end of the range
+ * and admits events past local midnight at the high end. Building the
+ * bound from the device's own local timezone via the `Date(y, m, d, ...)`
+ * constructor — rather than hardcoding an offset — converts it correctly
+ * regardless of what timezone the device actually is in.
+ */
+function localDayBoundsUtc(dateStr: string): { startUtc: string; endUtc: string } {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return {
+        startUtc: new Date(y, m - 1, d, 0, 0, 0, 0).toISOString(),
+        endUtc: new Date(y, m - 1, d, 23, 59, 59, 999).toISOString(),
+    };
+}
+
+/**
  * Every yyyy-mm-dd from `start` to `end`, inclusive.
  *
  * Stepped in UTC on purpose. These are plain dates with no time-of-day, and
@@ -127,14 +149,17 @@ export async function listCalendarEvents(args: {
         leads: LeadWithProperty | null;
     };
 
+    const rangeStart = localDayBoundsUtc(args.from).startUtc;
+    const rangeEnd = localDayBoundsUtc(args.to).endUtc;
+
     let surveyQuery = supabase
         .from("surveys")
         .select(
             "*, surveyor:users!surveys_assigned_surveyor_id_fkey(name, email), " +
                 "leads(first_name, last_name, properties(address, city))",
         )
-        .gte("scheduled_at", `${args.from}T00:00:00Z`)
-        .lte("scheduled_at", `${args.to}T23:59:59Z`)
+        .gte("scheduled_at", rangeStart)
+        .lte("scheduled_at", rangeEnd)
         .neq("status", "cancelled")
         .is("completed_at", null);
     if (isField) surveyQuery = surveyQuery.eq("assigned_surveyor_id", auth.user.id);

@@ -87,9 +87,14 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     const [rescheduleOpen, setRescheduleOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [earlyStartOpen, setEarlyStartOpen] = useState(false);
-    // Tracks whether the auto-start effect has already fired for this
-    // installation so it doesn't re-trigger on every render.
-    const autoStartedRef = useRef(false);
+    // Tracks which installation's id the auto-start effect has already fired
+    // for, so it doesn't re-trigger on every render — and, unlike a plain
+    // boolean latch, doesn't stay stuck "already fired" for a *different*
+    // installation. LeadDetailPage never remounts across a client-side
+    // navigation between two leads, so a boolean here would survive from
+    // lead A into lead B and silently skip auto-starting B's installation
+    // if it was also scheduled for today in the same session.
+    const autoStartedRef = useRef<string | null>(null);
     // Counted when the confirm dialog opens rather than watched continuously —
     // it is only ever read to word one sentence.
     const [ticketsAtRisk, setTicketsAtRisk] = useState<number | null>(null);
@@ -117,13 +122,13 @@ export default function InstallationSection({ leadId, stage, canEdit }: Props) {
     // still "scheduled", move it to in_progress without any user action.
     useEffect(() => {
         if (!installation || installation.status !== "scheduled" || !canWork) return;
-        if (autoStartedRef.current) return;
+        if (autoStartedRef.current === installation._id) return;
         const today = new Date().toISOString().slice(0, 10);
         if (today !== installation.scheduledDate) return;
-        autoStartedRef.current = true;
+        autoStartedRef.current = installation._id;
         void updateStatus({ installationId: installation._id, status: "in_progress" })
             .then(() => toast.success("Installation started automatically — today is the scheduled date."))
-            .catch(() => { autoStartedRef.current = false; });
+            .catch(() => { autoStartedRef.current = null; });
     }, [installation, canWork, updateStatus]);
 
     // Wrapper around handleStatusChange("in_progress") that checks whether

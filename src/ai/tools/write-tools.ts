@@ -41,6 +41,7 @@ import {
     type PhAddressValue,
 } from "@/lib/ph-address.ts";
 import { STAGES, STAGE_LABELS, canScheduleInstallation, type Stage } from "@/lib/constants.ts";
+import { sumLineTotalsPhp } from "@/lib/money.ts";
 import type { Id, PackageWithItems } from "@/lib/supabase/types.ts";
 import type { PropertyType, TicketPriority } from "@/lib/supabase/database.types.ts";
 import type { AgentTool } from "../types.ts";
@@ -345,7 +346,11 @@ export const createQuoteTool: AgentTool = {
         try {
             const quoteId = await createQuote({ leadId });
             await saveQuote({ quoteId, items });
-            const totalPhp = items.reduce((sum, item) => sum + item.qty * item.unitPricePhp, 0);
+            // Same per-line-then-sum rounding the write path and the quote
+            // builder use (see lib/money.ts) — raw qty*unitPrice here could
+            // disagree with the stored total by fractions of a centavo,
+            // which is the exact bug that helper was written to close off.
+            const totalPhp = sumLineTotalsPhp(items);
             return {
                 quoteId,
                 itemCount: items.length,

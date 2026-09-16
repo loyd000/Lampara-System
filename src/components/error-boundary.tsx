@@ -35,14 +35,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
     public render() {
         if (this.state.hasError) {
-            // A failed chunk import while offline means this page's code was
-            // never saved for offline use — not a crash. "Reload Page" would
-            // just repeat the exact same failure (still no network, still no
-            // cached chunk), so this gets its own message and sends the
-            // person somewhere that IS guaranteed cached (the dashboard is
-            // part of the entry bundle, not a lazy route) instead of looping.
-            const offlineChunkFailure =
-                isChunkLoadError(this.state.error?.message) && !navigator.onLine;
+            // A failed chunk import means this page's code couldn't be
+            // fetched — not a crash. Previously this also required
+            // `!navigator.onLine`, but that flag only reflects whether the OS
+            // reports a network interface as up, not whether the fetch could
+            // actually succeed; on the spotty/captive-portal signal a field
+            // technician is exactly likely to hit, it can read `true` while
+            // still misclassifying the real cause. The message pattern alone
+            // is the reliable signal here: whatever kept the chunk from
+            // loading, "Reload Page" would just repeat the same failure, so
+            // this sends the person somewhere that IS guaranteed cached (the
+            // dashboard is part of the entry bundle, not a lazy route)
+            // instead of looping on a raw stack trace.
+            const offlineChunkFailure = isChunkLoadError(this.state.error?.message);
 
             return (
                 <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">

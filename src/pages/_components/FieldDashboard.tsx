@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/empty.tsx";
 import { cn } from "@/lib/utils.ts";
 import { QueryError } from "@/components/query-error.tsx";
+import { getGreeting } from "./greeting.ts";
 
 /**
  * The single dashboard for the merged `field` role.
@@ -207,7 +208,7 @@ export default function FieldDashboard({ user }: Props) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-[28px] font-bold tracking-[-0.02em] text-foreground leading-tight">
-                        Good {greeting()}, {user.name?.split(" ")[0] ?? "there"}
+                        Good {getGreeting()}, {user.name?.split(" ")[0] ?? "there"}
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1.5">
                         Your inspections and installations at Lampara
@@ -397,11 +398,4 @@ function JobCard({ job, onClick, tone }: {
             </div>
         </div>
     );
-}
-
-function greeting() {
-    const h = new Date().getHours();
-    if (h < 12) return "morning";
-    if (h < 17) return "afternoon";
-    return "evening";
 }

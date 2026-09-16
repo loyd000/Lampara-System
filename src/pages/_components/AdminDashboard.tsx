@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { InlineQueryError } from "@/components/query-error.tsx";
 import { cn } from "@/lib/utils.ts";
 import CreateLeadDialog from "../leads/_components/CreateLeadDialog.tsx";
+import { getGreeting } from "./greeting.ts";
 
 function eventTab(event: CalendarEvent): string {
     return event.kind === "inspection" ? "ocular" : "installation";
@@ -417,13 +418,6 @@ function StatCell({
             <div className="text-muted-foreground">{icon}</div>
         </div>
     );
-}
-
-function getGreeting() {
-    const h = new Date().getHours();
-    if (h < 12) return "morning";
-    if (h < 18) return "afternoon";
-    return "evening";
 }
 
 function timeAgo(iso: string | number) {

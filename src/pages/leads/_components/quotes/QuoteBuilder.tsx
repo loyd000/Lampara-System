@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ArrowLeft,
     ArrowLeftRight,
@@ -153,11 +153,25 @@ export default function QuoteBuilder({
         return false;
     }, [isApproved, quote, notes, validUntil, preparedById, items, initialItems]);
 
-    // Keyboard shortcut: Cmd+S / Ctrl+S to save
+    // Keyboard shortcut: Cmd+S / Ctrl+S to save.
+    //
+    // Read through a ref rather than depending on isDirty/editable/handleSave
+    // directly: handleSave is a plain function (a new reference every
+    // render), so listing it as a dependency wouldn't actually stop the
+    // effect re-running every render — it would still tear down and
+    // re-register the window listener on every keystroke in any field.
+    // Keeping the effect itself dependency-free registers the listener once,
+    // while the ref always sees the latest values when it fires.
+    const latestRef = useRef({ isDirty, editable, handleSave });
+    useEffect(() => {
+        latestRef.current = { isDirty, editable, handleSave };
+    });
+
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             if ((e.metaKey || e.ctrlKey) && e.key === "s") {
                 e.preventDefault();
+                const { isDirty, editable, handleSave } = latestRef.current;
                 if (isDirty && editable) {
                     handleSave();
                 }
@@ -165,7 +179,7 @@ export default function QuoteBuilder({
         }
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-    });
+    }, []);
 
     // Live grand total, rounded per line exactly as the write path and the
     // database do — otherwise the figure on screen can disagree with the one
