@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { SignOutButton } from "@/components/sign-out-button.tsx";
+import SyncStatusButton from "@/components/offline/SyncStatusButton.tsx";
 import { COMPANY_NAME, ROLE_LABELS } from "@/lib/constants.ts";
 
 type NavItem = {
@@ -122,6 +123,7 @@ export default function AppSidebar() {
                                 </p>
                             </div>
                         </NavLink>
+                        <SyncStatusButton size="icon-sm" />
                         <SignOutButton />
                     </div>
                 </div>

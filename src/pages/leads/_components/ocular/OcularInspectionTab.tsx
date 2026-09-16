@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useLiveQuery } from "dexie-react-hooks";
 import {
     ArrowLeft,
     CalendarDays,
     CheckCircle2,
     ClipboardCheck,
+    CloudOff,
     Plus,
     RotateCcw,
     Trash2,
@@ -18,6 +20,8 @@ import {
     useSurveysForLead,
 } from "@/lib/supabase/hooks.ts";
 import type { Id, Lead, Property, SurveyForLead } from "@/lib/supabase/types.ts";
+import { useIsOnline } from "@/lib/offline/network.ts";
+import { getSurveysForLead } from "@/lib/offline/survey-repository.ts";
 import {
     INSPECTION_LABEL,
     INSPECTION_LABEL_PLURAL,
@@ -69,8 +73,14 @@ export default function OcularInspectionTab({
 }) {
     const leadId = lead._id as Id<"leads">;
     const propertyId = property?._id as Id<"properties"> | undefined;
+    const isOnline = useIsOnline();
     const surveysQuery = useSurveysForLead(leadId);
-    const { data: surveys } = surveysQuery;
+    // Offline fallback: a survey the dashboard prefetched (or the technician
+    // manually downloaded) into Dexie before losing signal. Only consulted
+    // when the live query has nothing — online data always wins once it
+    // arrives, since it's the source of truth.
+    const offlineSurveys = useLiveQuery(() => getSurveysForLead(leadId), [leadId]);
+    const surveys = surveysQuery.data ?? (!isOnline ? offlineSurveys : undefined);
     const { data: currentUser } = useCurrentUser();
     const { mutateAsync: deleteSurvey, isPending: deletingReport } = useDeleteSurvey();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -104,7 +114,11 @@ export default function OcularInspectionTab({
     // tab shows skeletons for ever — which is how a stale PostgREST embed
     // (0029 dropped the FK it named) presented as a blank page rather than an
     // error anyone could act on.
-    if (surveysQuery.isError) {
+    //
+    // Gated on `isOnline`: offline, `surveysQuery` fails on every mount (no
+    // network to fetch with) by design — that's not a bug to surface, it's
+    // the cue to fall back to whatever's cached locally instead.
+    if (surveysQuery.isError && isOnline) {
         return (
             <QueryError
                 title="Couldn't load inspections"
@@ -170,6 +184,7 @@ export default function OcularInspectionTab({
                     property={property}
                     canSchedule={canSchedule}
                     canWork={canWork}
+                    isOnline={isOnline}
                     onDeleted={() => openReport(null)}
                 />
 
@@ -219,21 +234,26 @@ export default function OcularInspectionTab({
                 <Empty>
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
-                            <ClipboardCheck className="size-6" />
+                            {isOnline ? (
+                                <ClipboardCheck className="size-6" />
+                            ) : (
+                                <CloudOff className="size-6" />
+                            )}
                         </EmptyMedia>
-                        <EmptyTitle>No reports yet</EmptyTitle>
+                        <EmptyTitle>{isOnline ? "No reports yet" : "Nothing downloaded"}</EmptyTitle>
                         <EmptyDescription>
-                            A {INSPECTION_LABEL.toLowerCase()} records the roof, the electrical
-                            setup and the photos the quote is built from.
+                            {isOnline
+                                ? `A ${INSPECTION_LABEL.toLowerCase()} records the roof, the electrical setup and the photos the quote is built from.`
+                                : "No inspection for this lead was downloaded for offline use. Connect to the internet and reopen this tab."}
                         </EmptyDescription>
                     </EmptyHeader>
-                    {canSchedule && propertyId && (
+                    {isOnline && canSchedule && propertyId && (
                         <Button size="sm" onClick={() => setCreateOpen(true)}>
                             <Plus className="w-3.5 h-3.5 mr-1.5" />
                             Make ocular report
                         </Button>
                     )}
-                    {canSchedule && !propertyId && (
+                    {isOnline && canSchedule && !propertyId && (
                         <p className="text-xs text-muted-foreground">
                             Add a property to this lead first — a report is written against a
                             site.
@@ -263,7 +283,7 @@ export default function OcularInspectionTab({
                             </Badge>
                         </div>
 
-                        {canSchedule && propertyId && (
+                        {isOnline && canSchedule && propertyId && (
                             <Button
                                 size="sm"
                                 onClick={() => setCreateOpen(true)}
@@ -343,7 +363,7 @@ export default function OcularInspectionTab({
                                         property={property}
                                     />
 
-                                    {canSchedule && (
+                                    {canSchedule && isOnline && (
                                         <Button
                                             size="icon"
                                             variant="ghost"
@@ -434,6 +454,7 @@ function StatusBar({
     property,
     canSchedule,
     canWork,
+    isOnline,
     onDeleted,
 }: {
     survey: SurveyForLead;
@@ -448,6 +469,12 @@ function StatusBar({
      * report, or there would be no way back to editable.
      */
     canWork: boolean;
+    /**
+     * Complete/reopen and delete aren't offline-queued (only report fields
+     * and photos are — see docs/plans/Offline_implementation_plan.md), so
+     * they're disabled rather than left to fail with a network error.
+     */
+    isOnline: boolean;
     /** Deleting removes the report entirely, so the view goes back to the list. */
     onDeleted: () => void;
 }) {
@@ -511,7 +538,8 @@ function StatusBar({
                                 size="sm"
                                 variant={survey.completedAt ? "ghost" : "default"}
                                 className="h-8 text-xs"
-                                disabled={busy}
+                                disabled={busy || !isOnline}
+                                title={isOnline ? undefined : "Requires an internet connection"}
                                 onClick={() =>
                                     void run(
                                         () => setCompleted({
@@ -537,7 +565,7 @@ function StatusBar({
                                 )}
                             </Button>
                         )}
-                        {canSchedule && (
+                        {canSchedule && isOnline && (
                             <ConfirmButton
                                 label="Delete Report"
                                 variant="ghost"

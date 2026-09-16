@@ -52,16 +52,22 @@ export function buildPath(prefix: string, ownerId: string, file: File): string {
 /**
  * Uploads one file and returns the object path to persist on the owning row.
  * (Convex returned an opaque storage ID here; a path plays the same role.)
+ *
+ * `upsert: true` is for the offline sync engine replaying a queued upload
+ * whose path was already assigned (and possibly already landed) before a
+ * retry — see addSurveyPhotos's `precomputed` param. The normal online path
+ * never passes it, so its object-already-exists error stays a real error.
  */
 export async function uploadFile(
     bucket: Bucket,
     path: string,
     file: File,
+    options: { upsert?: boolean } = {},
 ): Promise<string> {
     const { error } = await supabase.storage.from(bucket).upload(path, file, {
         cacheControl: CACHE_CONTROL,
         contentType: file.type || "application/octet-stream",
-        upsert: false,
+        upsert: options.upsert ?? false,
     });
     if (error) throw toAppError(error, "Upload failed");
     return path;

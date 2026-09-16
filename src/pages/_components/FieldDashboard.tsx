@@ -1,10 +1,14 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLiveQuery } from "dexie-react-hooks";
 import {
     CalendarDays,
     CheckCircle2,
     ClipboardCheck,
     Clock,
+    CloudCheck,
+    CloudDownload,
+    Loader2,
     MapPin,
     Sun,
     Wrench,
@@ -20,12 +24,15 @@ import {
 } from "@/lib/constants.ts";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
     Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
 } from "@/components/ui/empty.tsx";
 import { cn } from "@/lib/utils.ts";
 import { QueryError } from "@/components/query-error.tsx";
+import { useIsOnline } from "@/lib/offline/network.ts";
+import { downloadSurveyForOffline, getSurvey } from "@/lib/offline/survey-repository.ts";
 
 /**
  * The single dashboard for the merged `field` role.
@@ -172,6 +179,29 @@ export default function FieldDashboard({ user }: Props) {
     const completedRecently = completed.filter(
         (j) => j.completedAt && new Date(j.completedAt) >= thirtyDaysAgo,
     );
+
+    const isOnline = useIsOnline();
+
+    // Auto-download today's and tomorrow's assigned inspections whenever the
+    // dashboard loads with a connection — Option 1 (Automatic + Manual) from
+    // docs/plans/Offline_implementation_plan.md. Installations are out of
+    // scope; only inspections carry an offline-editable report. Best-effort:
+    // a prefetch failure here shouldn't block the dashboard from rendering,
+    // and the manual "Download" affordance on each card covers the gap.
+    // Recomputes today/tomorrow inside the effect (rather than depending on
+    // the component-scope `today`/`tomorrowJobs`) so the dependency array
+    // stays exact — no eslint-disable needed.
+    useEffect(() => {
+        if (!isOnline || !inspections) return;
+        const day0 = startOfDay(new Date()).getTime();
+        const day1 = day0 + 86400000;
+        for (const s of inspections) {
+            if (s.completedAt || s.status === "cancelled") continue;
+            const day = startOfDay(parseJobDate(s.scheduledAt)).getTime();
+            if (day !== day0 && day !== day1) continue;
+            void downloadSurveyForOffline(s.leadId, s._id).catch(() => {});
+        }
+    }, [isOnline, inspections]);
 
     const open = (job: FieldJob) => navigate(`/projects/${job.leadId}`);
 
@@ -321,6 +351,26 @@ function JobCard({ job, onClick, tone }: {
     const checked = job.checklist?.filter((i) => i.checked).length ?? 0;
     const total = job.checklist?.length ?? 0;
     const isInspection = job.kind === "inspection";
+    const isOnline = useIsOnline();
+    const [downloading, setDownloading] = useState(false);
+    // Only inspections have an offline-editable report (see plan scope) — the
+    // query itself is skipped for installations via the `void` guard below.
+    const localCopy = useLiveQuery(
+        () => (isInspection ? getSurvey(job.id) : undefined),
+        [isInspection, job.id],
+    );
+
+    async function handleDownload(e: React.MouseEvent) {
+        e.stopPropagation();
+        setDownloading(true);
+        try {
+            await downloadSurveyForOffline(job.leadId, job.id);
+        } catch {
+            // Best-effort: the manual button just stays visible to retry.
+        } finally {
+            setDownloading(false);
+        }
+    }
 
     return (
         <div
@@ -355,6 +405,33 @@ function JobCard({ job, onClick, tone }: {
                     <Badge className={job.statusClass}>
                         {job.statusLabel}
                     </Badge>
+                    {isInspection && !job.done && (
+                        localCopy ? (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1 font-medium text-emerald-700 dark:text-emerald-400"
+                                title="Available offline"
+                            >
+                                <CloudCheck className="w-3 h-3" />
+                                Offline
+                            </Badge>
+                        ) : isOnline ? (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                                disabled={downloading}
+                                onClick={(e) => void handleDownload(e)}
+                            >
+                                {downloading ? (
+                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                ) : (
+                                    <CloudDownload className="w-3 h-3 mr-1" />
+                                )}
+                                Download for Offline
+                            </Button>
+                        ) : null
+                    )}
                 </div>
 
                 {job.address && (

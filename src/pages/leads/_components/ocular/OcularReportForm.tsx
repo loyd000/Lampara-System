@@ -7,6 +7,8 @@ import { parseReportNumber as toNum, parseReportInteger as toInt } from "@/lib/r
 import { useSaveSurveyReport } from "@/lib/supabase/hooks.ts";
 import type { SurveyReportPatch } from "@/lib/supabase/queries/surveys.ts";
 import type { Id, SurveyForLead } from "@/lib/supabase/types.ts";
+import { useIsOnline } from "@/lib/offline/network.ts";
+import { saveSurveyOffline } from "@/lib/offline/survey-repository.ts";
 import {
     BATTERY_OPTION_LABELS,
     CONNECTION_TYPE_LABELS,
@@ -230,6 +232,7 @@ export default function OcularReportForm({
     disabled?: boolean;
 }) {
     const { mutateAsync: saveReport } = useSaveSurveyReport();
+    const isOnline = useIsOnline();
     const [saving, setSaving] = useState(false);
     const [locating, setLocating] = useState(false);
     const savingRef = useRef(false);
@@ -258,7 +261,14 @@ export default function OcularReportForm({
             const patch = Object.fromEntries(
                 Object.entries(allFields).filter(([key]) => key in formState.dirtyFields),
             ) as SurveyReportPatch;
-            await saveReport({ surveyId: survey._id as Id<"surveys">, patch });
+            const surveyId = survey._id as Id<"surveys">;
+            // Offline, this queues the same field-scoped patch for the sync
+            // engine to replay later — see docs/plans/Offline_implementation_plan.md.
+            if (isOnline) {
+                await saveReport({ surveyId, patch });
+            } else {
+                await saveSurveyOffline(surveyId, patch);
+            }
             reset(values);
         } finally {
             savingRef.current = false;
@@ -269,7 +279,7 @@ export default function OcularReportForm({
     async function onSubmit() {
         try {
             await saveDraft();
-            toast.success("Report saved");
+            toast.success(isOnline ? "Report saved" : "Saved locally — will sync when back online");
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not save the report");
         }

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 
 import { supabase, toAppError } from "@/lib/supabase/client.ts";
 import { queryKeys } from "@/lib/supabase/hooks.ts";
@@ -85,6 +88,29 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         };
     }, [queryClient]);
 
+    // Native Google sign-in opens the OAuth flow in an in-app browser tab
+    // (see signInWithGoogle) since a WebView can't receive the redirect
+    // Google sends back. This listener catches that redirect via the
+    // com.lampara.crm://auth/callback deep link registered in
+    // AndroidManifest.xml, exchanges the PKCE code for a session, and
+    // closes the tab — completing the flow without ever leaving the app.
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return;
+
+        const listenerPromise = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
+            const code = new URL(url).searchParams.get("code");
+            if (!code) return;
+
+            supabase.auth.exchangeCodeForSession(code).finally(() => {
+                Browser.close().catch(() => {});
+            });
+        });
+
+        return () => {
+            listenerPromise.then((listener) => listener.remove());
+        };
+    }, []);
+
     const signInWithPassword = useCallback(async (email: string, password: string) => {
         setError(null);
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -122,17 +148,29 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
     const signInWithGoogle = useCallback(async () => {
         setError(null);
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        const isNative = Capacitor.isNativePlatform();
+        // On native, skip Supabase's own window.location redirect — a WebView
+        // navigation there would leave the app for the system browser and
+        // never come back. Instead open the OAuth URL in an in-app browser
+        // tab pointed at the custom-scheme redirect the appUrlOpen listener
+        // above catches.
+        const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
+                redirectTo: isNative
+                    ? "com.lampara.crm://auth/callback"
+                    : `${window.location.origin}/auth/callback`,
                 queryParams: { access_type: "offline", prompt: "select_account" },
+                skipBrowserRedirect: isNative,
             },
         });
         if (oauthError) {
             const wrapped = toAppError(oauthError, "Could not start Google sign-in");
             setError(wrapped);
             throw wrapped;
+        }
+        if (isNative && data.url) {
+            await Browser.open({ url: data.url });
         }
     }, []);
 

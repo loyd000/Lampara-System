@@ -14,6 +14,8 @@ import MobileNav from "./_components/MobileNavbar.tsx";
 import IosInstallPrompt from "@/components/ios-install-prompt.tsx";
 import GlobalSearch from "@/components/global-search.tsx";
 import AgentFab from "@/components/agent-panel/AgentFab.tsx";
+import SyncStatusButton from "@/components/offline/SyncStatusButton.tsx";
+import { useAutoSync } from "@/lib/offline/sync-engine.ts";
 import { COMPANY_NAME, COMPANY_TAGLINE } from "@/lib/constants.ts";
 import { BarChart3, Users, ClipboardCheck, Zap, Wrench, Bell } from "lucide-react";
 
@@ -27,6 +29,9 @@ export default function AppLayout() {
     // Convex refreshed every subscriber on write; with React Query this one
     // channel does the same job by invalidating caches on Postgres changes.
     useRealtimeSync(isAuthenticated);
+    // Drains the offline ocular-report queue on reconnect/resume — see
+    // docs/plans/Offline_implementation_plan.md.
+    useAutoSync();
 
     return (
         <>
@@ -74,6 +79,7 @@ export default function AppLayout() {
                                     rather than the `icon-lg` variant that already
                                     means 40px — same visible size, wrong reason. */}
                                 <div className="flex items-center gap-1.5">
+                                    <SyncStatusButton size="icon-lg" className="size-11" />
                                     <NavLink
                                         to="/notifications"
                                         className="relative size-11 rounded-md bg-secondary text-foreground flex items-center justify-center border border-border shrink-0"
