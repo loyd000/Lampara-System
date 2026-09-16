@@ -42,7 +42,6 @@ import * as reportsApi from "./queries/reports.ts";
 import * as ticketsApi from "./queries/service-tickets.ts";
 import * as surveysApi from "./queries/surveys.ts";
 import * as usersApi from "./queries/users.ts";
-import { getCachedCurrentUser } from "../offline/current-user-cache.ts";
 
 // ─── Query keys ───────────────────────────────────────────────────────────
 // Hierarchical, so a mutation can invalidate a whole domain with one call.
@@ -118,15 +117,6 @@ export function useCurrentUser() {
         queryFn: usersApi.getCurrentUser,
         staleTime: 1000 * 60 * 5,
         refetchOnWindowFocus: false,
-        // React Query's own cache doesn't survive a reload, and
-        // getCurrentUser() needs a network round trip even for an
-        // already-signed-in session (auth.getUser() revalidates
-        // server-side). Without this, a cold reload while offline
-        // hard-blocks at AccountGate. initialDataUpdatedAt: 0 marks the
-        // seed as immediately stale, so a real refetch still fires the
-        // moment there's a network, rather than waiting out staleTime.
-        initialData: getCachedCurrentUser,
-        initialDataUpdatedAt: 0,
     });
 }
 

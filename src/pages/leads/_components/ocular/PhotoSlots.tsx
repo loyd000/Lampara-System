@@ -1,16 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { Camera, Clock, ImageOff, Loader2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Camera, ImageOff, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAddSurveyPhotos, useDeleteSurveyPhoto } from "@/lib/supabase/hooks.ts";
 import type { Id, SurveyPhoto, SurveyPhotoCategory } from "@/lib/supabase/types.ts";
 import { SURVEY_PHOTO_SLOTS } from "@/lib/constants.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { useIsOnline } from "@/lib/offline/network.ts";
-import { addPhotosOffline } from "@/lib/offline/survey-repository.ts";
-import { isNetworkError } from "@/lib/offline/sync-engine.ts";
-import { offlineDb, type QueuedPhoto } from "@/lib/offline/db.ts";
 
 /**
  * The photo half of the Site Ocular Report.
@@ -73,22 +68,9 @@ function Slot({
 }) {
     const { mutateAsync: addPhotos } = useAddSurveyPhotos();
     const { mutateAsync: deletePhoto } = useDeleteSurveyPhoto();
-    const isOnline = useIsOnline();
     const [uploading, setUploading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
-
-    const queuedPhotos =
-        useLiveQuery(
-            () =>
-                offlineDb.photoQueue
-                    .where("surveyId")
-                    .equals(surveyId)
-                    .filter((p) => p.category === category)
-                    .sortBy("sortOrder"),
-            [surveyId, category],
-        ) ?? [];
-
-    const full = photos.length + queuedPhotos.length >= max;
+    const full = photos.length >= max;
 
     async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
         const picked = Array.from(e.target.files ?? []);
@@ -97,27 +79,12 @@ function Slot({
 
         // The slot's cap mirrors the printed layout, so trim rather than
         // uploading photos the report has nowhere to put.
-        const room = max - photos.length - queuedPhotos.length;
+        const room = max - photos.length;
         const files = picked.slice(0, room);
         if (picked.length > room) {
             toast.warning(`${label} holds ${max} photo${max !== 1 ? "s" : ""} — kept the first ${room}`);
         }
         if (!files.length) return;
-
-        if (!isOnline) {
-            setUploading(true);
-            try {
-                await addPhotosOffline({ surveyId, category, files });
-                toast.success(
-                    `${files.length} photo${files.length !== 1 ? "s" : ""} saved locally — will sync when back online`,
-                );
-            } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Could not save photo");
-            } finally {
-                setUploading(false);
-            }
-            return;
-        }
 
         setUploading(true);
         try {
@@ -128,24 +95,7 @@ function Slot({
                 toast.success(`${saved} photo${saved !== 1 ? "s" : ""} added to ${label}`);
             }
         } catch (err) {
-            // `isOnline` (navigator.onLine) is a hint, not a guarantee —
-            // Android WebView in particular can report "online" while
-            // genuinely unreachable. A network failure here means nothing
-            // uploaded yet (addSurveyPhotos only throws when the very first
-            // file fails), so it's safe to queue the whole batch offline
-            // instead of surfacing a raw fetch error with no recovery.
-            if (isNetworkError(err)) {
-                try {
-                    await addPhotosOffline({ surveyId, category, files });
-                    toast.success(
-                        `${files.length} photo${files.length !== 1 ? "s" : ""} saved locally — will sync when back online`,
-                    );
-                } catch (offlineErr) {
-                    toast.error(offlineErr instanceof Error ? offlineErr.message : "Could not save photo");
-                }
-            } else {
-                toast.error(err instanceof Error ? err.message : "Upload failed");
-            }
+            toast.error(err instanceof Error ? err.message : "Upload failed");
         } finally {
             setUploading(false);
         }
@@ -173,7 +123,7 @@ function Slot({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <span className="text-[11px] text-muted-foreground tabular-nums">
-                        {photos.length + queuedPhotos.length}/{max}
+                        {photos.length}/{max}
                     </span>
                     {editable && (
                         <>
@@ -205,7 +155,7 @@ function Slot({
                 </div>
             </div>
 
-            {photos.length === 0 && queuedPhotos.length === 0 ? (
+            {photos.length === 0 ? (
                 // No dashed box nested inside the slot's own panel — the panel
                 // already provides the boundary; this is just its empty state.
                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
@@ -242,36 +192,8 @@ function Slot({
                             )}
                         </div>
                     ))}
-                    {queuedPhotos.map((photo) => (
-                        <QueuedPhotoThumb key={photo.id} photo={photo} label={label} />
-                    ))}
                 </div>
             )}
-        </div>
-    );
-}
-
-/** A locally-queued, not-yet-synced photo — rendered from its Blob via an
- *  object URL, with a small clock badge so it reads as "not synced yet"
- *  rather than a broken/missing image. */
-function QueuedPhotoThumb({ photo, label }: { photo: QueuedPhoto; label: string }) {
-    const url = useMemo(() => URL.createObjectURL(photo.blob), [photo.blob]);
-
-    useEffect(() => () => URL.revokeObjectURL(url), [url]);
-
-    return (
-        <div className="relative">
-            <img
-                src={url}
-                alt={label}
-                className="w-24 h-24 object-cover rounded-md border opacity-80"
-            />
-            <span
-                title="Not synced yet — will upload when back online"
-                className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white rounded-full p-1 shadow-sm"
-            >
-                <Clock className="w-3 h-3" />
-            </span>
         </div>
     );
 }

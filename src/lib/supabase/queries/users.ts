@@ -3,7 +3,6 @@
 import { supabase, toAppError, unwrap } from "../client.ts";
 import type { UserRow, UserRole } from "../database.types.ts";
 import { toUser, type Id, type User } from "../types.ts";
-import { cacheCurrentUser } from "../../offline/current-user-cache.ts";
 
 /**
  * The signed-in user's profile row.
@@ -24,10 +23,7 @@ export async function getCurrentUser(): Promise<User | null> {
         .maybeSingle();
 
     if (error) throw toAppError(error, "Failed to load your profile");
-    const user = data ? toUser(data as UserRow) : null;
-    // Seeds AccountGate's offline fallback — see useCurrentUser's initialData.
-    if (user) cacheCurrentUser(user);
-    return user;
+    return data ? toUser(data as UserRow) : null;
 }
 
 export async function listUsers(): Promise<User[]> {

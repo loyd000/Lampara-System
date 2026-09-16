@@ -337,67 +337,42 @@ export async function addSurveyPhotos(args: {
     surveyId: Id<"surveys">;
     category: SurveyPhotoCategory;
     files: File[];
-    /**
-     * Offline replay only: pre-assigned id/path/sortOrder per file, same
-     * order as `files`. A queued photo picks these at capture time (before
-     * it's ever uploaded), so a retried sync-engine attempt after a partial
-     * failure re-targets the exact same storage object and `survey_photos`
-     * row instead of creating a duplicate — see docs/plans/
-     * Offline_implementation_plan.md, "Idempotent photo upload replay".
-     * Omitted for the normal online path (PhotoSlots.tsx) — behavior there
-     * is unchanged.
-     */
-    precomputed?: { id: string; path: string; sortOrder: number }[];
 }): Promise<number> {
     if (!args.files.length) return 0;
 
     const { data: auth } = await supabase.auth.getUser();
 
-    let next = 0;
-    if (!args.precomputed) {
-        const existing = unwrap(
-            await supabase
-                .from("survey_photos")
-                .select("sort_order")
-                .eq("survey_id", args.surveyId)
-                .eq("category", args.category)
-                .order("sort_order", { ascending: false })
-                .limit(1),
-            "Failed to read existing photos",
-        ) as { sort_order: number }[];
-        next = (existing[0]?.sort_order ?? -1) + 1;
-    }
+    const existing = unwrap(
+        await supabase
+            .from("survey_photos")
+            .select("sort_order")
+            .eq("survey_id", args.surveyId)
+            .eq("category", args.category)
+            .order("sort_order", { ascending: false })
+            .limit(1),
+        "Failed to read existing photos",
+    ) as { sort_order: number }[];
 
+    let next = (existing[0]?.sort_order ?? -1) + 1;
     let saved = 0;
 
-    for (let i = 0; i < args.files.length; i++) {
-        const pre = args.precomputed?.[i];
-        const original = args.files[i];
+    for (const original of args.files) {
         // Shrunk to a 1600px WebP before it is named or uploaded — a report can
         // carry thirty photos, and a technician uploads them from the site.
-        // (Offline, this already happened at capture time; prepareUpload on an
-        // already-compressed file is a no-op via compressImage's size check.)
         const file = await prepareUpload(original);
-        const path = pre?.path ?? buildPath("surveys", args.surveyId, file);
-        await uploadFile("photos", path, file, { upsert: !!pre });
+        const path = buildPath("surveys", args.surveyId, file);
+        await uploadFile("photos", path, file);
 
-        const row = {
-            ...(pre ? { id: pre.id } : {}),
+        const { error } = await supabase.from("survey_photos").insert({
             survey_id: args.surveyId,
             category: args.category,
             path,
-            sort_order: pre?.sortOrder ?? next,
+            sort_order: next,
             created_by: auth.user?.id ?? null,
-        };
-        const { error } = pre
-            ? await supabase.from("survey_photos").upsert(row, { onConflict: "id" })
-            : await supabase.from("survey_photos").insert(row);
+        });
         if (error) {
-            // The object is in the bucket but nothing references it. Only for
-            // a fresh (non-precomputed) upload — a precomputed retry's object
-            // may already be legitimately referenced by an earlier attempt's
-            // row that this same call is about to (re)write.
-            if (!pre) await removeFiles("photos", [path]);
+            // The object is in the bucket but nothing references it.
+            await removeFiles("photos", [path]);
             if (saved === 0) throw toAppError(error, "Failed to save photo");
             break;
         }

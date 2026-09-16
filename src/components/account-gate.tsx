@@ -1,4 +1,5 @@
 import { Hourglass, ShieldOff } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { useAuth } from "@/components/providers/auth-context.ts";
 import { Button } from "@/components/ui/button.tsx";
@@ -43,19 +44,26 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // `isError` reflects the *most recent* fetch attempt only — it can be
-    // true at the same time `user` is populated from a cached last-known-good
-    // value (see useCurrentUser's initialData). Only block here when there's
-    // truly nothing to fall back on; a background refetch failing offline
-    // with a cached profile already in hand is expected, not an error to
-    // stop someone from reaching their downloaded work over.
-    if (isError && !user) {
+    if (isError) {
         return (
             <AccountMessage
                 title="Couldn't load your account"
                 body="Something went wrong reaching the server. Check your connection and try again."
                 action={<Button onClick={() => void refetch()}>Try again</Button>}
                 onSignOut={signOut}
+                // No signal on site? This is exactly the screen a technician
+                // hits on a cold start with no connection — the offline
+                // report page doesn't need a session at all, so it stays
+                // reachable even from here. See
+                // docs/plans/Offline_Export_Import_plan.md.
+                footer={
+                    <Link
+                        to="/offline-report"
+                        className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+                    >
+                        No signal? Fill a report offline instead
+                    </Link>
+                }
             />
         );
     }
@@ -111,12 +119,14 @@ function AccountMessage({
     body,
     action,
     onSignOut,
+    footer,
 }: {
     icon?: React.ReactNode;
     title: string;
     body: string;
     action?: React.ReactNode;
     onSignOut: () => Promise<void>;
+    footer?: React.ReactNode;
 }) {
     return (
         <div className="flex min-h-svh items-center justify-center bg-background px-4">
@@ -134,6 +144,7 @@ function AccountMessage({
                         Sign out
                     </Button>
                 </div>
+                {footer && <div className="pt-1">{footer}</div>}
             </div>
         </div>
     );

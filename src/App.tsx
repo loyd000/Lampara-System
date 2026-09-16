@@ -10,6 +10,12 @@ import { MissingConfigScreen } from "@/components/missing-config.tsx";
 import { isSupabaseConfigured } from "@/lib/supabase/client.ts";
 import AppLayout from "./pages/layout/AppLayout.tsx";
 import Index from "./pages/Index.tsx";
+// Eager, not lazy — deliberately the one exception to the route-splitting
+// convention below. This page has to be physically present in the bundle
+// the browser/WebView already loaded, with zero fetch required to reach it,
+// so it works from a cold start with no signal. See
+// docs/plans/Offline_Export_Import_plan.md.
+import OfflineReportPage from "./pages/offline-report/page.tsx";
 
 // Split at the route boundary. The landing page, shell and dashboard are what a
 // signed-in user sees first, so they stay in the entry chunk; the rest — and
@@ -48,6 +54,10 @@ export default function App() {
                         <Suspense fallback={<RouteFallback />}>
                             <Routes>
                                 <Route path="/auth/callback" element={<AuthCallback />} />
+                                {/* Outside AppLayout/Authenticated on purpose — no
+                                    auth check, no data fetch, reachable
+                                    regardless of connectivity or session state. */}
+                                <Route path="/offline-report" element={<OfflineReportPage />} />
                                 <Route element={<AppLayout />}>
                                     <Route path="/" element={<Index />} />
                                     <Route path="/calendar" element={<CalendarPage />} />

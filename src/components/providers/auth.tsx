@@ -8,7 +8,6 @@ import { Browser } from "@capacitor/browser";
 import { supabase, toAppError } from "@/lib/supabase/client.ts";
 import { queryKeys } from "@/lib/supabase/hooks.ts";
 import { watchAccountAccess } from "@/lib/supabase/access-cache.ts";
-import { clearCachedCurrentUser } from "@/lib/offline/current-user-cache.ts";
 import { AuthContext, type AuthContextValue } from "./auth-context.ts";
 
 /**
@@ -76,10 +75,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             if (event === "SIGNED_OUT") {
                 setIsPasswordRecovery(false);
                 queryClient.clear();
-                clearCachedCurrentUser();
             } else if (previousUserId && nextUserId && previousUserId !== nextUserId) {
                 queryClient.clear();
-                clearCachedCurrentUser();
             } else if (event === "USER_UPDATED") {
                 queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
             }
