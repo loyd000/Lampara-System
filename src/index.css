@@ -368,4 +368,43 @@
     .dark .glass-popover {
         background: rgba(32, 37, 49, 0.90);
     }
+
+    /* Android System WebView's backdrop-filter support is device-dependent —
+       it's updated separately from the app, and older versions accept the
+       property without ever rendering it, so the "glass" surfaces above
+       silently degrade to a plain translucent panel with no blur behind it,
+       inconsistently per device. `data-platform` is set once in main.tsx via
+       Capacitor.getPlatform(); on Android specifically, skip the blur attempt
+       entirely and render the same solid panel/ground colors used everywhere
+       else in the system — consistent on every device, instead of a gamble.
+       iOS and web keep the real effect; both have reliable support. */
+    [data-platform="android"] .glass-nav {
+        background: rgb(245, 245, 247);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    [data-platform="android"].dark .glass-nav {
+        background: rgb(10, 14, 21);
+    }
+
+    [data-platform="android"] .glass-modal {
+        background: rgb(255, 255, 255);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    [data-platform="android"].dark .glass-modal {
+        background: rgb(32, 37, 49);
+    }
+
+    [data-platform="android"] .glass-popover {
+        background: rgb(255, 255, 255);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    [data-platform="android"].dark .glass-popover {
+        background: rgb(32, 37, 49);
+    }
 }
