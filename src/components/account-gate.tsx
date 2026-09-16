@@ -43,7 +43,13 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
         );
     }
 
-    if (isError) {
+    // `isError` reflects the *most recent* fetch attempt only — it can be
+    // true at the same time `user` is populated from a cached last-known-good
+    // value (see useCurrentUser's initialData). Only block here when there's
+    // truly nothing to fall back on; a background refetch failing offline
+    // with a cached profile already in hand is expected, not an error to
+    // stop someone from reaching their downloaded work over.
+    if (isError && !user) {
         return (
             <AccountMessage
                 title="Couldn't load your account"
