@@ -3,6 +3,7 @@ import { useEnrichedLeads, useLeadSearch } from "@/lib/supabase/hooks.ts";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { Label } from "@/components/ui/label.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
@@ -14,10 +15,13 @@ import {
     PROPERTY_TYPE_LABELS, DESIGN_TYPE_LABELS,
     groupOf, type StageGroup,
 } from "@/lib/constants.ts";
-import { Plus, Search, SlidersHorizontal, ArrowUpDown, AlertTriangle, User } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, ArrowUpDown, AlertTriangle, User, MapPin } from "lucide-react";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.tsx";
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog.tsx";
 import CreateLeadDialog from "./_components/CreateLeadDialog.tsx";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { useNow } from "@/hooks/use-now.ts";
@@ -68,6 +72,7 @@ export default function LeadsPage() {
     const [designTypeFilter, setDesignTypeFilter] = useState<string>("all");
     const [sortOption, setSortOption] = useState<string>("date_desc");
     const [createOpen, setCreateOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [debouncedSearch] = useDebounce(search, 300);
     const now = useNow();
 
@@ -95,6 +100,17 @@ export default function LeadsPage() {
     );
     const hasActiveFilters =
         stageFilter !== "all" || propertyTypeFilter !== "all" || designTypeFilter !== "all" || !!search;
+    // Search has its own always-visible field on mobile, so it's excluded
+    // from the count on the "Filters" button badge — that badge is only for
+    // the ones tucked away inside the dialog.
+    const dialogFilterCount = [stageFilter, propertyTypeFilter, designTypeFilter]
+        .filter((v) => v !== "all").length;
+    const clearFilters = () => {
+        setStageFilter("all");
+        setPropertyTypeFilter("all");
+        setDesignTypeFilter("all");
+        setSearch("");
+    };
 
     const staleCount = (page?.leads ?? []).filter((l) => {
         const days = (now - new Date(l.lastActivityAt).getTime()) / 86400000;
@@ -142,14 +158,19 @@ export default function LeadsPage() {
                         )}
                     </p>
                 </div>
-                <Button onClick={() => setCreateOpen(true)}>
+                {/* Hidden on mobile — the mobile nav bar's center "+" button
+                    opens the same CreateLeadDialog now. */}
+                <Button onClick={() => setCreateOpen(true)} className="hidden md:inline-flex">
                     <Plus className="w-4 h-4 mr-1.5" />New Project
                 </Button>
             </div>
 
-            {/* Filters row */}
-            <div className="flex gap-3 flex-wrap items-center">
-                <div className="relative flex-1 min-w-[220px]">
+            {/* Search + filters — search stays inline everywhere; on mobile
+                the stage/property/design selects and sort collapse behind a
+                single "Filters" button instead of five stacked full-width
+                pills, which used to be most of the screen. */}
+            <div className="flex gap-2 md:gap-3 md:flex-wrap md:items-center">
+                <div className="relative flex-1 min-w-0 md:min-w-[220px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                         placeholder="Search name, phone, email…"
@@ -158,8 +179,23 @@ export default function LeadsPage() {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
+
+                <Button
+                    variant="outline"
+                    className="relative shrink-0 bg-card md:hidden"
+                    onClick={() => setFiltersOpen(true)}
+                    aria-label="Filters and sort"
+                >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    {dialogFilterCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none">
+                            {dialogFilterCount}
+                        </span>
+                    )}
+                </Button>
+
                 <Select value={stageFilter} onValueChange={setStageFilter}>
-                    <SelectTrigger className="w-44 bg-card">
+                    <SelectTrigger className="hidden md:flex w-44 bg-card">
                         <SlidersHorizontal className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
                         <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
@@ -171,7 +207,7 @@ export default function LeadsPage() {
                     </SelectContent>
                 </Select>
                 <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
-                    <SelectTrigger className="w-40 bg-card">
+                    <SelectTrigger className="hidden md:flex w-40 bg-card">
                         <SelectValue placeholder="All property types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -182,7 +218,7 @@ export default function LeadsPage() {
                     </SelectContent>
                 </Select>
                 <Select value={designTypeFilter} onValueChange={setDesignTypeFilter}>
-                    <SelectTrigger className="w-40 bg-card">
+                    <SelectTrigger className="hidden md:flex w-40 bg-card">
                         <SelectValue placeholder="All design types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -195,13 +231,8 @@ export default function LeadsPage() {
                 {hasActiveFilters && (
                     <Button
                         variant="ghost"
-                        className="text-muted-foreground"
-                        onClick={() => {
-                            setStageFilter("all");
-                            setPropertyTypeFilter("all");
-                            setDesignTypeFilter("all");
-                            setSearch("");
-                        }}
+                        className="hidden md:inline-flex text-muted-foreground"
+                        onClick={clearFilters}
                     >
                         Clear filters
                     </Button>
@@ -211,7 +242,7 @@ export default function LeadsPage() {
                     searching: search results have their own relevance-first
                     order, which this control has no effect on. */}
                 <Select value={sortOption} onValueChange={setSortOption} disabled={isSearching}>
-                    <SelectTrigger className="w-44 bg-card ml-auto">
+                    <SelectTrigger className="hidden md:flex w-44 bg-card ml-auto">
                         <ArrowUpDown className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
                         <SelectValue />
                     </SelectTrigger>
@@ -223,8 +254,86 @@ export default function LeadsPage() {
                 </Select>
             </div>
 
-            {/* Table */}
-            <div className="rounded-xl overflow-x-auto bg-card shadow-sm">
+            {/* Mobile filters dialog — the same four controls as the desktop
+                row, just reached through the "Filters" button instead of
+                sitting on screen permanently. */}
+            <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <DialogContent className="md:hidden">
+                    <DialogHeader>
+                        <DialogTitle>Filters &amp; sort</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label>Status</Label>
+                            <Select value={stageFilter} onValueChange={setStageFilter}>
+                                <SelectTrigger className="w-full bg-card">
+                                    <SelectValue placeholder="All statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All statuses</SelectItem>
+                                    {(Object.keys(STAGE_GROUP_LABELS) as StageGroup[]).map((group) => (
+                                        <SelectItem key={group} value={group}>{STAGE_GROUP_LABELS[group]}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Property type</Label>
+                            <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
+                                <SelectTrigger className="w-full bg-card">
+                                    <SelectValue placeholder="All property types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All property types</SelectItem>
+                                    {Object.entries(PROPERTY_TYPE_LABELS).map(([val, label]) => (
+                                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Design type</Label>
+                            <Select value={designTypeFilter} onValueChange={setDesignTypeFilter}>
+                                <SelectTrigger className="w-full bg-card">
+                                    <SelectValue placeholder="All design types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All design types</SelectItem>
+                                    {Object.entries(DESIGN_TYPE_LABELS).map(([val, label]) => (
+                                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Sort</Label>
+                            <Select value={sortOption} onValueChange={setSortOption} disabled={isSearching}>
+                                <SelectTrigger className="w-full bg-card">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {SORT_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        {hasActiveFilters && (
+                            <Button variant="ghost" className="text-muted-foreground" onClick={clearFilters}>
+                                Clear filters
+                            </Button>
+                        )}
+                        <Button onClick={() => setFiltersOpen(false)}>Done</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Table — sm and up. Below that, a card list (right below)
+                takes over: a 7-column table squeezed to Name+Stage was
+                losing the address entirely, not just reflowing it. */}
+            <div className="hidden sm:block rounded-xl overflow-x-auto bg-card shadow-sm">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border">
@@ -334,6 +443,92 @@ export default function LeadsPage() {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Card list — below sm. Same data as the table, laid out for a
+                thumb: name, address (the thing that was missing entirely
+                below sm before), and stage at a glance. */}
+            <div className="sm:hidden space-y-2">
+                {isLoading ? (
+                    [...Array(6)].map((_, i) => (
+                        <div key={i} className="rounded-xl bg-card shadow-2xs px-4 py-3.5 space-y-2">
+                            <Skeleton className="h-4 w-2/3" />
+                            <Skeleton className="h-3 w-1/2" />
+                        </div>
+                    ))
+                ) : leads.length === 0 ? (
+                    <Empty className="border-none py-14">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <User className="size-6" />
+                            </EmptyMedia>
+                            <EmptyTitle>
+                                {hasActiveFilters ? "No projects match your filters" : "No projects yet"}
+                            </EmptyTitle>
+                            <EmptyDescription>
+                                {hasActiveFilters
+                                    ? "Try a different search, or clear a filter."
+                                    : "New projects you add will show up here, ready to move through the stages."}
+                            </EmptyDescription>
+                        </EmptyHeader>
+                        {!hasActiveFilters && (
+                            <Button size="sm" onClick={() => setCreateOpen(true)}>
+                                <Plus className="w-3.5 h-3.5 mr-1" />Create your first project
+                            </Button>
+                        )}
+                    </Empty>
+                ) : (
+                    leads.map((lead) => {
+                        const daysOld = Math.floor(
+                            (now - new Date(lead.lastActivityAt).getTime()) / 86400000,
+                        );
+                        const isStale = daysOld >= 7 &&
+                            !["active_customer", "installation_complete", "cancelled"].includes(lead.stage);
+                        return (
+                            <div
+                                key={lead._id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => navigate(`/projects/${lead._id}`)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        navigate(`/projects/${lead._id}`);
+                                    }
+                                }}
+                                className="rounded-xl bg-card shadow-2xs px-4 py-3.5 cursor-pointer active:bg-muted/40 transition-colors"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <p className="font-semibold text-foreground min-w-0 truncate">
+                                        {lead.firstName} {lead.lastName}
+                                    </p>
+                                    <Badge className={cn(STAGE_COLORS[lead.stage], "font-semibold shrink-0")}>
+                                        {STAGE_LABELS[lead.stage]}
+                                    </Badge>
+                                </div>
+                                {lead.property && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            {lead.property.city}, {lead.property.state}
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 mt-1.5">
+                                    {isStale ? (
+                                        <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                            <AlertTriangle className="w-2.5 h-2.5" />No activity {daysOld}d
+                                        </span>
+                                    ) : (
+                                        <span className="text-[11px] text-muted-foreground">
+                                            {daysOld === 0 ? "Active today" : daysOld === 1 ? "Active yesterday" : `Active ${daysOld}d ago`}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
 
             <CreateLeadDialog open={createOpen} onClose={() => setCreateOpen(false)} />
