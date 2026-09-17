@@ -188,7 +188,7 @@ export default function ItemPickerModal({
                             packages.map((pkg) => (
                                 <div
                                     key={pkg._id}
-                                    className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors shadow-sm"
+                                    className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors"
                                 >
                                     {/* Stacked on a phone: side by side, the button's
                                         ~140px left the package name about a dozen

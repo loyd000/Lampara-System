@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             return (
                 <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-                    <div className="w-full max-w-md space-y-5 rounded-lg border border-border bg-card p-6 shadow-xs text-center">
+                    <div className="w-full max-w-md space-y-5 rounded-lg border border-border bg-card p-6 text-center">
                         <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
                             {offlineChunkFailure ? (
                                 <CloudOff className="size-6" />

@@ -85,7 +85,7 @@ export default function AppSidebar() {
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-tight transition-colors cursor-pointer",
                                     isActive
-                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
                                 )}
                             >

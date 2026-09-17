@@ -5,7 +5,7 @@ import { COMPANY_NAME } from "@/lib/constants.ts";
 export function MissingConfigScreen() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-            <div className="w-full max-w-lg space-y-6 rounded-lg border border-border bg-card p-6 md:p-8 shadow-xs">
+            <div className="w-full max-w-lg space-y-6 rounded-lg border border-border bg-card p-6 md:p-8">
                 <div className="flex items-center gap-3">
                     <img
                         src="/lampara-icon.png"

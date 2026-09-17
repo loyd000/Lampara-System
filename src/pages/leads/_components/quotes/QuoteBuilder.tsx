@@ -619,7 +619,7 @@ export default function QuoteBuilder({
                     )}
                 </div>
 
-                <div className="rounded-lg border overflow-hidden bg-card shadow-sm">
+                <div className="rounded-lg border overflow-hidden bg-card">
                     {/* The seven fixed-width columns total ~768px, so on a
                         phone this table is entirely off-screen scroll with
                         nothing to say so — Unit Price and Total just aren't

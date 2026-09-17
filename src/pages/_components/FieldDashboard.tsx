@@ -339,8 +339,8 @@ function JobCard({ job, onClick, tone }: {
         <div
             onClick={onClick}
             className={cn(
-                "flex items-start gap-4 px-5 py-4 rounded-xl bg-card shadow-2xs cursor-pointer",
-                "hover:shadow-sm transition-all",
+                "flex items-start gap-4 px-5 py-4 rounded-xl bg-card border border-border cursor-pointer",
+                "hover:border-foreground/25 transition-all",
                 tone === "today" && "ring-1 ring-amber-300/60 dark:ring-amber-700/40",
                 tone === "overdue" && "ring-1 ring-destructive/40",
             )}

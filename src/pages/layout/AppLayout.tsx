@@ -189,7 +189,7 @@ function LandingPage() {
             <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-16 md:py-24">
                 <div className="text-center space-y-6 max-w-2xl mx-auto">
                     {/* Badge */}
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md border border-border bg-card text-foreground text-xs font-medium shadow-2xs">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md border border-border bg-card text-foreground text-xs font-medium">
                         <Zap className="w-3.5 h-3.5 text-muted-foreground" />
                         Solar Installation CRM
                     </div>
@@ -217,7 +217,7 @@ function LandingPage() {
                     {features.map((feature) => (
                         <div
                             key={feature.title}
-                            className="group relative p-5 rounded-lg border border-border bg-card hover:border-foreground/30 hover:shadow-xs transition-all duration-200"
+                            className="group relative p-5 rounded-lg border border-border bg-card hover:border-foreground/30 transition-all duration-200"
                         >
                             <div className="size-9 rounded-md bg-secondary border border-border flex items-center justify-center mb-3 group-hover:bg-accent transition-colors">
                                 <feature.icon className="w-4 h-4 text-foreground" />

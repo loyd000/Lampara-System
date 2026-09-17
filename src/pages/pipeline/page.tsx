@@ -398,7 +398,7 @@ function PipelineCard({
             onPointerDown={handlePointerDown}
             onClick={onClick}
             className={cn(
-                "bg-card rounded-xl p-3 shadow-2xs transition-all select-none",
+                "bg-card rounded-xl border border-border p-3 transition-all select-none",
                 // Without this, a touch that starts on a card gets read as a
                 // page/column scroll before our own pointermove handler ever
                 // sees it — preventDefault() in handlePointerDown fires too
@@ -406,7 +406,7 @@ function PipelineCard({
                 // browser honours before the gesture is classified. Scoped to
                 // canMoveStage so a field user (who can't drag anyway) can
                 // still scroll the board normally by touching a card.
-                canMoveStage && "cursor-grab active:cursor-grabbing hover:shadow-sm touch-none",
+                canMoveStage && "cursor-grab active:cursor-grabbing hover:border-foreground/25 touch-none",
                 isDragging && "opacity-40 scale-95",
                 isStale && "ring-1 ring-amber-300/60 dark:ring-amber-700/40",
             )}

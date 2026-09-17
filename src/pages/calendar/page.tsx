@@ -226,7 +226,7 @@ function MonthGrid({
     }, [days]);
 
     return (
-        <div className="bg-card rounded-xl shadow-sm overflow-x-auto">
+        <div className="bg-card rounded-xl border border-border overflow-x-auto">
             <div className="min-w-[640px]">
                 <div className="grid grid-cols-7 border-b border-border">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -335,7 +335,7 @@ function WeekList({
                 const key = dayKey(day);
                 const entries = byDay.get(key) ?? [];
                 return (
-                    <div key={key} className="bg-card rounded-xl shadow-sm overflow-hidden">
+                    <div key={key} className="bg-card rounded-xl border border-border overflow-hidden">
                         <div
                             className={cn(
                                 "flex items-center gap-2 px-3 py-2 border-b border-border",

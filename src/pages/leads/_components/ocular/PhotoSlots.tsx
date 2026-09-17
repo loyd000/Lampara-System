@@ -111,11 +111,7 @@ function Slot({
     }
 
     return (
-        // `bg-card shadow-sm`, not a hard border: these slots sit bare on the
-        // page (not nested inside another bordered Card), so a soft shadow —
-        // the same weight the Card primitive itself uses — reads as a panel
-        // without the harder boxed-in look a border line gives.
-        <div className="rounded-lg bg-card shadow-sm p-4">
+        <div className="rounded-lg bg-card border border-border p-4">
             <div className="flex items-start justify-between gap-3 mb-2.5">
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{label}</p>

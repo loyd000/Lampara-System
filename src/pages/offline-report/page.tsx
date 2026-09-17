@@ -136,7 +136,7 @@ function DraftRow({
                     onOpen();
                 }
             }}
-            className="flex items-center justify-between gap-3 rounded-lg bg-card shadow-2xs p-4 cursor-pointer hover:shadow-sm transition-shadow"
+            className="flex items-center justify-between gap-3 rounded-lg bg-card border border-border p-4 cursor-pointer hover:border-foreground/25 transition-colors"
         >
             <div className="min-w-0 flex items-start gap-3">
                 <div className="mt-0.5 flex items-center justify-center rounded-md size-8 shrink-0 bg-muted text-muted-foreground">
@@ -287,7 +287,7 @@ function DraftEditor({ draftId, onBack }: { draftId: string | null; onBack: () =
                     All offline reports
                 </Button>
 
-                <div className="rounded-lg bg-card shadow-2xs p-4 space-y-3">
+                <div className="rounded-lg bg-card border border-border p-4 space-y-3">
                     <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">
                             Customer name

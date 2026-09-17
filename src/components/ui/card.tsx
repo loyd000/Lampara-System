@@ -7,7 +7,11 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
         <div
             data-slot="card"
             className={cn(
-                "flex flex-col gap-6 rounded-xl bg-card py-6 text-card-foreground shadow-sm",
+                // Flat by default — minimalist panels, matching every other
+                // content surface in the app. Shadows are reserved for
+                // things that actually float above content: dialogs,
+                // popovers, dropdowns, the mobile nav bar.
+                "flex flex-col gap-6 rounded-xl border border-border bg-card py-6 text-card-foreground",
                 className,
             )}
             {...props}

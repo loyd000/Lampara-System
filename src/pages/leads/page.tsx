@@ -341,7 +341,7 @@ export default function LeadsPage() {
             {/* Table — sm and up. Below that, a card list (right below)
                 takes over: a 7-column table squeezed to Name+Stage was
                 losing the address entirely, not just reflowing it. */}
-            <div className="hidden sm:block rounded-xl overflow-x-auto bg-card shadow-sm">
+            <div className="hidden sm:block rounded-xl overflow-x-auto bg-card border border-border">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border">
@@ -459,7 +459,7 @@ export default function LeadsPage() {
             <div className="sm:hidden space-y-2">
                 {isLoading ? (
                     [...Array(6)].map((_, i) => (
-                        <div key={i} className="rounded-xl bg-card shadow-2xs px-4 py-3.5 space-y-2">
+                        <div key={i} className="rounded-xl bg-card border border-border px-4 py-3.5 space-y-2">
                             <Skeleton className="h-4 w-2/3" />
                             <Skeleton className="h-3 w-1/2" />
                         </div>
@@ -504,7 +504,7 @@ export default function LeadsPage() {
                                         navigate(`/projects/${lead._id}`);
                                     }
                                 }}
-                                className="rounded-xl bg-card shadow-2xs px-4 py-3.5 cursor-pointer active:bg-muted/40 transition-colors"
+                                className="rounded-xl bg-card border border-border px-4 py-3.5 cursor-pointer active:bg-muted/40 transition-colors"
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <p className="font-semibold text-foreground min-w-0 truncate">
