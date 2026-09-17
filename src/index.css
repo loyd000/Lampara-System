@@ -80,62 +80,62 @@
    inherits the new look without a per-component rewrite.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-    --radius: 1rem;
+    --radius: 0.625rem;
 
     /* Ground — cool grey-white, never warm/cream */
-    --background: #f5f5f7;
-    --foreground: #1d1d1f;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
 
     /* Panels — solid white, separated from the ground by shadow, not border */
-    --card: #ffffff;
-    --card-foreground: #1d1d1f;
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
 
     /* Overlays (dialog/popover/dropdown) — same white surface; glass is added
        per-component only where it actually overlaps scrolling content. */
-    --popover: #ffffff;
-    --popover-foreground: #1d1d1f;
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
 
     /* Primary — Apple blue is the one accent; body content stays grayscale */
-    --primary: #0071e3;
-    --primary-foreground: #ffffff;
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
 
     /* Secondary — visible-but-quiet fill, for badges/buttons on a white panel */
-    --secondary: #e8e8ed;
-    --secondary-foreground: #1d1d1f;
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
 
     /* Muted — secondary text tier */
-    --muted: #f5f5f7;
-    --muted-foreground: #6e6e73;
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
 
     /* Accent — neutral hover/highlight tint (not the brand accent above) */
-    --accent: #f5f5f7;
-    --accent-foreground: #1d1d1f;
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
 
     /* Destructive — Apple system red */
-    --destructive: #ff3b30;
+    --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: #ffffff;
 
     /* Hairline dividers, not heavy borders */
-    --border: rgba(0, 0, 0, 0.07);
-    --input: rgba(0, 0, 0, 0.09);
-    --ring: #0071e3;
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
 
     /* Charts — grayscale + the one accent */
-    --chart-1: #0071e3;
-    --chart-2: #1d1d1f;
-    --chart-3: #6e6e73;
-    --chart-4: #aeaeb2;
-    --chart-5: #d2d2d7;
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
 
     /* Sidebar — a shade off the page ground, active item lifts to a white pill */
-    --sidebar: #f5f5f7;
-    --sidebar-foreground: #1d1d1f;
-    --sidebar-primary: #0071e3;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #ffffff;
-    --sidebar-accent-foreground: #1d1d1f;
-    --sidebar-border: rgba(0, 0, 0, 0.07);
-    --sidebar-ring: #0071e3;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
 
     /* Typography */
     --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
@@ -166,48 +166,48 @@
 .dark {
     --radius: 1rem;
 
-    --background: #0a0e15;
-    --foreground: #f5f5f7;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
 
-    --card: #202531;
-    --card-foreground: #f5f5f7;
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
 
-    --popover: #202531;
-    --popover-foreground: #f5f5f7;
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
 
-    --primary: #0a84ff;
-    --primary-foreground: #ffffff;
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
 
-    --secondary: #37404f;
-    --secondary-foreground: #f5f5f7;
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
 
-    --muted: #37404f;
-    --muted-foreground: #667085;
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
 
-    --accent: #37404f;
-    --accent-foreground: #f5f5f7;
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
 
-    --destructive: #ff453a;
+    --destructive: oklch(0.704 0.191 22.216);
     --destructive-foreground: #ffffff;
 
-    --border: #37404f;
-    --input: #4e5766;
-    --ring: #0a84ff;
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
 
-    --chart-1: #0a84ff;
-    --chart-2: #667085;
-    --chart-3: #4e5766;
-    --chart-4: #37404f;
-    --chart-5: #202531;
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
 
-    --sidebar: #0a0e15;
-    --sidebar-foreground: #f5f5f7;
-    --sidebar-primary: #0a84ff;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #202531;
-    --sidebar-accent-foreground: #f5f5f7;
-    --sidebar-border: #37404f;
-    --sidebar-ring: #0a84ff;
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
 
     /* Typography */
     --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
