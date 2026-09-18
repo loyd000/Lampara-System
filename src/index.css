@@ -1,11 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-sans: 'Inter Variable', sans-serif;
     --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --font-serif: "Noto Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
@@ -69,6 +72,7 @@
     --tracking-wider: 0.05em;
     --tracking-widest: 0.1em;
     --tracking-normal: 0em;
+    --font-heading: 'Geist Variable', sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -276,6 +280,9 @@
 
     .dark ::-webkit-scrollbar-thumb:hover {
         background: #4e5766;
+    }
+  html {
+    @apply font-sans;
     }
 }
 
